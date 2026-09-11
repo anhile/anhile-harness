@@ -329,3 +329,60 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   for the comparison and reproduces the shape in a throwaway repository, so
   the guard's two answers are on record: refused against the first parent,
   accepted against the second.
+
+## 2026-09-12 — 0.1.0 is the version, and the changelog says what it holds
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  The person chose 0.1.0 over 0.2.0 for the first publish: nothing had been
+  on npm, so there is no consumer for whom the generator's behaviour
+  "changed". The Unreleased section of `CHANGELOG.md` moved under 0.1.0 as a
+  block of its own, headed for the reader of the seed commit who would
+  otherwise find a different package than the one published. `release.yml`
+  holds the tag to `package.json` and to this entry; both say 0.1.0.
+
+## 2026-09-12 — The first publish is a person's, and every one after is the workflow's
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  The release job failed twice on `v0.1.0` with `EOTP`, the second time
+  with a granular token set to bypass 2FA. Measured rather than guessed:
+  since 2026-08 a bypass token no longer performs package-management
+  operations, and creating a package is one; staged publishing and trusted
+  publishing both require a package that already exists. There is no token
+  that publishes a new name from CI today.
+
+  So 0.1.0 is published once by hand, with 2FA, from the tagged commit after
+  a green gate — the same shape as `git push --no-verify` for the seed
+  commit: a visible act, the only one of its kind, written down. From the
+  next version `release.yml` publishes with a credential GitHub mints for
+  the run, no token in any secret, provenance attached; the workflow is
+  named as the package's trusted publisher on npmjs.com, which is a person's
+  setting and the last thing standing between a tag and the registry.
+
+## 2026-09-12 — The package is anhile-harness, unscoped
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run, after two lines a person's runs at `v0.1.0` appended
+- **Contract changes**: none
+- **Notes**:
+
+  The first publish by hand returned 404 on `PUT @anhile/harness`: the scope
+  `@anhile` belongs to another npm account, and the person's is `anhil3`.
+  `@anhil3/harness` was the first answer and lasted a minute; the person's
+  better one is the unscoped `anhile-harness`, free on npm, so the package,
+  the command it installs and the repository share one name. Nothing
+  generated changes: the name appears in the usage text, the README, the
+  changelog and one assertion, and in no file a new project gets.

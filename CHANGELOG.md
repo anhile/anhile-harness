@@ -1,6 +1,6 @@
 # Changelog
 
-What changed for somebody who runs `npx @anhile/harness init`, by version. The
+What changed for somebody who runs `npx anhile-harness init`, by version. The
 reasons behind each change are in `PROGRESS.md`, which is the journal; this is
 the summary a consumer reads before upgrading.
 
@@ -11,7 +11,17 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
-### Changed
+## [0.1.0] — 2026-09-11
+
+The first version published from its own repository. Until now the harness
+lived inside `anhile/link-shortener` as `packages/harness`, assembled at pack
+time; here `scripts/` at the root is what ships.
+
+### Changed before the first publish
+
+Nothing had been published, so these are part of 0.1.0 rather than a
+release of their own; they are listed because a reader of the seed commit
+would otherwise find a different package than the one on npm.
 
 - Every script under `scripts/` and the `bin` carry `// @ts-check` and JSDoc,
   and `tsconfig.scripts.json` puts them under `tsc -b` — step 02 of the gate —
@@ -24,15 +34,9 @@ minor, a fix to a copied script is a patch.
   database; `check-feature-list.mjs` reads its exempt commits from
   `harness.config.json` (`featureList.exemptCommits`).
 
-## [0.1.0] — 2026-09-11
-
-The first version published from its own repository. Until now the harness
-lived inside `anhile/link-shortener` as `packages/harness`, assembled at pack
-time; here `scripts/` at the root is what ships.
-
 ### Added
 
-- `npx @anhile/harness init`: asks for a name, what is in the project and
+- `npx anhile-harness init`: asks for a name, what is in the project and
   which MCP servers to declare, then writes a project that passes its own
   `./verify.sh` on the first run. `--yes` for scripts and CI.
 - A six-step gate — eslint, typecheck, unit, feature-list, verify-log,
