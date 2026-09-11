@@ -46,7 +46,7 @@ coverage — and the mechanisms behind them:
 | `verify.sh` | the gate, with the steps your answers allow |
 | a receipt | a hash of the tree the gate passed, checked at commit time |
 | `feature_list.json` | the guarantees, append-only, one closed per commit |
-| `verify-log.jsonl` | every run, append-only, recomputable from a clean clone |
+| `verify-log/` | every run, one file each, never edited or removed, recomputable from a clean clone |
 | `PROGRESS.md` | the journal, and a hook that will not let a session skip it |
 | skills and hooks | for Claude Code, ignored by anything else |
 

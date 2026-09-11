@@ -51,11 +51,12 @@ write_receipt() {
     --tree-before "$TREE_BEFORE" \
     --failed "$2" >/dev/null
   # The durable half. .generated/runs/ is machine-local and grows by the run;
-  # this one line per run is what survives in git. Failing runs are appended
-  # too -- a record that keeps only the green runs is not a record.
+  # one small file per run under verify-log/ is what survives in git. Failing
+  # runs are recorded too -- a record that keeps only the green runs is not a
+  # record.
   node scripts/verify-log.mjs append --evidence "$EVIDENCE_DIR" >/dev/null
   # Keep the newest ten runs and every red one; drop the rest. The record is
-  # the line above, not the folder, and the folders reached 102 MB once.
+  # the file above, not the folder, and the folders reached 102 MB once.
   node scripts/prune-evidence.mjs >/dev/null 2>&1 || true
 }
 

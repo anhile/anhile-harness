@@ -1,6 +1,6 @@
 /**
  * check-attestation.mjs is the only thing in this project that a machine other
- * than the author's can use to contradict a claim. Locally, verify-log.jsonl is
+ * than the author's can use to contradict a claim. Locally, verify-log/ is
  * a session's report about itself. Recomputed from a pristine clone by CI —
  * which did not write it — the tree hash either matches the committed content
  * or it does not, and no amount of prose changes which.
@@ -9,7 +9,7 @@
  * commit whose only run was red.
  */
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -30,11 +30,16 @@ function currentTree(): string {
   return node('verify-receipt.mjs', 'hash').trim();
 }
 
+let recorded = 0;
+
+/** One file per run, named as verify.sh names an evidence folder. */
 function recordRun(entry: Record<string, unknown>): void {
-  appendFileSync(
-    path.join(repo, 'verify-log.jsonl'),
+  recorded += 1;
+  mkdirSync(path.join(repo, 'verify-log'), { recursive: true });
+  writeFileSync(
+    path.join(repo, 'verify-log', `20260830T1000${String(recorded).padStart(2, '0')}Z.json`),
     `${JSON.stringify({
-      at: '2026-08-30T10:00:00.000Z',
+      at: `2026-08-30T10:00:${String(recorded).padStart(2, '0')}.000Z`,
       result: 'pass',
       head: 'a'.repeat(40),
       steps: { '01-eslint': { exit: 0, seconds: 1 } },
@@ -67,6 +72,19 @@ beforeEach(() => {
 });
 
 afterEach(() => rmSync(repo, { recursive: true, force: true }));
+
+describe('what the tree hash leaves out', () => {
+  it('is verify-log/ and nothing else', () => {
+    // The record must sit outside the hash, or recording a run would change
+    // the tree the run is about. Since 2026-09-12 that is a directory prefix
+    // rather than one file name; this pins that nothing wider slipped in.
+    const before = currentTree();
+    recordRun({ tree: 'sha256:whatever' });
+    expect(currentTree()).toBe(before);
+    writeFileSync(path.join(repo, 'verify-log-notes.txt'), 'not the record\n');
+    expect(currentTree()).not.toBe(before);
+  });
+});
 
 describe('a commit no run covers', () => {
   it('is refused when the record is missing entirely', () => {

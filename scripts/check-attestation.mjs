@@ -3,7 +3,7 @@
 /**
  * Does this commit carry a passing verify run of its own content?
  *
- * verify-log.jsonl records, for each run, the hash of the tree it ran against.
+ * verify-log/ records, one file per run, the hash of the tree it ran against.
  * That hash is computed over the tracked files, so it can be **recomputed from
  * a pristine clone** — which is the whole point. Locally the record is a
  * session's report about itself. Recomputed somewhere else, by something that
@@ -17,12 +17,12 @@
  *
  *   node scripts/check-attestation.mjs
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
 import { treeHash } from './verify-receipt.mjs';
-import { LOG_FILE, readLines, root } from './verify-log.mjs';
+import { LOG_DIR, readRuns, root } from './verify-log.mjs';
 
 /**
  * @param {string[]} lines
@@ -35,14 +35,12 @@ function fail(lines) {
 
 function main() {
   const tree = treeHash();
-  const file = path.join(root, LOG_FILE);
 
-  if (!existsSync(file)) {
-    fail([`  - ${LOG_FILE} is missing. Nothing records what has been verified.`]);
+  if (!existsSync(path.join(root, LOG_DIR))) {
+    fail([`  - ${LOG_DIR}/ is missing. Nothing records what has been verified.`]);
   }
 
-  /** @type {import('./verify-log.mjs').Run[]} */
-  const runs = readLines(readFileSync(file, 'utf8')).map((line) => JSON.parse(line));
+  const runs = readRuns();
   const matching = runs.filter((run) => run.tree === tree);
 
   console.log(`check-attestation: tree ${tree}`);

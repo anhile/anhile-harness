@@ -80,10 +80,7 @@ applied.
 
 `git worktree add ../<name> -b <branch>`. The gate gives a linked worktree its
 own ports and its own test database, derived from its path, so two can run at
-once; every run records which it used in its summary. The one rule that cannot
-be automated away: `verify-log.jsonl` is append-only and its timestamps may
-not go backwards, so a branch whose newest run is older than main's has to
-run the gate again before it can merge.
+once; every run records which it used in its summary.
 
 ## What this skill does not do
 

@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-11T18:25:31.554Z",
+  "result": "stale",
+  "tree": "sha256:8a73ab37e44f16cede829554d07bb73ff0590c0a32e80b955637430ad6962120",
+  "head": "79858be8b426631d1cb89dd887c9ec2703708c5e",
+  "branch": "main",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260911T182511Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 2
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 1,
+      "seconds": 17
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

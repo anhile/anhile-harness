@@ -296,7 +296,7 @@ and that is the failure this gate exists to stop. Splitting the change into a
 smaller commit does not help — the gate is about the tree, not the diff.`);
   }
 
-  // verify-log.jsonl is deliberately outside the tree hash -- verify.sh appends
+  // verify-log/ is deliberately outside the tree hash -- verify.sh records
   // to it at the end of every run, so hashing it would make each run invalidate
   // its own receipt. That leaves a window the hash cannot see, so the gate runs
   // the log's own guard here rather than trusting the hash to cover it.
@@ -309,12 +309,13 @@ smaller commit does not help — the gate is about the tree, not the diff.`);
     const detail = String(/** @type {{ stderr?: unknown }} */ (error ?? {}).stderr ?? '').trim();
     block(`BLOCKED: commit gate (docs/INVARIANTS.md I12)
 
-verify-log.jsonl has been rewritten, not appended to. The record of what has
+verify-log/ has been rewritten, not appended to: a recorded run was edited or
+removed. The record of what has
 been verified is not a thing a session edits.
 
 ${detail}
 
-Restore it with: git checkout -- verify-log.jsonl`);
+Restore it with: git checkout -- verify-log/`);
   }
 
   const current = treeFiles();

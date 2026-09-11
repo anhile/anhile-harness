@@ -59,8 +59,8 @@ rather than automated, because `verify.sh` passing says nothing about them:
 - **I4** — any change under the configured contracts package with no sign-off
   in the `PROGRESS.md` entry
 - **I8** — any edit to a migration file that already exists
-- **I12** — anything that would rewrite a line of `verify-log.jsonl` rather
-  than append one
+- **I12** — anything that would edit or remove a run file under `verify-log/`
+  rather than add one
 - **I15** — a `passes` flipped to `true` whose entry the tests in the diff and
   the evidence do not prove; the guard checks the shape of the edit, never that
   it was earned

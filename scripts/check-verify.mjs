@@ -18,6 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from './harness-config.mjs';
+import { readRuns } from './verify-log.mjs';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -126,16 +127,14 @@ function auditEvidence(dir, { expectFailure }) {
   }
 }
 
-/** Lines currently in the durable record. */
+/** Runs currently in the durable record. */
 function loggedRuns() {
-  const file = path.join(root, 'verify-log.jsonl');
-  return existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean) : [];
+  return readRuns();
 }
 
 /** @returns {import('./verify-log.mjs').Run | null} */
 function lastLoggedRun() {
-  const last = loggedRuns().at(-1);
-  return last === undefined ? null : JSON.parse(last);
+  return loggedRuns().at(-1) ?? null;
 }
 
 console.log('1/2  clean tree: verify.sh must exit 0 with complete evidence');
@@ -143,7 +142,7 @@ let runsBefore = loggedRuns().length;
 const cleanStatus = runVerify();
 check('exit code is 0', cleanStatus === 0, `got ${cleanStatus}`);
 auditEvidence(newestEvidenceDir(), { expectFailure: false });
-check('the run was appended to verify-log.jsonl', loggedRuns().length === runsBefore + 1,
+check('the run was recorded under verify-log/', loggedRuns().length === runsBefore + 1,
   `${runsBefore} -> ${loggedRuns().length}`);
 check('the recorded verdict is pass', lastLoggedRun()?.result === 'pass',
   JSON.stringify(lastLoggedRun()?.result));

@@ -402,7 +402,6 @@ const SEEDS = {
       '',
     ].join('\n'),
 
-  'verify-log.jsonl': () => '',
 
   'coverage-floor.json': (_name, answers) => {
     const zero = { statements: 0, branches: 0, functions: 0, lines: 0 };
@@ -609,7 +608,7 @@ const PROGRESS_SEED = (name) =>
     '- **Feature**: none yet',
     '- **Result**: passing',
     '- **Verified by**: `./verify.sh`, on the tree the generator wrote',
-    '- **Evidence**: the `verify-log.jsonl` line for the first run',
+    '- **Evidence**: the `verify-log/` file for the first run',
     '- **Contract changes**: none.',
     '- **Notes**:',
     '',
@@ -834,7 +833,7 @@ const agentsSeed = (answers, steps, deferred) =>
     '| `./verify.sh` step 06 | an entry born passing, or two closed in one commit |',
     '| the commit gate | a commit whose tree no green run covers |',
     '| protected-file guard | a session edit to `verify.sh`, the CI workflow, or `.claude/settings.json` |',
-    '| append-only guards | a rewritten line in `verify-log.jsonl` or `feature_list.json` |',
+    '| append-only guards | a run under `verify-log/` edited or removed, or a rewritten line in `feature_list.json` |',
     '',
     'Write a patch under `.generated/scratch/` for a protected file and ask a person',
     'to apply it.',

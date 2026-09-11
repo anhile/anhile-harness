@@ -18,7 +18,7 @@ CONTRIBUTING.md is the path this follows.
 
 ## Evidence
 
-- `verify-log.jsonl`: the line for the tree of the last commit — `<at>  PASS  <sha>`
+- `verify-log/`: the run recorded for the tree of the last commit — `<id>  PASS  <sha>`
 - `/verify-task` verdict for the closing commit(s): READY / not a closing change
 - UI work: verified in the browser as a user would, on <what was tried>; or "no UI change"
 

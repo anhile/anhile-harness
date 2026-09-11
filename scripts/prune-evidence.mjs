@@ -5,19 +5,20 @@
  *
  * The per-run evidence folders are machine-local by design — absolute paths,
  * ANSI escapes, timings from one laptop — and what survives in git is
- * verify-log.jsonl, one line per run. So the folders are worth keeping only
+ * verify-log/, one file per run. So the folders are worth keeping only
  * while someone might still read them: the last few runs, and any run a failing
  * verdict points at. 208 folders and 155 MB accumulated before anyone looked.
  *
  * Keeps, in order of precedence:
  *   - the newest KEEP runs (default 10)
- *   - every run whose verify-log.jsonl entry recorded a non-pass verdict
+ *   - every run whose verify-log/ file recorded a non-pass verdict
  *
  * `--dry-run` prints what would go and deletes nothing.
  */
-import { readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { readdirSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readRuns } from './verify-log.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RUNS = path.join(root, '.generated', 'runs');
@@ -27,14 +28,8 @@ const dryRun = process.argv.includes('--dry-run');
 /** Evidence directories named in the log by any run that did not pass. */
 function failedEvidence() {
   const keep = new Set();
-  try {
-    for (const line of readFileSync(path.join(root, 'verify-log.jsonl'), 'utf8').split('\n')) {
-      if (!line.trim()) continue;
-      const entry = JSON.parse(line);
-      if (entry.result !== 'pass' && entry.evidence) keep.add(path.basename(entry.evidence));
-    }
-  } catch {
-    /* no log yet: the newest-N rule is enough on its own */
+  for (const entry of readRuns()) {
+    if (entry.result !== 'pass' && entry.evidence) keep.add(path.basename(entry.evidence));
   }
   return keep;
 }

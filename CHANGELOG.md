@@ -11,6 +11,17 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
+### Changed
+
+- The record of gate runs is a directory, `verify-log/`, with one file per
+  run, in place of the single append-only `verify-log.jsonl`. Two branches
+  that both ran the gate no longer conflict on merge, and the readiness
+  check no longer asks a branch to rerun the gate because main ran later.
+  A project on an earlier version runs `node scripts/verify-log.mjs migrate`
+  once after taking the new scripts: one file per line, same fields, the old
+  file removed. The guard refuses a run dated before the moment its name
+  says it started.
+
 ## [0.1.1] — 2026-09-12
 
 The first session of a generated project under Claude Code found what the

@@ -1,0 +1,111 @@
+# Spec: the record of runs is a file per run
+
+- **Feature list entries**: #5 retracted, #7 appended under this contract; #7's `spec` is this file
+- **Author / session date**: 2026-09-12
+- **Status**: approved — the person chose this debt first from the review of 0.1.0
+
+---
+
+## Problem
+
+The record of gate runs was one append-only file, `verify-log.jsonl`, and
+every run appended a line: 45 lines in the first four hours. Two branches
+that both ran the gate both appended at its end, so every merge of two
+working branches conflicted in that file, and the rule that resolved it —
+rerun the gate before every merge, so the branch's newest run is newer than
+main's — taxed parallel work for nothing the record needed. GitHub ignores
+`merge=union` for pull requests, so the file could not stay one file.
+
+## In scope
+
+- `verify-log/`, one file per run, named after the run's evidence folder;
+  `verify-log.mjs append` writes it, `check` refuses an edited, removed or
+  stray file, `tail` and `flakes` read the directory.
+- Every reader of the old file — attestation, the pull-request readiness
+  check, the review brief, evidence pruning, the witness — reads the
+  directory.
+- The readiness check drops its order rule, with the reason.
+- The existing 60-odd lines migrated to files; `verify-log.jsonl` removed.
+- Entry #5, which names the old file, retracted with its guarantee moved to
+  #7, worded for the directory.
+
+## Out of scope
+
+- A log of audit receipts. Still a debt; a spec of its own.
+- Rotating old run files into a history directory. The volume is one small
+  file per run and a merge never touches an old one; revisit at a thousand.
+
+## Design source
+
+None.
+
+## Acceptance criteria
+
+- **AC1** (ubiquitous) — Each `./verify.sh` run shall record one file under
+  `verify-log/`, named after its evidence folder, carrying the verdict, the
+  steps, the tree hash and the commit it was based on.
+- **AC2** (unwanted) — If a recorded run's file is edited, removed, or a file
+  under `verify-log/` is not named as a run, then step 07 and the commit
+  gate shall refuse.
+- **AC3** (ubiquitous) — Two branches that each recorded runs shall merge
+  without a conflict under `verify-log/`, and the merged record shall pass
+  the guard against either parent.
+- **AC4** (event-driven) — When `verify-log.mjs migrate` runs in a project
+  that still has `verify-log.jsonl`, it shall write one file per line with the
+  same fields, remove the file, refuse to overwrite a file that differs, and
+  do nothing the second time.
+- **AC5** (ubiquitous) — `feature_list.json` shall accept only its four legal
+  edits and one closure per commit, as #5 guaranteed before its retraction;
+  #7 carries that half of #5 unchanged.
+
+## Verification plan
+
+| Criterion | Verification mechanism | Pass condition | Evidence output |
+|---|---|---|---|
+| AC1 | Jest — `verify-log.spec.ts` "append: what a run records" (the verdict from the receipt, the steps from the folder, the commit it was based on, the branch, the evidence path); `generated-project.spec.ts` "records the run in its own record, named after its evidence folder" (the name, the tree, the evidence path, the six steps, and `head` null before the first commit) and "records a red run too, as a second file naming the step that failed"; `attestation.spec.ts` "what the tree hash leaves out" | the cases pass | `.generated/runs/<ts>/03-unit.log` |
+| AC2 | Jest — `verify-log.spec.ts` "what the record refuses", six cases including a run dated before it started; `commit-gate.spec.ts` "refuses a commit when a recorded run has been rewritten", "…removed", "…something that is not a run sits under verify-log/" | the cases pass | `.generated/runs/<ts>/03-unit.log` |
+| AC3 | Jest — `verify-log.spec.ts` "two branches that both ran the gate": a real `git merge --no-ff` of two branches that each recorded a run, then the guard against `HEAD^` and `HEAD^2` | the case passes | `.generated/runs/<ts>/03-unit.log` |
+
+| AC4 | Jest — `verify-log.spec.ts` "migrate: the record's earlier shape into files", two cases | the cases pass | `.generated/runs/<ts>/03-unit.log` |
+| AC5 | Jest — `feature-list.spec.ts`, every case | the cases pass | `.generated/runs/<ts>/03-unit.log` |
+
+This repository's own migration was a one-off: the 51 lines at `main` were
+turned into files by hand and then, for the record, `verify-log.mjs migrate`
+was run against the same 51 lines restored from `main` and accepted every
+file as identical before removing the old file again. Its output is in the
+journal, and the auditor is expected to say it cannot run it: a one-off has
+no artefact in the evidence folder, and the mechanism that would make it one
+is the migrate case itself.
+
+Entry #7 closes on AC1 to AC5 together: one entry, one commit, one audit.
+The first audit of it found the gate exercised on one of the three shapes
+AC2 names, the migration untested, the guard's rule against backdating gone
+with the order rule, the hash's prefix pinned by nothing, and "red runs
+included" proved only by the witness in CI; each is a case now.
+
+## Affected modules
+
+- `verify-log/` — new; `verify-log.jsonl` — removed
+- `specs/2026-09-verify-log-files.md` — this file
+- `scripts/verify-log.mjs`, `scripts/check-attestation.mjs`, `scripts/check-pr-ready.mjs`, `scripts/pr-review-brief.mjs`, `scripts/prune-evidence.mjs`, `scripts/check-verify.mjs`, `scripts/progress.mjs`, `scripts/harness-init.mjs`
+- `scripts/verify-receipt.mjs`, `scripts/check-commit-gate.mjs`, `verify.sh` — protected; the prefix the tree hash leaves out, one message, one comment; applied by a person
+- `harness.manifest.json`, `feature_list.json`, `PROGRESS.md`, `CHANGELOG.md`, `docs/INVARIANTS.md`, `CONTRIBUTING.md`, `README.md`, `AGENTS.md`, `.github/pull_request_template.md`, `.claude/skills/open-pr/SKILL.md`, `.claude/skills/setup-repo/SKILL.md`, `.claude/agents/spec-auditor.md`
+- tests: `scripts/__tests__/review-brief.spec.ts`, added; `verify-log.spec.ts` rewritten for the directory; `attestation.spec.ts`, `commit-gate.spec.ts`, `pr-ready.spec.ts`, `generated-project.spec.ts` moved to files. `pr-ready.spec.ts` loses the five cases of the order rule and gains one saying the rule is gone. No other case weakened.
+
+## Invariants
+
+| Invariant | Relevance | How this task preserves it |
+|---|---|---|
+| I12 | the mechanism itself changes shape | rewritten in `docs/INVARIANTS.md`; the property — recorded durably, never edited or removed — is the same, checked per file |
+| I15 | #5 retracted, #7 appended, then closed | retraction names this contract and `supersededBy: 7`; #7 appended `passes: false` in the same commit; closed in its own commit on a READY audit |
+| I11 | every commit follows a green gate | the tree hash excludes `verify-log/` as it excluded the file, by the protected patch |
+
+Domain rules: R5 (nothing here names a product), R7 (the tarball changes by
+nothing). `verify-log/` is neither shipped nor seeded: git keeps no empty
+directory, the first gate run creates it, and `check-attestation.mjs` refuses
+a project with no run on record, which is the state a project is born in and
+the reason the generator's next steps run the gate before the first commit.
+
+## Open questions
+
+None.
