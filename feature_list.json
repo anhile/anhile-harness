@@ -51,7 +51,7 @@
       "pnpm exec jest --config jest.config.cjs scripts/__tests__/commit-gate.spec.ts — every case passes: no receipt, a failed receipt, a receipt for another tree, each shape of git commit, each protected path, the interpreter heredoc",
       "in a session: edit a file, run git commit without ./verify.sh — the hook prints BLOCKED and cites I11"
     ],
-    "passes": false,
+    "passes": true,
     "spec": "specs/2026-09-harness-guarantees.md"
   },
   {
