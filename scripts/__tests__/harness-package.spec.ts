@@ -307,16 +307,17 @@ describe('the scripts it ships are checked as they run', () => {
     expect(scripts.compilerOptions.checkJs).toBe(false);
   });
 
-  it('and tsc refuses one with a type error under the same project, which an empty log cannot show', () => {
+  it('and tsc -b refuses one with a type error under the same project, which an empty log cannot show', () => {
     // Step 02's log is empty on success, so the cases above can only show
-    // opt-in and wiring. This shows detection: the same scripts and the same
-    // project, once clean and once with a script that lies about a type. Under
-    // .generated so node_modules resolves and the tree hash does not see it.
+    // opt-in and wiring. This shows detection, under the same build-mode
+    // invocation step 02 uses: the same scripts and the same project, once
+    // clean and once with a script that lies about a type. Under .generated
+    // so node_modules resolves and the tree hash does not see it.
     const probe = mkdtempSync(path.join(REPO, '.generated', 'tsc-probe-'));
     const tsc = path.join(REPO, 'node_modules', '.bin', 'tsc');
     const run = (): { status: number; out: string } => {
       try {
-        execFileSync(tsc, ['-p', 'tsconfig.scripts.json', '--noEmit'], { cwd: probe, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+        execFileSync(tsc, ['-b', 'tsconfig.scripts.json', '--force'], { cwd: probe, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
         return { status: 0, out: '' };
       } catch (error) {
         const err = error as { status?: number; stdout?: string };
