@@ -37,6 +37,12 @@ const pkg = JSON.parse(read('package.json')) as {
   type?: string;
   packageManager?: string;
   license: string;
+  author?: string;
+  repository?: { type: string; url: string };
+  homepage?: string;
+  bugs?: { url: string };
+  keywords?: string[];
+  engines?: { node?: string };
   bin: Record<string, string>;
   files: string[];
   dependencies?: Record<string, string>;
@@ -130,6 +136,25 @@ describe('what the tarball carries', () => {
     expect(paths.filter((f) => !known.has(f))).toEqual([]);
   });
 
+  it('no guard suite, because they assert this repository', () => {
+    // The generator does not copy them and a consumer never runs them; in the
+    // tarball they were 212 KB of assertions about a repository the consumer
+    // does not have. The suites stay here, beside what they fire at.
+    expect(paths.filter((f) => f.includes('__tests__'))).toEqual([]);
+  });
+
+  it('only the workflow that travels, not the ones that gate this repository', () => {
+    // generate.yml runs the generator and release.yml publishes the package;
+    // a generated project can do neither. What it gets is what the manifest
+    // lists, and the manifest lists verify.yml.
+    const workflows = paths.filter((f) => f.startsWith('.github/workflows/'));
+    expect(workflows).toEqual(manifest.elsewhere.core.filter((f) => f.startsWith('.github/workflows/')));
+  });
+
+  it('the changelog, which is what a consumer reads before upgrading', () => {
+    expect(paths).toContain('CHANGELOG.md');
+  });
+
   it('no product document', () => {
     // DOMAIN_RULES and ARCHITECTURE describe a URL shortener. A new project
     // inheriting somebody else's domain rules is worse than starting with none.
@@ -219,9 +244,55 @@ describe('the package as npm will see it', () => {
     expect(Object.keys(pkg.bin)).toEqual(['anhile-harness']);
   });
 
+  it('says where it lives, so npm can link the source and the issues', () => {
+    // A scoped package with no repository field is one npm shows with no
+    // source link, and provenance has nothing to bind the tarball to.
+    expect(pkg.repository?.url).toBe('git+https://github.com/anhile/anhile-harness.git');
+    expect(pkg.homepage).toContain('github.com/anhile/anhile-harness');
+    expect(pkg.bugs?.url).toContain('github.com/anhile/anhile-harness/issues');
+    expect(pkg.author).toBeDefined();
+    expect(pkg.keywords?.length ?? 0).toBeGreaterThan(3);
+  });
+
+  it('names the node it needs, which is the one .nvmrc pins', () => {
+    // bin/harness.mjs uses top-level await and node: imports; an older node
+    // fails with a syntax error that says nothing about the version.
+    const pinned = read('.nvmrc').trim().split('.')[0];
+    expect(pkg.engines?.node).toBe(`>=${pinned}`);
+  });
+
+  it('has a changelog entry for the version it claims', () => {
+    // release.yml refuses a tag without one; this refuses the commit.
+    expect(read('CHANGELOG.md')).toMatch(new RegExp(`^## \\[${pkg.version.replace(/\./gu, '\\.')}\\]`, 'mu'));
+  });
+
   it('the README says what it does not do, which is the part people find out late', () => {
     const readme = read('README.md');
     expect(readme).toContain('Upgrade a project that already adopted it');
     expect(readme).toContain('nothing in your project notices');
+  });
+});
+
+describe('the release workflow', () => {
+  const release = read('.github/workflows/release.yml');
+
+  it('publishes from a tag and from nowhere else', () => {
+    expect(release).toMatch(/tags: \['v\*'\]/u);
+    expect(release).not.toMatch(/branches:/u);
+  });
+
+  it('publishes with provenance and as public, which a scoped package is not by default', () => {
+    expect(release).toContain('npm publish --provenance --access public');
+    expect(release).toContain('id-token: write');
+  });
+
+  it('holds the tag to package.json and the changelog before anything else', () => {
+    expect(release).toContain("require('./package.json').version");
+    expect(release).toContain('CHANGELOG.md has no entry');
+  });
+
+  it('asks the attestation and the gate again on the runner', () => {
+    expect(release).toContain('node scripts/check-attestation.mjs');
+    expect(release).toContain('./verify.sh');
   });
 });
