@@ -1,0 +1,272 @@
+{
+  "//": [
+    "The boundary between the harness and the product it happens to guard.",
+    "",
+    "Written 2026-09-11, before any attempt to extract a reusable template, because",
+    "a generator built without this would copy files by guesswork and nobody would",
+    "notice which ones were wrong. Every script and guard suite on disk must appear",
+    "in exactly one tier below; harness-boundary.spec.ts refuses any that does not.",
+    "",
+    "The tiers are about what happens to a file when it is taken to another project,",
+    "not about what it does here."
+  ],
+  "core": {
+    "//": [
+      "Copied verbatim. Mentions nothing about this product, and would run in any",
+      "repository that has git, node and a verify.sh. Seven of these are protected",
+      "files, so a template must ship them as copies rather than as imports: the",
+      "commit gate hashes them and the witness job runs them in place."
+    ],
+    "scripts": [
+      "scripts/audit-receipt.mjs",
+      "scripts/check-attestation.mjs",
+      "scripts/check-commit-gate.mjs",
+      "scripts/check-feature-list.mjs",
+      "scripts/check-main.mjs",
+      "scripts/check-pr-ready.mjs",
+      "scripts/check-protected-files.mjs",
+      "scripts/check-work-budget.mjs",
+      "scripts/harness-config.mjs",
+      "scripts/harness-init.mjs",
+      "scripts/harness-templates.mjs",
+      "scripts/inbox.mjs",
+      "scripts/prune-evidence.mjs",
+      "scripts/review-comments.mjs",
+      "scripts/session-start.mjs",
+      "scripts/session-stop.mjs",
+      "scripts/verify-log.mjs",
+      "scripts/verify-receipt.mjs"
+    ],
+    "suites": [
+      "scripts/__tests__/attestation.spec.ts",
+      "scripts/__tests__/audit-receipt.spec.ts",
+      "scripts/__tests__/check-main.spec.ts",
+      "scripts/__tests__/commit-gate.spec.ts",
+      "scripts/__tests__/feature-list.spec.ts",
+      "scripts/__tests__/inbox.spec.ts",
+      "scripts/__tests__/harness-boundary.spec.ts",
+      "scripts/__tests__/harness-config.spec.ts",
+      "scripts/__tests__/harness-init.spec.ts",
+      "scripts/__tests__/harness-package.spec.ts",
+      "scripts/__tests__/permissions.spec.ts",
+      "scripts/__tests__/pr-ready.spec.ts",
+      "scripts/__tests__/progress.spec.ts",
+      "scripts/__tests__/review-comments.spec.ts",
+      "scripts/__tests__/session-hooks.spec.ts",
+      "scripts/__tests__/verify-log.spec.ts",
+      "scripts/__tests__/work-budget.spec.ts"
+    ]
+  },
+  "configured": {
+    "//": [
+      "Copied, and then reads its constants from harness.config.json rather than",
+      "carrying this project's. Each entry names what has to move out. Until that",
+      "file exists these still work, because every constant below is currently a",
+      "literal in the script."
+    ],
+    "scripts": {
+      "scripts/check-coverage.mjs": [
+        "the area paths under coverage-floor.json"
+      ],
+      "scripts/check-environment.mjs": [
+        "the gate's ports",
+        "whether Docker is needed at all"
+      ],
+      "scripts/check-migrations.mjs": [
+        "the migrations directory"
+      ],
+      "scripts/check-verify.mjs": [
+        "the path it writes the deliberate error into"
+      ],
+      "scripts/migrate.mjs": [
+        "the database name prefix",
+        "the _test suffix rule"
+      ],
+      "scripts/pr-review-brief.mjs": [
+        "the attack-surface path list"
+      ],
+      "scripts/progress.mjs": [
+        "the contracts package path in its template"
+      ]
+    },
+    "suites": {
+      "scripts/__tests__/coverage-floor.spec.ts": [
+        "the area paths in its fixtures"
+      ],
+      "scripts/__tests__/docs-drift.spec.ts": [
+        "the top-level directory list",
+        "the document list"
+      ],
+      "scripts/__tests__/migrate-runner.spec.ts": [
+        "the database names in its fixtures"
+      ],
+      "scripts/__tests__/migrations.spec.ts": [
+        "the migrations directory"
+      ],
+      "scripts/__tests__/mutation-config.spec.ts": [
+        "the mutate globs"
+      ],
+      "scripts/__tests__/pr-review-brief.spec.ts": [
+        "the attack-surface paths it asserts"
+      ],
+      "scripts/__tests__/ci-workflow.spec.ts": [
+        "the job names"
+      ],
+      "scripts/__tests__/database-readiness.spec.ts": [
+        "the service name in docker-compose"
+      ],
+      "scripts/__tests__/jest-evidence-reporter.spec.ts": [
+        "the project names"
+      ]
+    }
+  },
+  "product": {
+    "//": [
+      "Not copied. These guard rules that belong to a URL shortener, and in another",
+      "project they are either meaningless or actively wrong. They stay here as",
+      "worked examples of what a project adds to the harness rather than as part",
+      "of it: `reserved-paths` exists because this product serves a redirect from",
+      "the root, and a project without one would be guarding nothing."
+    ],
+    "scripts": [
+      "scripts/probe-rate-limit.mjs",
+      "scripts/smoke-deploy.mjs"
+    ],
+    "suites": [
+      "scripts/__tests__/deploy-config.spec.ts",
+      "scripts/__tests__/function-dependencies.spec.ts",
+      "scripts/__tests__/layer-boundaries.spec.ts",
+      "scripts/__tests__/no-theming.spec.ts",
+      "scripts/__tests__/probe-rate-limit.spec.ts",
+      "scripts/__tests__/reserved-paths.spec.ts",
+      "scripts/__tests__/smoke-workflow.spec.ts",
+      "scripts/__tests__/environment.spec.ts"
+    ]
+  },
+  "dependencies": {
+    "//": [
+      "What the copied scripts need from npm, which this manifest did not record",
+      "until 2026-09-11 and the generated project could not run `inbox.mjs` for.",
+      "",
+      "Packages, never versions. A version here would be a second copy of what",
+      "package.json already says, and two copies drift: the generator hardcoded",
+      "js-yaml ^4 while this repository had ^5, so a new project would have got a",
+      "different major of the library the script was written against. The",
+      "generator resolves each name against package.json at generation time, and",
+      "harness-boundary.spec.ts refuses a name that is not there to resolve."
+    ],
+    "scripts": {
+      "//": "Per copied script, what it imports at runtime. Nothing else may be listed, and nothing imported may be left out.",
+      "scripts/inbox.mjs": [
+        "js-yaml"
+      ],
+      "scripts/migrate.mjs": [
+        "pg",
+        "@types/pg"
+      ]
+    },
+    "toolchain": {
+      "//": [
+        "What any project running this gate needs regardless of what it is: the",
+        "steps call eslint, tsc and jest by name. A project that swaps one of",
+        "these swaps a step with it, which is a change to verify.sh and so a",
+        "person's decision."
+      ],
+      "packages": [
+        "@types/jest",
+        "@types/node",
+        "eslint",
+        "jest",
+        "ts-jest",
+        "typescript",
+        "typescript-eslint"
+      ]
+    },
+    "onlyWith": {
+      "//": "Named so the generator can leave them out. `pg` in a project with no database is a dependency nothing imports.",
+      "database": [
+        "scripts/migrate.mjs"
+      ]
+    },
+    "apps": {
+      "//": [
+        "What a scaffolded application needs, beyond the toolchain. Chosen in the",
+        "CLI, so a project that takes neither pays for neither.",
+        "",
+        "Versions are resolved the same way as everything else here \u2014 by name,",
+        "against what this repository actually runs. These live in apps/*/package.json",
+        "rather than at the root, so the resolver reads those too; a name recorded",
+        "here that no package.json can give a version for is refused, as it is",
+        "for the scripts."
+      ],
+      "api": [
+        "@nestjs/common",
+        "@nestjs/core",
+        "@nestjs/platform-express",
+        "@nestjs/testing",
+        "reflect-metadata",
+        "rxjs",
+        "ts-node"
+      ],
+      "web": [
+        "@testing-library/jest-dom",
+        "@testing-library/react",
+        "@types/react",
+        "@types/react-dom",
+        "@vitejs/plugin-react",
+        "jest-environment-jsdom",
+        "react",
+        "react-dom",
+        "vite"
+      ]
+    }
+  },
+  "elsewhere": {
+    "//": [
+      "Harness files that are not scripts, listed so a generator has the whole set",
+      "in one place. `verify.sh`, the CI workflow and .claude/settings.json are",
+      "protected: a session may not edit them here, and a generator writes them",
+      "into a new project rather than editing them in this one."
+    ],
+    "core": [
+      "verify.sh",
+      ".github/workflows/verify.yml",
+      ".claude/settings.json",
+      ".githooks/pre-push",
+      "specs/TEMPLATE.md",
+      "specs/inbox/TEMPLATE.md",
+      "specs/inbox/README.md",
+      ".claude/agents/spec-auditor.md",
+      ".claude/skills/task-intake/SKILL.md",
+      ".claude/skills/draft-feature/SKILL.md",
+      ".claude/skills/verify-task/SKILL.md",
+      ".claude/skills/open-pr/SKILL.md",
+      ".claude/skills/review-pr/SKILL.md",
+      ".claude/skills/address-comments/SKILL.md",
+      ".claude/skills/setup-repo/SKILL.md",
+      ".github/pull_request_template.md"
+    ],
+    "seeded": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "CONTRIBUTING.md",
+      "PROGRESS.md",
+      "feature_list.json",
+      "verify-log.jsonl",
+      "coverage-floor.json",
+      "docs/INVARIANTS.md",
+      "docs/ADDING_A_FEATURE.md",
+      "docs/PULL_REQUESTS.md",
+      "docs/PARALLEL_WORK.md"
+    ],
+    "product": [
+      ".claude/agents/security-check.md",
+      "docs/ARCHITECTURE.md",
+      "docs/DOMAIN_RULES.md",
+      "docs/DESIGN_NOTES.md",
+      "docs/OPERATIONS.md",
+      "docs/MCP_SERVER.md",
+      ".github/workflows/smoke.yml"
+    ]
+  }
+}

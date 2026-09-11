@@ -1,0 +1,29 @@
+{
+  "//": "What the harness knows about this project. Edit this rather than the scripts.",
+  "coverage": {
+    "sources": [
+      "packages"
+    ]
+  },
+  "database": {
+    "required": false,
+    "testSuffix": "_test",
+    "exampleName": "anhile-harness_test"
+  },
+  "migrations": {
+    "directory": "migrations"
+  },
+  "verifyProbe": {
+    "path": "packages/core/src/__verify_probe.ts"
+  },
+  "ports": {
+    "api": 3100,
+    "web": 5273
+  },
+  "attackSurface": {
+    "paths": []
+  },
+  "contracts": {
+    "package": null
+  }
+}

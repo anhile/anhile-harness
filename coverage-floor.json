@@ -1,0 +1,13 @@
+{
+  "//": "The floor only goes up. `check-coverage.mjs --raise` moves it after a green run.",
+  "areas": {
+    "./packages/": {
+      "statements": 0,
+      "branches": 0,
+      "functions": 0,
+      "lines": 0
+    }
+  },
+  "unfloored": {},
+  "unmeasured": {}
+}

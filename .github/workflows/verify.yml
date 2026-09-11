@@ -1,0 +1,262 @@
+# The gate, run somewhere that is not the author's laptop.
+#
+# Three jobs, deliberately separate because they answer different questions:
+#
+#   attest  — is the claim true?   Does a recorded verify run cover this exact
+#             committed content, and are the append-only files still append-only?
+#   verify  — is the code good?    ./verify.sh, from a clean checkout.
+#   mutation— do the tests notice? Stryker changes the code under the unit suites
+#             and asks whether anything failed. Coverage says a line ran; this
+#             says the assertion standing on it means something.
+#   witness — is the gate real?    check-verify.mjs, which runs verify.sh against
+#             a deliberate error. It cannot be a verify.sh step without recursing,
+#             so CI is the only place it runs unattended.
+#
+# `attest` is the one that could not exist before verify-log.jsonl was tracked.
+# Locally the record is a session reporting on itself; recomputed here, by
+# something that did not write it, it is a claim that can fail.
+
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * 1'
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # A pull_request checkout defaults to a merge commit, whose tree matches no
+  # recorded run. Every job checks out the real head instead.
+  CHECKOUT_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  attest:
+    name: attestation and append-only guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # Deliberately before any install: the tree hash is over tracked files,
+      # and this proves it is checkable with nothing but a clone and node.
+      - name: This commit must carry a passing recorded run of its own content
+        run: node scripts/check-attestation.mjs
+
+      # Append-only is a property of each commit against its parent, not of a
+      # span. Appending an entry in one commit and flipping its `passes` in the
+      # next is exactly correct, and the two collapse into "an entry born
+      # passing" the moment they are compared as a single diff. The first run of
+      # this workflow failed on precisely that, against the whole history.
+      - name: The append-only files stay append-only, commit by commit
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch -q --no-tags origin "${{ github.base_ref }}"
+            base="$(git merge-base "origin/${{ github.base_ref }}" "$CHECKOUT_REF")"
+          else
+            base="${{ github.event.before }}"
+            if [ -z "$base" ] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+              # A first push, a new branch, or a force-push: there is no pushed
+              # range. Everything behind this point predates the workflow and
+              # includes three human-sanctioned exceptions to the append-only
+              # rule, recorded in PROGRESS.md. Failing on them would be the wrong
+              # red; comparing across the whole span to make them disappear would
+              # be the wrong green. Say so and check nothing.
+              echo "::notice::no pushed range (first push or force-push) — nothing to check"
+              exit 0
+            fi
+          fi
+
+          commits="$(git rev-list --reverse "${base}..${CHECKOUT_REF}")"
+          if [ -z "$commits" ]; then
+            echo "::notice::no new commits since ${base}"
+            exit 0
+          fi
+
+          for commit in $commits; do
+            echo "--- $(git log -1 --format='%h %s' "$commit")"
+            node scripts/check-feature-list.mjs --at "$commit" --base "${commit}^"
+            node scripts/verify-log.mjs check --at "$commit" --base "${commit}^"
+            node scripts/check-migrations.mjs --at "$commit" --base "${commit}^"
+          done
+
+  verify:
+    name: ./verify.sh
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # --frozen-lockfile is the point of running install here at all: it fails
+      # if pnpm-lock.yaml does not match package.json, which no local run checks.
+      - run: pnpm install --frozen-lockfile
+
+      # Nothing local looks at advisories, and --frozen-lockfile only proves the
+      # lockfile matches package.json — not that what it pins is safe. Blocking
+      # on high and critical only: a moderate advisory in a transitive dev
+      # dependency turning main red is how an audit step gets switched off.
+      - run: pnpm audit --audit-level=high
+
+      - run: pnpm exec playwright install --with-deps chromium
+
+      # verify.sh sources .env when present and otherwise falls back to the same
+      # values. Copying it keeps CI on the documented path rather than a private
+      # one, so a change to .env.example is felt here.
+      - run: cp .env.example .env
+
+      # The accounts suites talk to a real Stytch test project: session.e2e-spec.ts
+      # creates a user, the sign-in browser tests exchange a magic link. The
+      # credentials are repository secrets and never enter .env.example. Appended
+      # after the copy, so a later line wins over the placeholder above it.
+      - run: |
+          {
+            echo "STYTCH_PROJECT_ID=${{ secrets.STYTCH_PROJECT_ID }}"
+            echo "STYTCH_SECRET=${{ secrets.STYTCH_SECRET }}"
+            echo "VITE_STYTCH_PUBLIC_TOKEN=${{ secrets.VITE_STYTCH_PUBLIC_TOKEN }}"
+          } >> .env
+
+      # Postgres comes from docker-compose.yml, not from a services: block:
+      # verify.sh creates the disposable shortener_test database with
+      # `docker compose exec`, so the compose project has to be the real one.
+      - run: ./verify.sh
+
+      - name: Keep the evidence, especially for a failing run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-${{ github.run_id }}
+          path: .generated/runs/
+          retention-days: 30
+          # .evidence is a dot directory, and upload-artifact skips hidden files
+          # by default. Without this the step succeeds and uploads nothing --
+          # the artifact was empty on the first run and said so only in a warning.
+          include-hidden-files: true
+
+  mutation:
+    name: mutation score (would the tests notice a break?)
+    # Moved off the weekly witness on 2026-09-11. Coverage says a line ran;
+    # this changes the line and asks whether anything noticed, which is the
+    # only mechanical answer to "does that test assert what it claims".
+    #
+    # Scope is the API's service and config layers plus the contracts package,
+    # and stryker.config.mjs says why it is not wider: mutation runs only the
+    # unit suites, so mutating code whose net is elsewhere measures the absence
+    # of a net and reports it as a low score no work on the code would move.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The unit suites read configuration at import time. Without this,
+      # env.config.spec.ts fails for a reason that has nothing to do with any
+      # mutant, and Stryker scores that failure as "the tests caught it".
+      - run: cp .env.example .env
+
+      # The `break` threshold in stryker.config.mjs is the ratchet: below it
+      # this exits non-zero and the pull request goes red.
+      - run: pnpm exec stryker run
+
+      - name: Keep the report, especially for a failing run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-${{ github.run_id }}
+          path: .generated/mutation/
+          retention-days: 30
+          include-hidden-files: true
+
+  witness:
+    name: check-verify (the gate's own witness)
+    # Runs verify.sh three times, one of them against a deliberately broken
+    # tree. The question it answers — does the gate still fail when it should
+    # — changes rarely, so it runs weekly and on demand rather than on every
+    # push. Three full runs was the wrong price for a question nobody had
+    # changed the answer to since it was written.
+    #
+    # Mutation testing left this job on 2026-09-11 for the `mutation` job
+    # above, which runs on every trigger this one has, and on pull requests
+    # besides.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: cp .env.example .env
+
+      # The accounts suites talk to a real Stytch test project: session.e2e-spec.ts
+      # creates a user, the sign-in browser tests exchange a magic link. The
+      # credentials are repository secrets and never enter .env.example. Appended
+      # after the copy, so a later line wins over the placeholder above it.
+      - run: |
+          {
+            echo "STYTCH_PROJECT_ID=${{ secrets.STYTCH_PROJECT_ID }}"
+            echo "STYTCH_SECRET=${{ secrets.STYTCH_SECRET }}"
+            echo "VITE_STYTCH_PUBLIC_TOKEN=${{ secrets.VITE_STYTCH_PUBLIC_TOKEN }}"
+          } >> .env
+
+      # The suites that talk to the live Stytch project left the ordinary gate on
+      # 2026-09-10: they made a third party's uptime a condition of `main` being
+      # green (the application review, B5). This is where they run instead.
+      # Without these two variables they run nowhere at all, and sign-in is
+      # exercised end to end by nothing.
+      - run: node scripts/check-verify.mjs
+        env:
+          STYTCH_LIVE: '1'
+          PLAYWRIGHT_LIVE: '1'
+      - name: Keep the evidence from all three runs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: witness-evidence-${{ github.run_id }}
+          path: .generated/runs/
+          retention-days: 30
+          include-hidden-files: true

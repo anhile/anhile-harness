@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist-types/
+.generated/
+.env
+.env.local
+coverage/

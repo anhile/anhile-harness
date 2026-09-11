@@ -1,0 +1,53 @@
+{
+  "name": "@anhile/harness",
+  "version": "0.1.0",
+  "description": "A gate that refuses a commit whose claims are not earned, and a generator that puts it in a new project.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "anhile-harness": "./bin/harness.mjs"
+  },
+  "files": [
+    "bin",
+    "scripts",
+    "specs",
+    ".claude",
+    ".githooks",
+    ".github",
+    "verify.sh",
+    "harness.manifest.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "pg": "^8.13.1"
+  },
+  "peerDependenciesMeta": {
+    "pg": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -b --force tsconfig.build.json",
+    "test:unit": "jest --config jest.config.cjs",
+    "progress": "node scripts/progress.mjs",
+    "verify": "./verify.sh",
+    "prepare": "git config core.hooksPath .githooks || true"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.15.0",
+    "eslint": "^9.34.0",
+    "globals": "^17.11.0",
+    "jest": "^30.0.5",
+    "js-yaml": "^5.4.1",
+    "ts-jest": "^29.4.1",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.41.0"
+  }
+}

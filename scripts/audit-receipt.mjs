@@ -1,0 +1,172 @@
+#!/usr/bin/env node
+/**
+ * The audit receipt: what the spec-auditor concluded, and about which tree.
+ *
+ * Until 2026-09-08 the two reviewers in .claude/agents/ had never run.
+ * `/verify-task` was disable-model-invocation and a person had to remember to
+ * type it; across ninety feature entries nobody did. CONTRIBUTING named that as
+ * the same failure the commit gate was built to end, one level up.
+ *
+ * This is the link. `/verify-task <spec>` ends by writing this receipt — the
+ * contract it audited, the auditor's verdict, the security reviewer's when the
+ * surface moved, and the hash of the tree all of that was about. The commit
+ * gate reads it before a *closing* commit: one whose index flips an entry's
+ * `passes` from false to true. The receipt must name the tree the verify
+ * receipt names, the contract the flipped entry's `spec` names, and a verdict
+ * of READY. Any other commit is untouched.
+ *
+ * Forgeable, like the verify receipt: a session can run `write` itself. The
+ * defence is the same — that is a deliberate act on a named file, in a
+ * session whose transcript shows no audit ran — and the gate raises the cost
+ * from "forgot" to "lied". See CONTRIBUTING, "What falls through to review".
+ *
+ * Usage:
+ *   node scripts/audit-receipt.mjs write --spec <path> --verdict READY|NOT_READY|CANNOT_VERIFY [--security "<summary>"]
+ *   node scripts/audit-receipt.mjs show
+ *   node scripts/audit-receipt.mjs check          exit 0 when a closing commit may proceed
+ */
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readReceipt, root, treeHash } from './verify-receipt.mjs';
+
+export const AUDIT_FILE = '.generated/audit.json';
+export const VERDICTS = ['READY', 'NOT_READY', 'CANNOT_VERIFY'];
+
+function git(...args) {
+  try {
+    return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch {
+    return null;
+  }
+}
+
+function listAt(ref) {
+  const raw = git('show', `${ref}:feature_list.json`);
+  if (raw === null) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Entries the index closes: `passes` false at HEAD, true in what is staged.
+ * The index rather than the working tree, because the index is what the
+ * commit will contain. Nothing to compare gives nothing, not a guess.
+ */
+export function closingEntries() {
+  const before = listAt('HEAD');
+  const after = listAt(''); // the index
+  if (!before || !after) return [];
+  const closing = [];
+  for (let i = 0; i < Math.min(before.length, after.length); i += 1) {
+    if (before[i]?.passes === false && after[i]?.passes === true) {
+      closing.push({ id: after[i].id ?? i, spec: after[i].spec ?? null, description: after[i].description ?? '' });
+    }
+  }
+  return closing;
+}
+
+export function readAudit() {
+  try {
+    return JSON.parse(readFileSync(path.join(root, AUDIT_FILE), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Why a closing commit may not proceed, as a list; empty when it may.
+ * `expectedTree` is the tree the verify receipt names — the audit has to be
+ * about the same bytes verify.sh passed.
+ */
+export function auditProblems(expectedTree, closing) {
+  const audit = readAudit();
+  const problems = [];
+  if (!audit) {
+    problems.push(`no audit receipt at ${AUDIT_FILE}`);
+    return problems;
+  }
+  if (audit.verdict !== 'READY') {
+    problems.push(`the auditor's verdict was ${audit.verdict ?? '(none)'}, not READY`);
+  }
+  if (audit.treeHash !== expectedTree) {
+    problems.push(`the audit was about tree ${String(audit.treeHash ?? '(none)').slice(0, 19)}…, the verify receipt names ${String(expectedTree).slice(0, 19)}…`);
+  }
+  for (const entry of closing) {
+    if (entry.spec && audit.spec !== entry.spec) {
+      problems.push(`entry #${entry.id} closes under ${entry.spec}, the audit was of ${audit.spec ?? '(none)'}`);
+    }
+  }
+  return problems;
+}
+
+function flag(args, name, fallback = '') {
+  const i = args.indexOf(`--${name}`);
+  return i === -1 ? fallback : (args[i + 1] ?? fallback);
+}
+
+function write(args) {
+  const spec = flag(args, 'spec');
+  const verdict = flag(args, 'verdict');
+  const security = flag(args, 'security', null);
+  if (!spec) {
+    process.stderr.write('audit-receipt: --spec <path> is required\n');
+    process.exit(1);
+  }
+  if (!VERDICTS.includes(verdict)) {
+    process.stderr.write(`audit-receipt: --verdict must be one of ${VERDICTS.join(', ')}\n`);
+    process.exit(1);
+  }
+  const verify = readReceipt();
+  const receipt = {
+    spec,
+    verdict,
+    security,
+    at: new Date().toISOString(),
+    treeHash: treeHash(),
+    verifyEvidence: verify?.evidence ?? null,
+    commit: (git('rev-parse', 'HEAD') ?? '').trim() || null,
+  };
+  mkdirSync(path.join(root, path.dirname(AUDIT_FILE)), { recursive: true });
+  writeFileSync(path.join(root, AUDIT_FILE), `${JSON.stringify(receipt, null, 2)}\n`);
+  process.stdout.write(`${verdict} ${receipt.treeHash} ${spec}\n`);
+}
+
+function check() {
+  const closing = closingEntries();
+  if (closing.length === 0) {
+    process.stdout.write('audit-receipt: the index closes no entry; no audit is required\n');
+    return;
+  }
+  const verify = readReceipt();
+  const problems = auditProblems(verify?.treeHash ?? null, closing);
+  if (problems.length === 0) {
+    process.stdout.write(`audit-receipt: ok — ${closing.map((e) => `#${e.id}`).join(', ')} audited READY on this tree\n`);
+    return;
+  }
+  process.stderr.write(`audit-receipt: closing ${closing.map((e) => `#${e.id}`).join(', ')} needs an audit of this tree\n`);
+  for (const p of problems) process.stderr.write(`  - ${p}\n`);
+  process.exit(1);
+}
+
+function main() {
+  const [command, ...args] = process.argv.slice(2);
+  if (command === 'write') return write(args);
+  if (command === 'check') return check();
+  if (command === 'show') {
+    const audit = readAudit();
+    process.stdout.write(`${JSON.stringify(audit, null, 2)}\n`);
+    process.exit(audit ? 0 : 1);
+  }
+  process.stderr.write('usage: audit-receipt.mjs write --spec <path> --verdict <v> [--security <s>] | show | check\n');
+  process.exit(2);
+}
+
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+  main();
+}
