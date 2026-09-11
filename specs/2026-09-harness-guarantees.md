@@ -9,7 +9,7 @@
 ## Problem
 
 The harness refuses a claim that is not earned, and until now made none about
-itself: `feature_list.json` was empty from the seed through five merged pull
+itself: `feature_list.json` was empty from the seed through six merged pull
 requests. The guarantees a consumer relies on — a generated project's first
 gate is green, the tarball is the manifest, a copied script names no product —
 were held by suites nobody had to cite. A harness that measures every project
@@ -20,7 +20,16 @@ does not meet.
 
 - One entry per guarantee below, appended with `passes: false`, then closed
   one per commit on a READY audit, in the order listed.
-- Nothing else: every mechanism named already exists and is green. This
+- One new suite, `scripts/__tests__/generated-project.spec.ts`, which
+  scaffolds the fastest variant, installs it and runs its gate, so AC1 has a
+  local end-to-end mechanism. The first audit under this contract found that
+  the only such run was in CI, which the auditor cannot see.
+- `verbose: true` and an explicit `reporters: ['default']` in `jest.config.cjs`,
+  so `03-unit.log` names every case and the auditor can find the assertion a
+  row of the table below names. The first audit found a tally and nothing to
+  locate; Jest 30 prints neither PASS lines nor names without the explicit
+  reporter. The generator writes the same two lines into a new project.
+- Nothing else: every other mechanism already exists and is green. This
   contract records what is true, under the rules that make recording it mean
   something.
 
@@ -28,11 +37,10 @@ does not meet.
 
 - New mechanisms. A guarantee with no existing suite is not on this list; it
   is a spec of its own.
-- The end-to-end proof that a generated project's first run is green: that is
-  the `generate` job in CI, five variants on every push, and it is named in
-  the entry's steps rather than counted as this contract's evidence, because
-  the auditor reads the local evidence folder and CI is not in it. What step
-  03 proves locally is the mechanism that keeps the first run green.
+- The other four variants of a generated project — a database, an API, a
+  page, all three. They are gated end to end by the `generate` job in CI on
+  every push, named in entry #0's steps; locally, the one variant that
+  installs in seconds stands for the mechanism.
 - The upgrade path for a project that adopted an earlier version. README says
   it is not there; it stays not there.
 
@@ -42,9 +50,10 @@ None.
 
 ## Acceptance criteria
 
-- **AC1** (ubiquitous) — The generator shall write into a new project's
-  `verify.sh` only the steps whose requirements exist, and shall name every
-  deferred step, with the line to add, in the project's `AGENTS.md`.
+- **AC1** (ubiquitous) — The generator shall write a project that passes its
+  own `./verify.sh` on the first run, carrying only the steps whose
+  requirements exist and naming every deferred step, with the line to add, in
+  the project's `AGENTS.md`.
 - **AC2** (ubiquitous) — The generator shall resolve every package the manifest
   names for a set of answers to a version from `package.json` or
   `harness.versions.json`, and no name shall have a version in both.
@@ -67,7 +76,7 @@ None.
 
 | Criterion | Verification mechanism | Pass condition | Evidence output |
 |---|---|---|---|
-| AC1 | Jest — `scripts/__tests__/harness-init.spec.ts`, describes "the steps a project gets", "the gate it writes", "the project it writes" | every case passes, including "puts no step in the gate that nothing can pass, whatever was answered" and "tells the new project which steps are missing and the line to add for each" | `.generated/runs/<ts>/03-unit.log` |
+| AC1 | Jest — `scripts/__tests__/generated-project.spec.ts`: scaffolds a project, installs it, runs its `./verify.sh`; `scripts/__tests__/harness-init.spec.ts`, describes "the steps a project gets", "the gate it writes", "the project it writes" | "passes its own gate, every step" and "records the run in its own log" pass; "puts no step in the gate that nothing can pass, whatever was answered" and "tells the new project which steps are missing and the line to add for each" pass | `.generated/runs/<ts>/03-unit.log`, every case by name |
 | AC2 | Jest — `scripts/__tests__/harness-package.spec.ts` describe "the versions it can give a new project"; `harness-init.spec.ts` "refuses to resolve a package this repository does not have" and "takes the app versions from harness.versions.json" | every case passes | `.generated/runs/<ts>/03-unit.log` |
 | AC3 | Jest — `scripts/__tests__/harness-package.spec.ts` describe "what the tarball carries", asked of `npm pack --dry-run --json` | every case passes | `.generated/runs/<ts>/03-unit.log` |
 | AC4 | Jest — `scripts/__tests__/harness-boundary.spec.ts` describe "core names nothing about this product", proved live against the manifest's prose | every case passes | `.generated/runs/<ts>/03-unit.log` |
@@ -80,7 +89,12 @@ None.
 - `feature_list.json` — seven entries appended, then one `passes` flip per commit
 - `specs/2026-09-harness-guarantees.md` — this file
 - `PROGRESS.md` — the journal entry for the session
-- tests: none changed. A test modified under this contract is a finding.
+- `verify-log.jsonl` — one line appended by the gate per run; never by hand
+- `jest.config.cjs` — `verbose: true` and an explicit `reporters: ['default']`, nothing else
+- `scripts/harness-init.mjs` — the same two lines in the `jest.config.cjs` it writes for a new project, so a consumer's evidence names its cases too
+- `harness.manifest.json` — the new suite classified under `core.suites`
+- tests: `scripts/__tests__/generated-project.spec.ts`, added. No existing
+  test changed; a test modified under this contract is a finding.
 
 ## Invariants
 

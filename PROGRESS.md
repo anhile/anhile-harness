@@ -264,10 +264,10 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
 
 ## 2026-09-11 — Phase 4: the harness is measured by its own list
 
-- **Feature**: opened #0 to #6 under `specs/2026-09-harness-guarantees.md`; closed one per commit, each on a READY audit — see the commits after this entry's
+- **Feature**: opened #0 to #6 under `specs/2026-09-harness-guarantees.md`. Closing follows, one entry per commit, each on a READY audit; the commits after this entry's say which.
 - **Result**: passing
-- **Verified by**: `./verify.sh` 6/6 before each commit; `/verify-task` for each closing commit
-- **Evidence**: the `verify-log.jsonl` lines for this session, one per commit, and `.generated/audit.json` rewritten before each flip
+- **Verified by**: `./verify.sh` 6/6 before each commit; `/verify-task` before each closing commit
+- **Evidence**: the `verify-log.jsonl` line each run appends, and `.generated/audit.json` rewritten before each flip
 - **Contract changes**: none
 - **Notes**:
 
@@ -276,15 +276,21 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   earned. Seven guarantees a consumer relies on were already held by suites
   that ran on every gate; nothing cited them, and nothing would have noticed
   one going. Each is an entry now, with the suite that holds it in its steps,
-  appended under one contract and closed under the rules the harness gives
+  appended under one contract, to be closed under the rules the harness gives
   every project: `passes: false` first, one flip per commit, a READY audit of
   exactly that tree before the flip lands.
 
-  The end-to-end proof of the first guarantee — a generated project's first
-  gate is green — is the `generate` job in CI, and the contract says why it
-  is named in the entry's steps and not counted as evidence: the auditor
-  reads the local evidence folder, and CI is not in it. What step 03 proves
-  locally is the mechanism that keeps the first run green.
+  **The first audit refused, and was right to.** Three findings, each fixed
+  before the second attempt: `03-unit.log` carried a tally and no test
+  names, so no criterion's named assertion could be located — jest runs
+  `verbose` now; the first guarantee, a generated project's first run being
+  green, had no local mechanism at all, only the `generate` job in CI, which
+  the auditor cannot see — `generated-project.spec.ts` scaffolds one
+  variant, installs it and runs its gate inside step 03, forty seconds for
+  the sentence README opens with; and this entry had been written in the past
+  tense about closures that had not happened. An auditor that reads only the
+  evidence catches exactly the things a session writing about itself does
+  not.
 
   Left where the plan left it: the upgrade path for a project that adopted an
   earlier version. README says it is not there, and a guarantee without a

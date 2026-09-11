@@ -43,6 +43,7 @@
       "scripts/__tests__/commit-gate.spec.ts",
       "scripts/__tests__/environment.spec.ts",
       "scripts/__tests__/feature-list.spec.ts",
+      "scripts/__tests__/generated-project.spec.ts",
       "scripts/__tests__/harness-boundary.spec.ts",
       "scripts/__tests__/harness-config.spec.ts",
       "scripts/__tests__/harness-init.spec.ts",
