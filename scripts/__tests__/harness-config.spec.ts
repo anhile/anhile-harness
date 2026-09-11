@@ -98,6 +98,17 @@ describe('it refuses a configuration it cannot trust', () => {
     expect(load({ ...config, ports: {} }).error).toMatch(/checks nothing and reports success/u);
   });
 
+  it('allows the exempt-commit list to be absent, and refuses a short sha in it', () => {
+    // Optional, because a new project has no history to exempt; validated
+    // when present, because a truncated sha would match nothing and the
+    // exemption would silently not exist.
+    const { featureList: _dropped, ...without } = config as unknown as Record<string, unknown>;
+    expect(load(without).ok).toBe(true);
+    const { ok, error } = load({ ...config, featureList: { exemptCommits: ['cf94f97'] } });
+    expect(ok).toBe(false);
+    expect(error).toContain('featureList.exemptCommits');
+  });
+
   it('allows a null contracts package, for a project without a shared one', () => {
     expect(load({ ...config, contracts: { package: null } }).ok).toBe(true);
   });
@@ -162,6 +173,7 @@ describe('the literals are gone from the scripts', () => {
     'scripts/check-environment.mjs': ['portFree(3100)', 'portFree(5273)'],
     'scripts/pr-review-brief.mjs': ["'apps/api/src/controller/'", "'apps/api/src/repo/'"],
     'scripts/progress.mjs': ['`packages/contracts`'],
+    'scripts/check-feature-list.mjs': ["'cf94f9786e11cf56a9d337ff696a1706e0d9bfb9'"],
   };
 
   it('every converted script is in the manifest\'s configured tier', () => {

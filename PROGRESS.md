@@ -67,3 +67,152 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   Pushed nothing to `main`: the seed commit has no attested run and the
   pre-push hook refuses it, correctly. `git push --no-verify origin main` is a
   person's overrule, once, for the commit that predates the workflow.
+
+## 2026-09-11 — Phase 1: CI and the gate stop belonging to link-shortener
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6, and `node scripts/check-verify.mjs` 3/3
+- **Evidence**: the `verify-log.jsonl` lines for this session's runs, including
+  the `fail` line the witness writes on purpose
+- **Contract changes**: none
+- **Notes**:
+
+  Two protected files carried the workflow and the gate of the product the
+  harness was written in. A session may not edit either, so both were
+  rewritten under `.generated/scratch/` and applied by a person:
+
+  - **`.github/workflows/verify.yml`** loses Playwright, Stryker, the Stytch
+    secrets, `.env.example` and the `mutation` job, none of which this
+    repository or a generated project has. Three jobs stay: `attest`,
+    `verify`, `witness`. The file travels into every new project unchanged,
+    and the header now says so, which is the rule for what may go in it.
+  - **`verify.sh`** keeps its shape — the generator copies everything above
+    the step list byte for byte, and a generated AGENTS.md promises the e2e
+    functions are "already in verify.sh" — but no longer names a database
+    user, a container or a port. All of it comes from `harness.config.json`,
+    the way the generated `docker-compose.yml` names the same things after the
+    project. The header says nine steps are possible and the block says which
+    run; the paragraph about mutation testing is gone with the job.
+
+  The witness found a defect of its own: `check-verify.mjs` carried the nine
+  step names as a literal, so on this six-step gate it demanded evidence for
+  three steps that were never there and reported fifteen failures on a green
+  run. It reads the `run_step` lines from `verify.sh` now, and refuses a gate
+  with no `02-typecheck`, since that is the step its deliberate error targets.
+
+  `.github/workflows/generate.yml` is new and does not travel: five variants
+  of `init --yes`, each installed and gated on every push, plus
+  `npm pack --dry-run`. That is the README's first sentence, checked. It
+  needed `packageManager` in `package.json` — `pnpm/action-setup@v4` fails
+  without one — so the generator writes it into every new project too, taken
+  from this repository's.
+
+## 2026-09-11 — Phase 2: the package is publishable
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  What npm needs to show the package with a source, an issue tracker and a
+  node it runs on: `repository`, `homepage`, `bugs`, `author`, `keywords`,
+  `engines` pinned to the major `.nvmrc` names. Each is asserted in
+  `harness-package.spec.ts`, so a field cannot quietly go.
+
+  **The tarball no longer carries the guard suites**, nor the two workflows
+  that gate and publish this repository. 65 files became 48 and 520 KB became
+  341; what left was assertions about a repository the consumer does not have
+  and jobs a generated project cannot run. The README said the suites stay
+  here since the first draft; the tarball now agrees with it, and the spec
+  holds the two together — `.github/workflows` in the tarball must equal what
+  the manifest lists as travelling.
+
+  **`release.yml` publishes from a tag and from nowhere else**: the tag must
+  name the version in `package.json`, `CHANGELOG.md` must have an entry for
+  it, the commit must carry an attested run, and the gate must pass again on
+  the runner before `npm publish --provenance --access public`. The token is
+  a repository secret, `NPM_TOKEN`, until the package exists and npm's
+  trusted publishing can take its place. Not `provenance: true` in
+  `publishConfig`: that would make a local `npm publish` fail with a message
+  about CI, which is the right outcome and the wrong way to find out.
+
+  `CHANGELOG.md` starts at 0.1.0, the version about to be published, and the
+  spec refuses a `package.json` version the changelog has no entry for. The
+  README gained the two sections a consumer asks about last — what the
+  package carries, and how the repository checks itself.
+
+  Still ahead: the first publish needs the secret set by a person, and a tag
+  `v0.1.0` pushed after #1, #2 and this merge.
+
+## 2026-09-11 — Phase 3: what travels stops describing link-shortener
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  Everything the generator copies into a new project was read for the product
+  it was written in, and what was found is fixed at the source rather than in
+  the copy.
+
+  **Scripts.** `check-feature-list.mjs` carried two commit shas of another
+  repository as exemptions from one-closure-per-commit; they are
+  `featureList.exemptCommits` in `harness.config.json` now, optional,
+  validated as full shas when present, empty in a new project. The script
+  moved from `core` to `configured` in the manifest, and the throwaway
+  repository its suite builds gets the loader and a configuration.
+  `check-environment.mjs` demanded a Docker daemon of every project and told
+  every reader about a vendor's credentials; it asks for Docker only when
+  `database.required`, reports `.env` without counting it, and has a suite of
+  its own, `environment.spec.ts`, driven through `--from`.
+
+  **Skills and templates.** `setup-repo` said nine steps, `init.sh`,
+  `.env.example` and Stytch; `task-intake` and `draft-feature` cited
+  `docs/ARCHITECTURE.md`, `I1..I15` and `R1..R8` as if every project had
+  them; the spec template's example rows were short codes and QR data URLs;
+  the auditor's watch-list named `links.url` and `click_events`; the pull
+  request template pointed at a document nobody has. Each now names what a
+  generated project actually has — the configured attack surface, the
+  deferred steps by number, the harness's own invariants as examples — and
+  nothing else.
+
+  **Documents.** `docs/INVARIANTS.md` is general enough to travel and does,
+  as a copy, with a "Yours to add" line for a project's own from I16; the
+  spec-auditor and the refusals that print I8, I11, I12 and I15 have a file to
+  point at in every project. `docs/DOMAIN_RULES.md` is written for this
+  repository — R1 to R7, what the harness promises a project that adopts it —
+  and the generator writes a project a template with the shape and no rules,
+  since a rule it wrote would be about a product it has never seen.
+  `CONTRIBUTING.md` travels too, because the pull request template points at
+  it. Three cases in `harness-init.spec.ts` hold the generator to all of it.
+
+  **Left with a person.** `verify-receipt.mjs` prints git's "ambiguous
+  argument 'HEAD'" on every run before a project's first commit; the two-line
+  fix is protected and waits in `.generated/scratch/`. `.claude/settings.json`
+  still allows `playwright test` and `docker compose down`; harmless, and
+  protected.
+
+## 2026-09-11 — The receipt stops printing git's complaint before the first commit
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  `verify-receipt.mjs` is protected, so the two-line change waited in
+  `.generated/scratch/` for a person and was applied by one: git's stderr is
+  ignored on `rev-parse HEAD`, whose failure before a project's first commit
+  was already handled and already answered with `null`. The same change went
+  into `verify-log.mjs` under Phase 3. A new project's first `./verify.sh`
+  now prints its own verdict and nothing else.
+
+  This branch also carries Phases 1 to 3 to `main`: #2, #3 and #4 were merged
+  in the order they were stacked, each into the branch beneath it, so `main`
+  had only Phase 0 until now.

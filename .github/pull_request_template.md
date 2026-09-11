@@ -3,7 +3,7 @@ The gate does not read this template; people do. Every line below is something
 a mechanism already checks — the commit gate, verify.sh step 06, CI's attest
 job — and the point of writing it here is that the reader can see the claim
 next to the evidence without opening the tools.
-docs/ADDING_A_FEATURE.md is the path this follows.
+CONTRIBUTING.md is the path this follows.
 -->
 
 ## Contract

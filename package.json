@@ -3,23 +3,53 @@
   "version": "0.1.0",
   "description": "A gate that refuses a commit whose claims are not earned, and a generator that puts it in a new project.",
   "license": "MIT",
+  "author": "Anhile",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anhile/anhile-harness.git"
+  },
+  "homepage": "https://github.com/anhile/anhile-harness#readme",
+  "bugs": {
+    "url": "https://github.com/anhile/anhile-harness/issues"
+  },
+  "keywords": [
+    "harness",
+    "verification",
+    "gate",
+    "scaffold",
+    "generator",
+    "claude-code",
+    "agents",
+    "append-only",
+    "feature-list"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
+  "packageManager": "pnpm@10.14.0",
   "bin": {
     "anhile-harness": "./bin/harness.mjs"
   },
   "files": [
     "bin",
     "scripts",
+    "!scripts/__tests__",
     "specs",
     ".claude",
+    "!.claude/.work-budget.json",
     ".githooks",
     ".github",
+    "!.github/workflows/generate.yml",
+    "!.github/workflows/release.yml",
     "verify.sh",
-    "README.md",
-    "LICENSE",
+    "CONTRIBUTING.md",
+    "docs/INVARIANTS.md",
     "harness.manifest.json",
     "harness.versions.json",
-    "!.claude/.work-budget.json"
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public"

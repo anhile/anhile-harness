@@ -38,12 +38,11 @@ to apply it.
 
 ## What to fill in
 
-This file was generated. `docs/INVARIANTS.md` exists — what must never
-change here, and how each is checked, under the numbers the shipped scripts
-cite. Two things are still yours to write, and the harness is worth less until
-they exist:
+This file was generated. `docs/INVARIANTS.md` holds what must never change
+here and how each is checked, under the numbers the shipped scripts cite;
+`docs/DOMAIN_RULES.md` holds what the harness promises a project that adopts
+it, R1 to R7. One thing is still yours to write:
 
-- `docs/DOMAIN_RULES.md` — the constraints a spec is checked against
 - the layer rules in `eslint.config.mjs`, and a suite that fires at them
 
 ## MCP servers

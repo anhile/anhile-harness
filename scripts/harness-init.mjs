@@ -220,6 +220,11 @@ const PACKAGE_JSON = (name, answers, devDependencies) => ({
   name,
   private: true,
   type: 'module',
+  // What pnpm/action-setup reads in the copied CI workflow; without it the
+  // `verify` job fails before the checkout is even installed, with "No pnpm
+  // version is specified". Taken from this repository's package.json, so a
+  // new project runs the pnpm the harness was gated with.
+  packageManager: JSON.parse(read('package.json')).packageManager,
   scripts: {
     lint: 'eslint .',
     typecheck: 'tsc -b --force tsconfig.build.json',
@@ -290,6 +295,32 @@ const SEEDS = {
   '.nvmrc': () => `${process.version.replace('v', '')}\n`,
 
   'feature_list.json': () => '[]\n',
+
+  // The shape of the file intake gate 5 reads, with no rules in it: a rule
+  // this generator wrote would be a rule about a product it has never seen.
+  'docs/DOMAIN_RULES.md': (name) =>
+    [
+      '# Domain rules',
+      '',
+      `The constraints a spec for ${name} is checked against, at intake gate 5, by`,
+      'number. A rule here says what the product promises and what it refuses; an',
+      'invariant in `docs/INVARIANTS.md` says what must never change in the',
+      'repository. A spec that contradicts a rule is bounced, and a finding that',
+      'cites no rule is not a finding.',
+      '',
+      'Every rule names how a violation would be detected. A rule nobody can check',
+      'is a preference, and belongs in a conversation rather than here.',
+      '',
+      '| # | Rule | Checked by |',
+      '|---|---|---|',
+      '| R1 | <what the product promises, in one sentence> | <the test, guard or review that catches a violation> |',
+      '',
+      '## R1 — <the rule, restated as a heading>',
+      '',
+      '<Why it holds, and what went wrong or would go wrong without it. Then the',
+      'exact check, so a reader can run it.>',
+      '',
+    ].join('\n'),
 
   'verify-log.jsonl': () => '',
 
@@ -518,6 +549,9 @@ export function configFor(answers) {
       ],
     },
     contracts: { package: null },
+    // Commits allowed to close more than one entry, because they predate the
+    // rule. A new project has none.
+    featureList: { exemptCommits: [] },
   };
 }
 
@@ -695,11 +729,13 @@ const agentsSeed = (answers, steps, deferred) =>
     '',
     '## What to fill in',
     '',
-    'This file was generated. Three things are yours to write, and the harness is',
-    'worth little until they exist:',
+    'This file was generated. `docs/INVARIANTS.md` came with the harness and',
+    'holds what the gate already enforces, under the numbers the scripts cite;',
+    'yours go below its line, from I16. Two things are yours to write, and the',
+    'harness is worth less until they exist:',
     '',
-    '- `docs/INVARIANTS.md` — what must never change here, and how each is checked',
-    '- `docs/DOMAIN_RULES.md` — the constraints a spec is checked against',
+    '- `docs/DOMAIN_RULES.md` — the constraints a spec is checked against; the',
+    '  file is a template with the shape and no rules',
     '- the layer rules in `eslint.config.mjs`, and a suite that fires at them',
     '',
     ...(answers.mcp.length === 0
@@ -938,8 +974,9 @@ async function main() {
   console.log('  ./verify.sh          # green on an empty project, which is the point');
   console.log('  git add -A && git commit -m "chore: the harness, before anything it guards"');
   console.log('');
-  console.log('Then write docs/INVARIANTS.md and docs/DOMAIN_RULES.md. Until those exist');
-  console.log('the gate checks that the code compiles and little else.');
+  console.log('Then fill in docs/DOMAIN_RULES.md, and add your own invariants below the');
+  console.log("harness's in docs/INVARIANTS.md. Until those exist the gate checks that the");
+  console.log('code compiles and that its own mechanisms hold, and little else.');
 }
 
 if (realpathSync(process.argv[1] ?? '') === realpathSync(fileURLToPath(import.meta.url))) {

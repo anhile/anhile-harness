@@ -220,6 +220,15 @@ describe('the project it writes', () => {
     expect(JSON.parse(read(scaffold(['--database']), 'package.json')).devDependencies.pg).toBeDefined();
   });
 
+  it('names the package manager, which the copied CI workflow reads', () => {
+    // pnpm/action-setup@v4 takes the version from `packageManager` and fails
+    // without one. The generated project gets this repository's, so the two
+    // run the same pnpm.
+    const mine = JSON.parse(readFileSync(path.join(REPO, 'package.json'), 'utf8')) as { packageManager: string };
+    expect(mine.packageManager).toMatch(/^pnpm@\d/u);
+    expect(JSON.parse(read(scaffold(), 'package.json')).packageManager).toBe(mine.packageManager);
+  });
+
   it('installs the toolchain the gate steps call by name', () => {
     const deps = JSON.parse(read(scaffold(), 'package.json')).devDependencies;
     for (const tool of ['eslint', 'typescript', 'jest', 'ts-jest']) {
@@ -301,6 +310,31 @@ describe('the project it writes', () => {
 
   it('generates no database files when there is no database', () => {
     expect(existsSync(path.join(scaffold(), 'docker-compose.yml'))).toBe(false);
+  });
+
+  it('gives the project the invariants the harness already enforces, and a place for its own', () => {
+    // The spec-auditor cites docs/INVARIANTS.md by number and the shipped
+    // scripts print I8, I11, I12 and I15 in their refusals. A project without
+    // the file has an auditor reading nothing and refusals that cite nothing.
+    const invariants = read(scaffold(), 'docs/INVARIANTS.md');
+    for (const n of ['I8', 'I11', 'I12', 'I15']) expect(invariants).toMatch(new RegExp(`^## ${n} — `, 'mu'));
+    expect(invariants).toContain('## Yours to add');
+    expect(invariants).not.toMatch(/shortener_test|link\.anhile/u);
+  });
+
+  it('gives the project an empty domain-rules file in the shape intake reads', () => {
+    // A rule the generator wrote would be about a product it has never seen;
+    // the shape is what travels, and R1 is a placeholder to overwrite.
+    const rules = read(scaffold(), 'docs/DOMAIN_RULES.md');
+    expect(rules).toContain('a spec for probe');
+    expect(rules).toMatch(/^\| R1 \| </mu);
+    expect(rules).not.toMatch(/generated project passes|harness\.versions/u);
+  });
+
+  it('gives the project a CONTRIBUTING.md, which the pull request template points at', () => {
+    const dir = scaffold();
+    expect(read(dir, 'CONTRIBUTING.md')).toMatch(/retract/iu);
+    expect(read(dir, '.github/pull_request_template.md')).toContain('CONTRIBUTING.md');
   });
 
   it('says in AGENTS.md what the person still has to write', () => {

@@ -152,7 +152,11 @@ function main() {
       evidence: path.relative(root, path.resolve(flag(args, 'evidence'))),
       commit: (() => {
         try {
-          return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root }).toString().trim();
+          // stderr ignored: before the first commit git says "ambiguous argument
+          // 'HEAD'" on every run, and the null below is the whole answer.
+          return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] })
+            .toString()
+            .trim();
         } catch {
           return null;
         }

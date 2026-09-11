@@ -2,11 +2,11 @@
 /**
  * Can this machine run the gate?
  *
- * Written the day a fresh clone turned out not to be able to. Two accounts
- * suites built their Stytch client while the file was being collected, so
- * step 04 threw for anyone without credentials — and CI never saw it, because
- * the workflow appends the repository secrets to `.env` before running the
- * gate. The one environment that could have proved a clone works was the one
+ * Written the day a fresh clone turned out not to be able to: a suite built
+ * a client for a third-party service while the file was being collected, so
+ * a step threw for anyone without credentials — and CI never saw it, because
+ * the workflow appended the repository secrets before running the gate. The
+ * one environment that could have proved a clone works was the one
  * environment that always had credentials.
  *
  * So this does not narrate a setup. It states what is missing and what fixes
@@ -93,22 +93,31 @@ export function evaluate(facts) {
   need('pnpm', facts.pnpm === true, facts.pnpm === true ? 'present' : 'not on PATH',
     'npm install -g pnpm, or corepack enable');
 
-  need('docker', facts.docker === true, facts.docker === true ? 'present' : 'not on PATH',
-    'install Docker Desktop; steps 04 and 05 need Postgres');
+  // Docker only where the gate will start Postgres. A project without a
+  // database (harness.config.json, `database.required`) has no step that
+  // needs it, and demanding a daemon for nothing is how a check gets ignored.
+  if (facts.databaseRequired === true) {
+    need('docker', facts.docker === true, facts.docker === true ? 'present' : 'not on PATH',
+      'install Docker; the database steps start Postgres from docker-compose.yml');
 
-  need(
-    'docker daemon',
-    facts.dockerRunning === true,
-    facts.dockerRunning === true ? 'running' : 'not running',
-    'start Docker Desktop and wait for it to report ready',
-  );
+    need(
+      'docker daemon',
+      facts.dockerRunning === true,
+      facts.dockerRunning === true ? 'running' : 'not running',
+      'start Docker and wait for it to report ready',
+    );
+  }
 
-  need(
-    '.env',
-    facts.env !== 'absent',
-    facts.env === 'absent' ? 'absent' : facts.env === 'example' ? 'present, copied from .env.example' : 'present',
-    'cp .env.example .env — the gate runs on it, and the accounts suites skip themselves without real Stytch credentials',
-  );
+  // Never required: verify.sh sources .env when present and falls back to the
+  // configured values otherwise. Reported so a reader knows which of the two
+  // a run will use.
+  out.push({
+    name: '.env',
+    ok: true,
+    optional: true,
+    detail: facts.env === 'absent' ? 'absent; the gate uses the configured values' : 'present; the gate sources it',
+    remedy: null,
+  });
 
   need(
     'node_modules',
@@ -153,6 +162,7 @@ async function gather() {
       : null,
     nodeVersion: process.version,
     pnpm: has('pnpm'),
+    databaseRequired: loadConfig().database.required,
     docker: has('docker'),
     dockerRunning: output('docker', ['info', '--format', '{{.ServerVersion}}']) !== null,
     env: existsSync(path.join(root, '.env')) ? 'present' : 'absent',

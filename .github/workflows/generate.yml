@@ -1,0 +1,102 @@
+# The harness, held to its own bar: the project it writes passes its own
+# ./verify.sh on the first run.
+#
+# This workflow is this repository's and does not travel — a generated project
+# has no generator to run. The manifest lists verify.yml under `elsewhere.core`
+# and not this file, which is what keeps it here.
+#
+# Every combination of answers is scaffolded, installed and gated. Doing this on
+# every push is the price of README's first sentence being true; before this
+# job it was done by hand, once, and written down (HANDOVER.md).
+
+name: generate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: generate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: init ${{ matrix.name }} → ./verify.sh
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: 'nothing'
+            flags: ''
+          - name: '--database'
+            flags: '--database'
+          - name: '--api'
+            flags: '--api'
+          - name: '--web'
+            flags: '--web'
+          - name: '--database --api --web'
+            flags: '--database --api --web'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Write the project
+        run: node bin/harness.mjs init --yes --name probe --mcp context7 --into "$RUNNER_TEMP/probe" ${{ matrix.flags }}
+
+      # No lockfile to freeze: the project is new. What is asserted is that
+      # the versions the generator resolved — from package.json here and from
+      # harness.versions.json — install together and pass the gate they were
+      # written for.
+      - name: Install and gate it
+        working-directory: ${{ runner.temp }}/probe
+        run: |
+          git init -q
+          pnpm install
+          ./verify.sh
+
+      - name: Keep the probe's evidence, especially for a failing run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-${{ strategy.job-index }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/probe/.generated/runs/
+          retention-days: 14
+          include-hidden-files: true
+
+  pack:
+    name: npm pack --dry-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # What the tarball would carry, as npm sees it. harness-package.spec.ts
+      # asserts the contents in step 03; this prints them where a reviewer
+      # can read the list without running anything.
+      - run: npm pack --dry-run
+      - run: node bin/harness.mjs files
+      - run: node bin/harness.mjs --version
