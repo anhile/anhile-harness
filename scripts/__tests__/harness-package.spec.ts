@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -271,6 +271,40 @@ describe('the package as npm will see it', () => {
     const readme = read('README.md');
     expect(readme).toContain('Upgrade a project that already adopted it');
     expect(readme).toContain('nothing in your project notices');
+  });
+});
+
+describe('the scripts it ships are checked as they run', () => {
+  // tsc prints nothing on success, so 02-typecheck.log is empty by design
+  // and cannot show what the step covered. These are the artefact: every
+  // script opts in, and the build reaches the project that checks them.
+  const shipped = ['scripts', 'bin'].flatMap((dir) =>
+    readdirSync(path.join(REPO, dir))
+      .filter((f) => f.endsWith('.mjs'))
+      .map((f) => `${dir}/${f}`),
+  );
+
+  it('there are scripts to check', () => {
+    expect(shipped.length).toBeGreaterThan(20);
+  });
+
+  it('every script and the bin carry // @ts-check on their first lines', () => {
+    const unchecked = shipped.filter((f) => !read(f).split('\n').slice(0, 2).includes('// @ts-check'));
+    expect(unchecked).toEqual([]);
+  });
+
+  it('the build references the project that checks them, and it covers both directories', () => {
+    const build = JSON.parse(read('tsconfig.build.json')) as { references: { path: string }[] };
+    expect(build.references.map((r) => r.path)).toContain('./tsconfig.scripts.json');
+    const scripts = JSON.parse(read('tsconfig.scripts.json')) as {
+      include: string[];
+      compilerOptions: { allowJs: boolean; checkJs: boolean };
+    };
+    expect(scripts.include).toEqual(expect.arrayContaining(['scripts/*.mjs', 'bin/*.mjs']));
+    expect(scripts.compilerOptions.allowJs).toBe(true);
+    // Off on purpose: a file opts in with the directive, and one without it is
+    // visibly unchecked rather than silently included.
+    expect(scripts.compilerOptions.checkJs).toBe(false);
   });
 });
 

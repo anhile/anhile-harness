@@ -265,7 +265,7 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
 ## 2026-09-11 — Phase 4: the harness is measured by its own list
 
 - **Feature**: opened #0 to #6 under `specs/2026-09-harness-guarantees.md`. Closing follows, one entry per commit, each on a READY audit; the commits after this entry's say which.
-- **Result**: passing
+- **Result**: partial — passing once the seventh closing commit lands; this line is updated then
 - **Verified by**: `./verify.sh` 6/6 before each commit; `/verify-task` before each closing commit
 - **Evidence**: the `verify-log.jsonl` line each run appends, and `.generated/audit.json` rewritten before each flip
 - **Contract changes**: none

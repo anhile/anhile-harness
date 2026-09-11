@@ -35,8 +35,8 @@ does not meet.
 
 ## Out of scope
 
-- New mechanisms. A guarantee with no existing suite is not on this list; it
-  is a spec of its own.
+- Mechanisms beyond the two named in scope. A guarantee that would need a
+  third is not on this list; it is a spec of its own.
 - The other four variants of a generated project — a database, an API, a
   page, all three. They are gated end to end by the `generate` job in CI on
   every push, named in entry #0's steps; locally, the one variant that
@@ -82,7 +82,14 @@ None.
 | AC4 | Jest — `scripts/__tests__/harness-boundary.spec.ts` describe "core names nothing about this product", proved live against the manifest's prose | every case passes | `.generated/runs/<ts>/03-unit.log` |
 | AC5 | Jest — `scripts/__tests__/commit-gate.spec.ts`, firing the gate in a throwaway repository | every case passes | `.generated/runs/<ts>/03-unit.log` |
 | AC6 | Jest — `scripts/__tests__/feature-list.spec.ts` and `scripts/__tests__/verify-log.spec.ts`, each handing the guard a tampered file | every case passes | `.generated/runs/<ts>/03-unit.log` |
-| AC7 | `tsc -b --force tsconfig.build.json` with `tsconfig.scripts.json` referenced; Jest — `harness-init.spec.ts` "typechecks the copied scripts, so their @ts-check is not decoration" | step 02 exits 0 with every script under `// @ts-check`; the case passes | `.generated/runs/<ts>/02-typecheck.log`, `.generated/runs/<ts>/03-unit.log` |
+| AC7 | Jest — `harness-package.spec.ts` "the scripts it ships are checked as they run": every `scripts/*.mjs` and `bin/*.mjs` carries `// @ts-check` and `tsconfig.build.json` references `tsconfig.scripts.json`, whose `include` covers both; `harness-init.spec.ts` "typechecks the copied scripts, so their @ts-check is not decoration"; step 02 itself | both cases pass; `02-typecheck.exit` is 0 (tsc prints nothing on success, so the log is empty by design and the cases are the artefact) | `.generated/runs/<ts>/03-unit.log`, `.generated/runs/<ts>/02-typecheck.exit` |
+
+Each entry closes on its own criterion: the READY that lets entry #n commit
+means AC(n+1) is confirmed by the artefact its row names and no invariant is
+violated by the diff; the other criteria are confirmed by their own closing
+commits, in order. The `verbose` and `reporters` lines the generator writes
+into a new project's `jest.config.cjs` are held by `harness-init.spec.ts`
+"names every case in its evidence, as this repository does", under AC1.
 
 ## Affected modules
 
