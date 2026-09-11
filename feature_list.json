@@ -30,7 +30,7 @@
       "pnpm exec jest --config jest.config.cjs scripts/__tests__/harness-package.spec.ts — \"what the tarball carries\" passes, asked of npm pack --dry-run --json",
       "npm pack --dry-run — no path under scripts/__tests__, no generate.yml or release.yml, no .work-budget.json"
     ],
-    "passes": false,
+    "passes": true,
     "spec": "specs/2026-09-harness-guarantees.md"
   },
   {
