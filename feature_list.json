@@ -73,7 +73,7 @@
       "./verify.sh — step 02 exits 0 with tsconfig.scripts.json referenced from tsconfig.build.json and every scripts/*.mjs and bin/*.mjs carrying // @ts-check",
       "pnpm exec jest --config jest.config.cjs scripts/__tests__/harness-init.spec.ts — \"typechecks the copied scripts, so their @ts-check is not decoration\" passes"
     ],
-    "passes": false,
+    "passes": true,
     "spec": "specs/2026-09-harness-guarantees.md"
   }
 ]
