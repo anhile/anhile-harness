@@ -3,6 +3,14 @@ module.exports = {
   // At the root, not in a project: jest refuses it there. The platform
   // project starts empty, and an empty project must not be a red gate.
   passWithNoTests: true,
+  // Every case by name, into the run's 03-unit.log. The spec-auditor reads
+  // that log to find the assertion a contract names, and a tally of "514
+  // passed" locates nothing: the first audit here could confirm no criterion
+  // for that reason alone.
+  verbose: true,
+  // Explicit, because Jest 30 without it prints neither PASS lines nor case
+  // names whatever `verbose` says, and the log above was a tally and stderr.
+  reporters: ['default'],
   collectCoverage: true,
   // Into the run's own evidence folder when the gate is driving, so a
   // run's coverage is filed with the rest of what it produced and step 08

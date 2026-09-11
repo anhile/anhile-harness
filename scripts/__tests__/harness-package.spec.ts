@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -272,6 +272,79 @@ describe('the package as npm will see it', () => {
     expect(readme).toContain('Upgrade a project that already adopted it');
     expect(readme).toContain('nothing in your project notices');
   });
+});
+
+describe('the scripts it ships are checked as they run', () => {
+  // tsc prints nothing on success, so 02-typecheck.log is empty by design
+  // and cannot show what the step covered. These are the artefact: every
+  // script opts in, and the build reaches the project that checks them.
+  const shipped = ['scripts', 'bin'].flatMap((dir) =>
+    readdirSync(path.join(REPO, dir))
+      .filter((f) => f.endsWith('.mjs'))
+      .map((f) => `${dir}/${f}`),
+  );
+
+  it('there are scripts to check', () => {
+    expect(shipped.length).toBeGreaterThan(20);
+  });
+
+  it('every script and the bin carry // @ts-check on their first lines', () => {
+    const unchecked = shipped.filter((f) => !read(f).split('\n').slice(0, 2).includes('// @ts-check'));
+    expect(unchecked).toEqual([]);
+  });
+
+  it('the build references the project that checks them, and it covers both directories', () => {
+    const build = JSON.parse(read('tsconfig.build.json')) as { references: { path: string }[] };
+    expect(build.references.map((r) => r.path)).toContain('./tsconfig.scripts.json');
+    const scripts = JSON.parse(read('tsconfig.scripts.json')) as {
+      include: string[];
+      compilerOptions: { allowJs: boolean; checkJs: boolean };
+    };
+    expect(scripts.include).toEqual(expect.arrayContaining(['scripts/*.mjs', 'bin/*.mjs']));
+    expect(scripts.compilerOptions.allowJs).toBe(true);
+    // Off on purpose: a file opts in with the directive, and one without it is
+    // visibly unchecked rather than silently included.
+    expect(scripts.compilerOptions.checkJs).toBe(false);
+  });
+
+  it('and tsc -b refuses one with a type error under the same project, which an empty log cannot show', () => {
+    // Step 02's log is empty on success, so the cases above can only show
+    // opt-in and wiring. This shows detection, under the same build-mode
+    // invocation step 02 uses: the same scripts and the same project, once
+    // clean and once with a script that lies about a type. Under .generated
+    // so node_modules resolves and the tree hash does not see it.
+    const probe = mkdtempSync(path.join(REPO, '.generated', 'tsc-probe-'));
+    const tsc = path.join(REPO, 'node_modules', '.bin', 'tsc');
+    const run = (): { status: number; out: string } => {
+      try {
+        execFileSync(tsc, ['-b', 'tsconfig.scripts.json', '--force'], { cwd: probe, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+        return { status: 0, out: '' };
+      } catch (error) {
+        const err = error as { status?: number; stdout?: string };
+        return { status: err.status ?? 1, out: err.stdout ?? '' };
+      }
+    };
+    try {
+      for (const dir of ['scripts', 'bin']) {
+        mkdirSync(path.join(probe, dir));
+        for (const f of readdirSync(path.join(REPO, dir)).filter((n) => n.endsWith('.mjs'))) {
+          copyFileSync(path.join(REPO, dir, f), path.join(probe, dir, f));
+        }
+      }
+      for (const f of ['tsconfig.base.json', 'tsconfig.scripts.json']) copyFileSync(path.join(REPO, f), path.join(probe, f));
+      expect(run().status).toBe(0);
+      writeFileSync(
+        path.join(probe, 'scripts', '__broken.mjs'),
+        "// @ts-check\n/** @type {number} */\nconst n = 'not a number';\nexport { n };\n",
+      );
+      const broken = run();
+      expect(broken.status).not.toBe(0);
+      expect(broken.out).toContain('__broken.mjs');
+      expect(broken.out).toContain('TS2322');
+    } finally {
+      rmSync(probe, { recursive: true, force: true });
+    }
+  }, 120_000);
 });
 
 describe('the release workflow', () => {

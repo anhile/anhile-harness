@@ -263,6 +263,16 @@ describe('the project it writes', () => {
     expect(read(scaffold(), 'jest.config.cjs')).toContain('EVIDENCE_DIR');
   });
 
+  it('names every case in its evidence, as this repository does', () => {
+    // The spec-auditor reads 03-unit.log to find the assertion a contract
+    // names, and Jest 30 prints neither PASS lines nor case names without an
+    // explicit reporter. A generated project's evidence should be readable
+    // the same way.
+    const config = read(scaffold(), 'jest.config.cjs');
+    expect(config).toContain('verbose: true');
+    expect(config).toContain("reporters: ['default']");
+  });
+
   it('allows the unused-argument style the copied scripts use', () => {
     expect(read(scaffold(), 'eslint.config.mjs')).toContain('argsIgnorePattern');
   });

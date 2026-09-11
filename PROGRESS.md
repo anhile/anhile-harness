@@ -261,3 +261,44 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   copied into projects that do not install it. Harmless while the scripts
   went unchecked. A script the manifest lists under `onlyWith` now leaves
   with its dependency, and `harness-init.spec.ts` holds that.
+
+## 2026-09-11 — Phase 4: the harness is measured by its own list
+
+- **Feature**: opened #0 to #6 under `specs/2026-09-harness-guarantees.md`, then closed one per commit, each on a READY audit of exactly that tree
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6 before each commit; `/verify-task` before each closing commit
+- **Evidence**: one gate run per closing commit, each a `verify-log.jsonl` line and an evidence folder — #0 `20260911T201600Z`, #1 `20260911T202036Z`, #2 `20260911T202427Z`, #3 `20260911T202806Z`, #4 `20260911T203144Z`, #5 `20260911T203444Z`, #6 the run its closing commit's log line names — and `.generated/audit.json` rewritten READY before each flip
+- **Contract changes**: none
+- **Notes**:
+
+  `feature_list.json` was empty from the seed through six merged pull
+  requests, in a repository whose whole subject is that a claim has to be
+  earned. Seven guarantees a consumer relies on were already held by suites
+  that ran on every gate; nothing cited them, and nothing would have noticed
+  one going. Each is an entry now, with the suite that holds it in its steps,
+  appended under one contract, to be closed under the rules the harness gives
+  every project: `passes: false` first, one flip per commit, a READY audit of
+  exactly that tree before the flip lands.
+
+  **The first audit refused, and was right to.** Three findings, each fixed
+  before the second attempt: `03-unit.log` carried a tally and no test
+  names, so no criterion's named assertion could be located — jest runs
+  `verbose` now; the first guarantee, a generated project's first run being
+  green, had no local mechanism at all, only the `generate` job in CI, which
+  the auditor cannot see — `generated-project.spec.ts` scaffolds one
+  variant, installs it and runs its gate inside step 03, forty seconds for
+  the sentence README opens with; and this entry had been written in the past
+  tense about closures that had not happened. An auditor that reads only the
+  evidence catches exactly the things a session writing about itself does
+  not. It kept catching: the fourth audit read a default env value as a
+  non-default gate, and three in a row said AC7's cases showed opt-in and
+  never detection, until a case ran `tsc -b` on a copy with a deliberately
+  broken script and got `TS2322` back — and the audit after that noticed
+  the case used `-p` where step 02 uses `-b`. Twelve audits for seven
+  closures;
+  every refusal became a mechanism or a corrected sentence, none became a
+  softer verdict.
+
+  Left where the plan left it: the upgrade path for a project that adopted an
+  earlier version. README says it is not there, and a guarantee without a
+  mechanism is not an entry.
