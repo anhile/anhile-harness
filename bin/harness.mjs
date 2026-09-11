@@ -3,9 +3,9 @@
 /**
  * The harness, as a command.
  *
- *   npx @anhile/harness init            # ask, then write a new project
- *   npx @anhile/harness init --yes …    # the same without asking
- *   npx @anhile/harness files           # what this package carries
+ *   npx anhile-harness init            # ask, then write a new project
+ *   npx anhile-harness init --yes …    # the same without asking
+ *   npx anhile-harness files           # what this package carries
  *
  * `init` is the whole of it for now. The other half a package makes possible —
  * upgrading a project that already adopted an older version — does not exist,
@@ -35,7 +35,7 @@ function assembled() {
 function usage() {
   console.log(
     [
-      `@anhile/harness ${version()}`,
+      `anhile-harness ${version()}`,
       '',
       'A gate that refuses a commit whose claims are not earned, and a generator',
       'that puts it in a new project.',

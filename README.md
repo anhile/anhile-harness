@@ -1,16 +1,17 @@
-# @anhile/harness
+# anhile-harness
 
 A gate that refuses a commit whose claims are not earned, and a generator that
 puts it in a new project.
 
 ```bash
-npx @anhile/harness init
+npx anhile-harness init
 ```
 
-Installed, the command is `anhile-harness` — named after the scope on purpose.
-A package name is namespaced and cannot collide; a `bin` is not, and lands in
-every consumer's `node_modules/.bin` where a second package claiming `harness`
-would win or lose unpredictably.
+The package, the command it installs and the repository share one name,
+`anhile-harness`, and the command is not `harness` on purpose: a `bin` is not
+namespaced, and lands in every consumer's `node_modules/.bin` where a second
+package claiming `harness` would win or lose unpredictably. Unscoped, because
+the scope that matched the name belongs to somebody else on npm.
 
 It asks for a name, then gives you two numbered lists — what is in the project,
 and which MCP servers it should declare — and each line says what choosing it

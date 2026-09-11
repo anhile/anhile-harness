@@ -92,7 +92,7 @@ describe('what the tarball carries', () => {
   });
 
   it('the versions file, which the generator resolves the applications from', () => {
-    // Without it `npx @anhile/harness init --web` refuses in the consumer's
+    // Without it `npx anhile-harness init --web` refuses in the consumer's
     // shell for a reason that only makes sense in this repository.
     expect(paths).toContain('harness.versions.json');
   });
@@ -200,8 +200,13 @@ describe('the versions it can give a new project', () => {
 });
 
 describe('the package as npm will see it', () => {
-  it('is scoped and public, or a scoped package defaults to private and fails to publish', () => {
-    expect(pkg.name.startsWith('@')).toBe(true);
+  it('carries the repository\'s name, unscoped, and says it is public', () => {
+    // Unscoped, because the scope that matched the name belongs to somebody
+    // else on npm; the package, its command and the repository share one
+    // name. `access: public` is the default for an unscoped package and is
+    // written anyway, so a future scope does not turn a publish private.
+    expect(pkg.name).toBe('anhile-harness');
+    expect(Object.keys(pkg.bin)).toEqual([pkg.name]);
     expect(pkg.publishConfig.access).toBe('public');
   });
 
@@ -236,12 +241,12 @@ describe('the package as npm will see it', () => {
     expect(read('LICENSE')).toContain('WITHOUT WARRANTY OF ANY KIND');
   });
 
-  it('names its command after the scope, because a bin has no namespace', () => {
-    // The package name is scoped and cannot collide. The bin is not: it lands
-    // in every consumer's node_modules/.bin, where a second package claiming
-    // `harness` would be resolved against this one unpredictably. npm said as
-    // much on the first publish dry run — `bin[harness] script name was
-    // cleaned`. `npx @anhile/harness init` is unaffected either way.
+  it('names its command after the package, because a bin has no namespace', () => {
+    // A bin lands in every consumer's node_modules/.bin, where a second
+    // package claiming `harness` would be resolved against this one
+    // unpredictably. npm said as much on the first publish dry run —
+    // `bin[harness] script name was cleaned`. The package name is the one
+    // thing here that cannot collide, so the bin carries it. `npx anhile-harness init` is unaffected either way.
     expect(Object.keys(pkg.bin)).toEqual(['anhile-harness']);
   });
 
