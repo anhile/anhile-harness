@@ -1,6 +1,6 @@
 # Changelog
 
-What changed for somebody who runs `npx @anhile/harness init`, by version. The
+What changed for somebody who runs `npx anhile-harness init`, by version. The
 reasons behind each change are in `PROGRESS.md`, which is the journal; this is
 the summary a consumer reads before upgrading.
 
@@ -36,7 +36,7 @@ would otherwise find a different package than the one on npm.
 
 ### Added
 
-- `npx @anhile/harness init`: asks for a name, what is in the project and
+- `npx anhile-harness init`: asks for a name, what is in the project and
   which MCP servers to declare, then writes a project that passes its own
   `./verify.sh` on the first run. `--yes` for scripts and CI.
 - A six-step gate — eslint, typecheck, unit, feature-list, verify-log,

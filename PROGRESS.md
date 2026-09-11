@@ -369,3 +369,20 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   the run, no token in any secret, provenance attached; the workflow is
   named as the package's trusted publisher on npmjs.com, which is a person's
   setting and the last thing standing between a tag and the registry.
+
+## 2026-09-12 — The package is anhile-harness, unscoped
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run, after two lines a person's runs at `v0.1.0` appended
+- **Contract changes**: none
+- **Notes**:
+
+  The first publish by hand returned 404 on `PUT @anhile/harness`: the scope
+  `@anhile` belongs to another npm account, and the person's is `anhil3`.
+  `@anhil3/harness` was the first answer and lasted a minute; the person's
+  better one is the unscoped `anhile-harness`, free on npm, so the package,
+  the command it installs and the repository share one name. Nothing
+  generated changes: the name appears in the usage text, the README, the
+  changelog and one assertion, and in no file a new project gets.

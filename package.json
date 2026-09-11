@@ -1,5 +1,5 @@
 {
-  "name": "@anhile/harness",
+  "name": "anhile-harness",
   "version": "0.1.0",
   "description": "A gate that refuses a commit whose claims are not earned, and a generator that puts it in a new project.",
   "license": "MIT",
