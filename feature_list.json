@@ -19,7 +19,7 @@
       "pnpm exec jest --config jest.config.cjs scripts/__tests__/harness-package.spec.ts — \"the versions it can give a new project\" passes: every name resolves, no overlap, nothing the manifest does not name",
       "pnpm exec jest --config jest.config.cjs scripts/__tests__/harness-init.spec.ts — \"refuses to resolve a package this repository does not have\" and \"takes the app versions from harness.versions.json\" pass"
     ],
-    "passes": false,
+    "passes": true,
     "spec": "specs/2026-09-harness-guarantees.md"
   },
   {
