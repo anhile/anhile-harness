@@ -261,3 +261,31 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   copied into projects that do not install it. Harmless while the scripts
   went unchecked. A script the manifest lists under `onlyWith` now leaves
   with its dependency, and `harness-init.spec.ts` holds that.
+
+## 2026-09-11 — Phase 4: the harness is measured by its own list
+
+- **Feature**: opened #0 to #6 under `specs/2026-09-harness-guarantees.md`; closed one per commit, each on a READY audit — see the commits after this entry's
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6 before each commit; `/verify-task` for each closing commit
+- **Evidence**: the `verify-log.jsonl` lines for this session, one per commit, and `.generated/audit.json` rewritten before each flip
+- **Contract changes**: none
+- **Notes**:
+
+  `feature_list.json` was empty from the seed through six merged pull
+  requests, in a repository whose whole subject is that a claim has to be
+  earned. Seven guarantees a consumer relies on were already held by suites
+  that ran on every gate; nothing cited them, and nothing would have noticed
+  one going. Each is an entry now, with the suite that holds it in its steps,
+  appended under one contract and closed under the rules the harness gives
+  every project: `passes: false` first, one flip per commit, a READY audit of
+  exactly that tree before the flip lands.
+
+  The end-to-end proof of the first guarantee — a generated project's first
+  gate is green — is the `generate` job in CI, and the contract says why it
+  is named in the entry's steps and not counted as evidence: the auditor
+  reads the local evidence folder, and CI is not in it. What step 03 proves
+  locally is the mechanism that keeps the first run green.
+
+  Left where the plan left it: the upgrade path for a project that adopted an
+  earlier version. README says it is not there, and a guarantee without a
+  mechanism is not an entry.

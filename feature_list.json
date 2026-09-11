@@ -1,1 +1,79 @@
-[]
+[
+  {
+    "id": 0,
+    "category": "generator",
+    "description": "A new project's gate carries only steps it can pass on the first run; every deferred step is named in its AGENTS.md with the line to add",
+    "steps": [
+      "pnpm exec jest --config jest.config.cjs scripts/__tests__/harness-init.spec.ts — \"the steps a project gets\", \"the gate it writes\" and \"tells the new project which steps are missing\" pass",
+      "node bin/harness.mjs init --yes --name probe --database --api --web --into /tmp/probe — the output names three deferred steps and six in the gate",
+      "the generate job in CI: five variants scaffolded, installed and gated on every push, all green on the pull request that closes this entry"
+    ],
+    "passes": false,
+    "spec": "specs/2026-09-harness-guarantees.md"
+  },
+  {
+    "id": 1,
+    "category": "generator",
+    "description": "Every package the manifest names resolves to a version from package.json or harness.versions.json, and no name has a version in both",
+    "steps": [
+      "pnpm exec jest --config jest.config.cjs scripts/__tests__/harness-package.spec.ts — \"the versions it can give a new project\" passes: every name resolves, no overlap, nothing the manifest does not name",
+      "pnpm exec jest --config jest.config.cjs scripts/__tests__/harness-init.spec.ts — \"refuses to resolve a package this repository does not have\" and \"takes the app versions from harness.versions.json\" pass"
+    ],
+    "passes": false,
+    "spec": "specs/2026-09-harness-guarantees.md"
+  },
+  {
+    "id": 2,
+    "category": "package",
+    "description": "The tarball carries every file the manifest says travels and no guard suite, no workflow of this repository alone, and nothing git ignores",
+    "steps": [
+      "pnpm exec jest --config jest.config.cjs scripts/__tests__/harness-package.spec.ts — \"what the tarball carries\" passes, asked of npm pack --dry-run --json",
+      "npm pack --dry-run — no path under scripts/__tests__, no generate.yml or release.yml, no .work-budget.json"
+    ],
+    "passes": false,
+    "spec": "specs/2026-09-harness-guarantees.md"
+  },
+  {
+    "id": 3,
+    "category": "travel",
+    "description": "A copied core script contains none of the identifiers of the product the harness was written in",
+    "steps": [
+      "pnpm exec jest --config jest.config.cjs scripts/__tests__/harness-boundary.spec.ts — \"core names nothing about this product\" passes for every core script, and the word list is proved live against the manifest"
+    ],
+    "passes": false,
+    "spec": "specs/2026-09-harness-guarantees.md"
+  },
+  {
+    "id": 4,
+    "category": "gate",
+    "description": "A commit on a tree no recorded green run covers, or after a session edit to a protected file, is refused",
+    "steps": [
+      "pnpm exec jest --config jest.config.cjs scripts/__tests__/commit-gate.spec.ts — every case passes: no receipt, a failed receipt, a receipt for another tree, each shape of git commit, each protected path, the interpreter heredoc",
+      "in a session: edit a file, run git commit without ./verify.sh — the hook prints BLOCKED and cites I11"
+    ],
+    "passes": false,
+    "spec": "specs/2026-09-harness-guarantees.md"
+  },
+  {
+    "id": 5,
+    "category": "record",
+    "description": "feature_list.json accepts only its four legal edits and one closure per commit, and verify-log.jsonl keeps every line, red runs included",
+    "steps": [
+      "pnpm exec jest --config jest.config.cjs scripts/__tests__/feature-list.spec.ts — every adversarial case passes",
+      "pnpm exec jest --config jest.config.cjs scripts/__tests__/verify-log.spec.ts — deletions, rewrites, an emptied file, malformed lines and a backdated run are each refused"
+    ],
+    "passes": false,
+    "spec": "specs/2026-09-harness-guarantees.md"
+  },
+  {
+    "id": 6,
+    "category": "scripts",
+    "description": "Every script the harness ships is type-checked as it runs, under tsc -b with no build step, here and in a generated project",
+    "steps": [
+      "./verify.sh — step 02 exits 0 with tsconfig.scripts.json referenced from tsconfig.build.json and every scripts/*.mjs and bin/*.mjs carrying // @ts-check",
+      "pnpm exec jest --config jest.config.cjs scripts/__tests__/harness-init.spec.ts — \"typechecks the copied scripts, so their @ts-check is not decoration\" passes"
+    ],
+    "passes": false,
+    "spec": "specs/2026-09-harness-guarantees.md"
+  }
+]
