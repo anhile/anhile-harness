@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * PROGRESS.md: its shape, and its size.
  *
@@ -49,9 +50,19 @@ export function template(date = new Date().toISOString().slice(0, 10)) {
 
 const HEADING = /^## (\d{4}-\d{2}-\d{2}) — (.+)$/u;
 
-/** The file as a header plus entries, each entry the text from its heading to the next. */
+/**
+ * One entry of the journal: its heading line, what the heading said, and the
+ * text from it to the next heading.
+ * @typedef {{ heading: string, date: string | null, title: string | null, body: string, index: number }} Entry
+ */
+
+/**
+ * The file as a header plus entries, each entry the text from its heading to the next.
+ * @param {string} text
+ */
 export function parse(text) {
   const lines = text.split('\n');
+  /** @type {number[]} */
   const starts = [];
   // A heading inside a fenced block is text — the header carries the template
   // in one, and the template's own heading must not count as an entry.
@@ -64,14 +75,20 @@ export function parse(text) {
   const entries = starts.map((start, n) => {
     const end = starts[n + 1] ?? lines.length;
     const body = lines.slice(start, end).join('\n');
-    const m = lines[start].match(HEADING);
-    return { heading: lines[start], date: m?.[1] ?? null, title: m?.[2]?.trim() ?? null, body, index: n };
+    const heading = lines[start] ?? '';
+    const m = heading.match(HEADING);
+    return { heading, date: m?.[1] ?? null, title: m?.[2]?.trim() ?? null, body, index: n };
   });
   return { header, entries };
 }
 
-/** Problems with one entry's shape, as sentences. */
+/**
+ * Problems with one entry's shape, as sentences.
+ * @param {Entry} entry
+ * @param {Entry | undefined} previous
+ */
 export function problemsOf(entry, previous) {
+  /** @type {string[]} */
   const out = [];
   if (!entry.date) out.push(`heading is not \`## YYYY-MM-DD — title\`: ${entry.heading}`);
   for (const field of FIELDS) {
@@ -83,8 +100,10 @@ export function problemsOf(entry, previous) {
   return out;
 }
 
+/** @param {string} text */
 export function check(text) {
   const { entries } = parse(text);
+  /** @type {string[]} */
   const problems = [];
   entries.forEach((entry, i) => {
     for (const p of problemsOf(entry, entries[i - 1])) problems.push(`entry ${i + 1} (${entry.heading.slice(3, 60)}): ${p}`);
@@ -92,19 +111,26 @@ export function check(text) {
   return { entries: entries.length, problems };
 }
 
-/** Which entries rotate would move, grouped by month. Never the newest KEEP. */
+/**
+ * Which entries rotate would move, grouped by month. Never the newest KEEP.
+ * @param {string} text
+ * @param {number} [keep]
+ */
 export function plan(text, keep = KEEP) {
   const { header, entries } = parse(text);
   const moving = entries.slice(0, Math.max(0, entries.length - keep));
+  /** @type {Map<string, Entry[]>} */
   const byMonth = new Map();
   for (const e of moving) {
     const month = (e.date ?? 'undated').slice(0, 7);
-    if (!byMonth.has(month)) byMonth.set(month, []);
-    byMonth.get(month).push(e);
+    const list = byMonth.get(month) ?? [];
+    list.push(e);
+    byMonth.set(month, list);
   }
   return { header, keep: entries.slice(moving.length), moving, byMonth };
 }
 
+/** @param {string} month */
 function archiveHeader(month) {
   return [
     `# Progress log — archive, ${month}`,
@@ -118,9 +144,14 @@ function archiveHeader(month) {
   ].join('\n');
 }
 
+/**
+ * @param {string} text
+ * @param {number} [keep]
+ */
 export function rotate(text, keep = KEEP) {
   const { header, keep: kept, moving, byMonth } = plan(text, keep);
   if (moving.length === 0) return { moved: 0, files: [], live: text };
+  /** @type {string[]} */
   const files = [];
   for (const [month, entries] of byMonth) {
     const file = path.join(root, HISTORY_DIR, `PROGRESS-${month}.md`);

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * A budget on how far a session may run without checking in.
  *
@@ -48,7 +49,15 @@ const READ_ONLY = [
   /^(cd|export|set|true|:)\b/u,
 ];
 
-/** Split a shell command into the commands it runs, dropping empty segments. */
+/**
+ * What Claude Code hands a hook on stdin; only the fields read here.
+ * @typedef {{ hook_event_name?: string, tool_name?: string, tool_input?: { command?: unknown } }} HookPayload
+ */
+
+/**
+ * Split a shell command into the commands it runs, dropping empty segments.
+ * @param {string} command
+ */
 function segments(command) {
   return command
     .split(/\n|;|&&|\|\||\|/gu)
@@ -56,7 +65,11 @@ function segments(command) {
     .filter(Boolean);
 }
 
-/** Does this tool call spend the budget? */
+/**
+ * Does this tool call spend the budget?
+ * @param {string | undefined} toolName
+ * @param {{ command?: unknown }} [toolInput]
+ */
 export function spends(toolName, toolInput = {}) {
   if (toolName !== 'Bash') return true;
   const command = String(toolInput.command ?? '');
@@ -69,6 +82,7 @@ export function spends(toolName, toolInput = {}) {
   return !parts.every((part) => READ_ONLY.some((re) => re.test(part)));
 }
 
+/** @returns {{ count?: number, since?: string }} */
 function read() {
   try {
     return JSON.parse(readFileSync(FILE, 'utf8'));
@@ -77,6 +91,7 @@ function read() {
   }
 }
 
+/** @param {{ count: number, since?: string }} state */
 function write(state) {
   try {
     mkdirSync(path.dirname(FILE), { recursive: true });
@@ -87,6 +102,7 @@ function write(state) {
 }
 
 function main() {
+  /** @type {HookPayload} */
   let payload = {};
   try {
     payload = JSON.parse(readFileSync(0, 'utf8') || '{}');

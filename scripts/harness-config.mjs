@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * What the harness knows about the project it is guarding.
  *
@@ -22,9 +23,27 @@ export const root = realpathSync(
 
 export const CONFIG_FILE = 'harness.config.json';
 
+/**
+ * What harness.config.json holds, once the loader has accepted it.
+ * @typedef {{
+ *   coverage: { sources: string[] },
+ *   database: { required: boolean, testSuffix: string, exampleName?: string },
+ *   migrations: { directory: string },
+ *   verifyProbe: { path: string },
+ *   ports: { api: number, web: number },
+ *   attackSurface: { paths: string[] },
+ *   contracts: { package: string | null },
+ *   featureList?: { exemptCommits: string[] },
+ * }} Config
+ */
+
+/** @type {Config | null} */
 let cached = null;
 
-/** Every key a script may read, with the shape it must have. */
+/**
+ * Every key a script may read, with the shape it must have.
+ * @type {Record<string, (v: unknown) => boolean>}
+ */
 const REQUIRED = {
   'coverage.sources': (v) => Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === 'string'),
   'database.required': (v) => typeof v === 'boolean',
@@ -36,8 +55,8 @@ const REQUIRED = {
   'database.testSuffix': (v) => typeof v === 'string' && /^_[a-z0-9_]{3,}$/iu.test(v),
   'migrations.directory': (v) => typeof v === 'string' && v.length > 0,
   'verifyProbe.path': (v) => typeof v === 'string' && v.endsWith('.ts'),
-  'ports.api': (v) => Number.isInteger(v) && v > 0,
-  'ports.web': (v) => Number.isInteger(v) && v > 0,
+  'ports.api': (v) => typeof v === 'number' && Number.isInteger(v) && v > 0,
+  'ports.web': (v) => typeof v === 'number' && Number.isInteger(v) && v > 0,
   'attackSurface.paths': (v) => Array.isArray(v) && v.every((s) => typeof s === 'string'),
   'contracts.package': (v) => v === null || (typeof v === 'string' && v.length > 0),
 };
@@ -46,6 +65,7 @@ const REQUIRED = {
  * Keys a script may read and a configuration may leave out. Validated when
  * present: a malformed optional key is refused like a required one, because
  * a guard that reads `undefined` from a typo checks nothing.
+ * @type {Record<string, (v: unknown) => boolean>}
  */
 const OPTIONAL = {
   // Commits exempt from one-closure-per-commit in check-feature-list.mjs:
@@ -53,12 +73,24 @@ const OPTIONAL = {
   'featureList.exemptCommits': (v) => Array.isArray(v) && v.every((s) => /^[0-9a-f]{40}$/u.test(s)),
 };
 
+/**
+ * @param {unknown} object
+ * @param {string} dotted
+ * @returns {unknown}
+ */
 const at = (object, dotted) =>
-  dotted.split('.').reduce((node, key) => (node == null ? undefined : node[key]), object);
+  dotted
+    .split('.')
+    .reduce(
+      (node, key) => (node == null ? undefined : /** @type {Record<string, unknown>} */ (node)[key]),
+      object,
+    );
 
 /**
  * Read and validate. Throws rather than returning a partial object: a guard
  * that starts with a bad configuration should not start at all.
+ * @param {string} [file]
+ * @returns {Config}
  */
 export function loadConfig(file = path.join(root, CONFIG_FILE)) {
   if (cached !== null) return cached;
@@ -74,7 +106,7 @@ export function loadConfig(file = path.join(root, CONFIG_FILE)) {
   try {
     parsed = JSON.parse(readFileSync(file, 'utf8'));
   } catch (error) {
-    throw new Error(`${CONFIG_FILE} does not parse: ${error?.message ?? error}`);
+    throw new Error(`${CONFIG_FILE} does not parse: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   const wrong = [
@@ -89,8 +121,10 @@ export function loadConfig(file = path.join(root, CONFIG_FILE)) {
     );
   }
 
-  cached = parsed;
-  return cached;
+  /** @type {Config} */
+  const accepted = parsed;
+  cached = accepted;
+  return accepted;
 }
 
 /** For the suite, which loads several configurations in one process. */

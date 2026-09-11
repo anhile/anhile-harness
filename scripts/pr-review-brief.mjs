@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * The facts a reviewer should not have to re-derive, assembled once.
  *
@@ -25,6 +26,7 @@ export const root = realpathSync(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
 );
 
+/** @param {...string} args */
 const git = (...args) => {
   try {
     return execFileSync('git', args, {
@@ -43,11 +45,20 @@ const git = (...args) => {
  */
 export const SURFACE = loadConfig().attackSurface.paths;
 
-/** Entries whose `passes` or `retracted` differs between two revisions. */
+/**
+ * Entries whose `passes` or `retracted` differs between two revisions.
+ * @param {string} before
+ * @param {string} after
+ */
 export function entryChanges(before, after) {
+  /**
+   * @param {string} raw
+   * @returns {Map<number, any>}
+   */
   const parse = (raw) => {
     try {
       const parsed = JSON.parse(raw);
+      /** @type {any[]} */
       const list = Array.isArray(parsed) ? parsed : (parsed.entries ?? []);
       return new Map(list.map((e) => [e.id, e]));
     } catch {
@@ -57,8 +68,11 @@ export function entryChanges(before, after) {
   const was = parse(before);
   const now = parse(after);
 
+  /** @type {{ id: number, spec: string | null, passes: boolean }[]} */
   const opened = [];
+  /** @type {{ id: number, spec: string | null }[]} */
   const closed = [];
+  /** @type {{ id: number, supersededBy: number | null }[]} */
   const retracted = [];
 
   for (const [id, entry] of now) {
@@ -77,12 +91,16 @@ export function entryChanges(before, after) {
   return { opened, closed, retracted };
 }
 
-/** The newest recorded run at a revision, as the reviewer should quote it. */
+/**
+ * The newest recorded run at a revision, as the reviewer should quote it.
+ * @param {string} raw
+ * @returns {{ at: string, result: string | null, tree: string | null } | null}
+ */
 export function newestRun(raw) {
   const lines = raw.split('\n').filter((l) => l.trim() !== '');
   for (let i = lines.length - 1; i >= 0; i -= 1) {
     try {
-      const parsed = JSON.parse(lines[i]);
+      const parsed = JSON.parse(lines[i] ?? '');
       if (typeof parsed.at === 'string') {
         return { at: parsed.at, result: parsed.result ?? null, tree: parsed.tree ?? null };
       }
@@ -93,6 +111,7 @@ export function newestRun(raw) {
   return null;
 }
 
+/** @param {string[]} files */
 export function surfaceTouched(files) {
   return SURFACE.filter((prefix) => files.some((f) => f.startsWith(prefix)));
 }
@@ -145,9 +164,14 @@ export function brief() {
   };
 }
 
-/** The brief as the reviewers read it. Facts only; no adjectives. */
+/**
+ * The brief as the reviewers read it. Facts only; no adjectives.
+ * @param {ReturnType<typeof brief>} b
+ */
 export function render(b) {
+  /** @type {string[]} */
   const lines = [];
+  /** @param {string[]} items */
   const list = (items) => (items.length === 0 ? 'none' : items.join(', '));
 
   lines.push(`Branch ${b.branch ?? '(detached)'} against ${b.base}, range ${b.range ?? '(none)'}`);

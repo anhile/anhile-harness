@@ -1,0 +1,23 @@
+{
+  "//": [
+    "The harness scripts, type-checked as they are: JavaScript with JSDoc, no",
+    "build, no second copy. A file opts in with `// @ts-check` on its first line;",
+    "one without it is visibly unchecked. Referenced from tsconfig.build.json, so",
+    "verify.sh step 02 covers the scripts the gate itself runs.",
+    "",
+    "Declarations are emitted, because a referenced project may not disable emit,",
+    "and they go under .generated/ where nothing reads them."
+  ],
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "composite": true,
+    "emitDeclarationOnly": true,
+    "rootDir": ".",
+    "outDir": ".generated/tsc/scripts",
+    "tsBuildInfoFile": ".generated/tsc/scripts/.tsbuildinfo",
+    "types": ["node"]
+  },
+  "include": ["scripts/*.mjs", "bin/*.mjs"]
+}

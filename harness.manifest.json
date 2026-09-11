@@ -224,7 +224,8 @@
       ".claude/skills/setup-repo/SKILL.md",
       ".github/pull_request_template.md",
       "CONTRIBUTING.md",
-      "docs/INVARIANTS.md"
+      "docs/INVARIANTS.md",
+      "tsconfig.scripts.json"
     ],
     "seeded": [
       "AGENTS.md",

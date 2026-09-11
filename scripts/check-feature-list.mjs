@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Guard for feature_list.json.
  *
@@ -84,13 +85,22 @@ const at = atIndex === -1 ? null : args[atIndex + 1];
  */
 const PRE_RULE_COMMITS = new Set(loadConfig().featureList?.exemptCommits ?? []);
 
+/** @type {string[]} */
 const problems = [];
+/** @type {string[]} */
 const notes = [];
 
+/** @param {string} message */
 function fail(message) {
   problems.push(message);
 }
 
+/**
+ * The list as JSON gave it. Untyped on purpose: every field is checked below
+ * before anything reads it, and a type here would be a claim the checks exist
+ * to make.
+ * @returns {any}
+ */
 function readCurrent() {
   const raw = at
     ? execFileSync('git', ['show', `${at}:${FILE}`], { cwd: root, encoding: 'utf8' })
@@ -98,11 +108,12 @@ function readCurrent() {
   try {
     return JSON.parse(raw);
   } catch (error) {
-    console.error(`check-feature-list: ${FILE} is not valid JSON: ${error.message}`);
+    console.error(`check-feature-list: ${FILE} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);
   }
 }
 
+/** @returns {any} */
 function readBaseline() {
   try {
     const raw = execFileSync('git', ['show', `${base}:${FILE}`], {
@@ -116,7 +127,10 @@ function readBaseline() {
   }
 }
 
-/** Full sha for a ref, so the pre-rule list can be compared against short refs. */
+/**
+ * Full sha for a ref, so the pre-rule list can be compared against short refs.
+ * @param {string} ref
+ */
 function resolveCommit(ref) {
   try {
     return execFileSync('git', ['rev-parse', ref], {
@@ -129,6 +143,7 @@ function resolveCommit(ref) {
   }
 }
 
+/** @param {any} entry */
 function shapeOf(entry) {
   return {
     category: entry.category,
@@ -137,10 +152,18 @@ function shapeOf(entry) {
   };
 }
 
+/**
+ * @param {any} a
+ * @param {any} b
+ */
 function sameShape(a, b) {
   return JSON.stringify(shapeOf(a)) === JSON.stringify(shapeOf(b));
 }
 
+/**
+ * @param {any} entry
+ * @param {number} index
+ */
 function validateEntry(entry, index) {
   if (typeof entry?.category !== 'string' || !entry.category) {
     fail(`entry ${index}: missing or empty "category"`);
@@ -179,6 +202,9 @@ function validateEntry(entry, index) {
  * explicit `supersededBy: null`: "the guarantee moved to entry 62" and "the
  * guarantee ended" are different facts, and a missing field would let the
  * second be mistaken for an oversight.
+ * @param {any} entry
+ * @param {number} index
+ * @param {any[]} list
  */
 function validateRetraction(entry, index, list) {
   const r = entry?.retracted;
@@ -247,6 +273,7 @@ if (baseline === null) {
     );
   }
 
+  /** @type {number[]} */
   const retracted = [];
 
   const shared = Math.min(baseline.length, current.length);
@@ -255,6 +282,7 @@ if (baseline === null) {
     const after = current[i];
 
     if (!sameShape(before, after)) {
+      /** @type {string[]} */
       const what = [];
       if (before.category !== after.category) what.push('category');
       if (before.description !== after.description) what.push('description');
@@ -270,8 +298,12 @@ if (baseline === null) {
         detail.push(`        description now: ${after.description}`);
       }
       if (JSON.stringify(before.steps) !== JSON.stringify(after.steps)) {
-        const removed = before.steps.filter((step) => !after.steps.includes(step));
-        const addedSteps = after.steps.filter((step) => !before.steps.includes(step));
+        /** @type {string[]} */
+        const stepsBefore = before.steps;
+        /** @type {string[]} */
+        const stepsAfter = after.steps;
+        const removed = stepsBefore.filter((step) => !stepsAfter.includes(step));
+        const addedSteps = stepsAfter.filter((step) => !stepsBefore.includes(step));
         detail.push(`        steps: ${before.steps.length} -> ${after.steps.length}`);
         for (const step of removed) detail.push(`        - removed: ${step}`);
         for (const step of addedSteps) detail.push(`        + added:   ${step}`);
@@ -337,6 +369,7 @@ if (baseline === null) {
     }
   }
 
+  /** @type {number[]} */
   const flipped = [];
   for (let i = 0; i < shared; i += 1) {
     if (baseline[i].retracted !== undefined) continue;

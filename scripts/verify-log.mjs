@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * verify-log.jsonl — the durable record of what ./verify.sh concluded.
  *
@@ -25,6 +26,20 @@
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { readReceipt } from './verify-receipt.mjs';
+
+/**
+ * One line of verify-log.jsonl: a run, as the receipt described it.
+ * @typedef {{
+ *   at: string,
+ *   result: 'pass' | 'fail' | 'stale' | string,
+ *   tree: string | null,
+ *   head: string | null,
+ *   branch: string | null,
+ *   node: string,
+ *   evidence: string,
+ *   steps: Record<string, { exit: number, seconds: number }>,
+ * }} Run
+ */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
@@ -38,6 +53,11 @@ function logPath() {
   return path.join(root, LOG_FILE);
 }
 
+/**
+ * The non-empty lines of the log, each one a JSON record.
+ * @param {string} text
+ * @returns {string[]}
+ */
 export function readLines(text) {
   return text.split('\n').filter((line) => line.trim() !== '');
 }
@@ -47,7 +67,10 @@ export function currentLines() {
   return readLines(readFileSync(logPath(), 'utf8'));
 }
 
-/** The log as it stood at a commit, or empty if it did not exist yet. */
+/**
+ * The log as it stood at a commit, or empty if it did not exist yet.
+ * @param {string} ref
+ */
 function showAt(ref) {
   try {
     return execFileSync('git', ['show', `${ref}:${LOG_FILE}`], {
@@ -60,6 +83,7 @@ function showAt(ref) {
   }
 }
 
+/** @param {string} base */
 function baselineLines(base) {
   try {
     return readLines(
@@ -76,10 +100,15 @@ function baselineLines(base) {
   }
 }
 
-/** Reads the per-step results verify.sh recorded for one run. */
+/**
+ * Reads the per-step results verify.sh recorded for one run.
+ * @param {string} evidenceDir
+ * @returns {Run['steps']}
+ */
 function readSteps(evidenceDir) {
   const file = path.join(root, evidenceDir, 'steps.jsonl');
   if (!existsSync(file)) return {};
+  /** @type {Run['steps']} */
   const steps = {};
   for (const line of readLines(readFileSync(file, 'utf8'))) {
     const { step, exit, seconds } = JSON.parse(line);
@@ -88,21 +117,28 @@ function readSteps(evidenceDir) {
   return steps;
 }
 
+/**
+ * @param {string[]} args
+ * @param {string} name
+ * @param {string} [fallback]
+ */
 function flag(args, name, fallback = '') {
   const i = args.indexOf(`--${name}`);
-  return i === -1 ? fallback : args[i + 1];
+  return i === -1 ? fallback : (args[i + 1] ?? fallback);
 }
 
+/** @param {string[]} args */
 function append(args) {
   const evidence = path.relative(root, path.resolve(flag(args, 'evidence')));
   // The verdict and the tree come from the receipt rather than from arguments,
   // so the durable record and the thing the commit gate reads cannot disagree
   // -- including when the receipt downgraded the run to `stale`.
-  const receipt = readReceipt() ?? {};
+  const receipt = readReceipt();
+  /** @type {Run} */
   const entry = {
     at: new Date().toISOString(),
-    result: receipt.status ?? 'unknown',
-    tree: receipt.treeHash ?? null,
+    result: receipt?.status ?? 'unknown',
+    tree: receipt?.treeHash ?? null,
     // The commit this run was based on. The run's own result is not yet in any
     // commit, so this is a starting point, not an identity.
     head: (() => {
@@ -130,6 +166,7 @@ function append(args) {
   process.stdout.write(`${entry.result} ${entry.tree}\n`);
 }
 
+/** @param {string[]} args */
 function check(args) {
   const base = flag(args, 'base', 'HEAD');
   // See check-feature-list.mjs: --at reads the file at a commit rather than from
@@ -137,6 +174,7 @@ function check(args) {
   const at = flag(args, 'at');
   const current = at ? readLines(showAt(at)) : currentLines();
   const baseline = baselineLines(base);
+  /** @type {string[]} */
   const problems = [];
 
   if (current.length < baseline.length) {
@@ -153,8 +191,10 @@ function check(args) {
     }
   }
 
+  /** @type {string | null} */
   let previousAt = null;
   current.forEach((line, i) => {
+    /** @type {any} */
     let entry;
     try {
       entry = JSON.parse(line);
@@ -182,6 +222,7 @@ function check(args) {
   console.log('check-verify-log: ok');
 }
 
+/** @param {string[]} args */
 function tail(args) {
   const n = Number(args[0] ?? 10);
   for (const line of currentLines().slice(-n)) {
@@ -205,23 +246,28 @@ function tail(args) {
  * Returns one row per flaky step: how many trees it flaked on, how many times,
  * and when it last did. A tree with only failures is a real failure and is not
  * counted; a tree with only passes has nothing to say.
+ * @param {Run[]} entries
+ * @param {{ since?: string | null }} [options]
  */
 export function flakes(entries, { since = null } = {}) {
+  /** @type {Map<string, Run[]>} */
   const byTree = new Map();
   for (const e of entries) {
     if (!e.tree || (since && e.at < since)) continue;
-    if (!byTree.has(e.tree)) byTree.set(e.tree, []);
-    byTree.get(e.tree).push(e);
+    const runs = byTree.get(e.tree) ?? [];
+    runs.push(e);
+    byTree.set(e.tree, runs);
   }
+  /** @type {Map<string, { step: string, trees: Set<string>, times: number, last: string }>} */
   const rows = new Map();
-  for (const runs of byTree.values()) {
+  for (const [tree, runs] of byTree) {
     if (!runs.some((r) => r.result === 'pass')) continue;
     for (const r of runs) {
       if (r.result === 'pass') continue;
       for (const [step, s] of Object.entries(r.steps ?? {})) {
         if (s.exit === 0) continue;
         const row = rows.get(step) ?? { step, trees: new Set(), times: 0, last: '' };
-        row.trees.add(r.tree);
+        row.trees.add(tree);
         row.times += 1;
         if (r.at > row.last) row.last = r.at;
         rows.set(step, row);
@@ -233,9 +279,11 @@ export function flakes(entries, { since = null } = {}) {
     .sort((a, b) => b.times - a.times || a.step.localeCompare(b.step));
 }
 
+/** @param {string[]} args */
 function report(args) {
   const days = Number(args[0] ?? 30);
   const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  /** @type {Run[]} */
   const entries = currentLines().map((line) => JSON.parse(line));
   const rows = flakes(entries, { since });
   const window = entries.filter((e) => e.at >= since).length;

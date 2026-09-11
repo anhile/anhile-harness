@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Guard for coverage-floor.json.
  *
@@ -41,19 +42,45 @@ const root = realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.ur
 const FILE = 'coverage-floor.json';
 const METRICS = ['statements', 'branches', 'functions', 'lines'];
 
+/**
+ * coverage-floor.json: per area, the lowest each metric may fall to.
+ * @typedef {{
+ *   areas: Record<string, Record<string, number>>,
+ *   unfloored?: Record<string, string>,
+ *   unmeasured?: Record<string, string>,
+ * }} Floor
+ */
+
+/**
+ * jest's json-summary: per file, per metric, what was covered of what.
+ * @typedef {Record<string, Record<string, { covered: number, total: number }>>} Summary
+ */
+
 const args = process.argv.slice(2);
+/**
+ * @param {string} name
+ * @param {string | null} [fallback]
+ * @returns {string | null}
+ */
 const flag = (name, fallback = null) => {
   const i = args.indexOf(`--${name}`);
-  return i === -1 ? fallback : args[i + 1];
+  return i === -1 ? fallback : (args[i + 1] ?? fallback);
 };
 
+/** @type {string[]} */
 const problems = [];
+/** @param {string} message */
 const fail = (message) => problems.push(message);
 
+/** @returns {Floor} */
 function readFloor() {
   return JSON.parse(readFileSync(path.join(root, FILE), 'utf8'));
 }
 
+/**
+ * @param {string} base
+ * @returns {Floor | null}
+ */
 function readBaseline(base) {
   try {
     return JSON.parse(
@@ -98,6 +125,7 @@ function sourceFiles() {
  * Coverage reports carry absolute paths, and `root` is a realpath. A checkout
  * reached through a symlink (macOS /var -> /private/var, most obviously) makes
  * the two disagree, and every file then looks unmeasured.
+ * @param {string} file
  */
 function relativeToRoot(file) {
   let abs = file;
@@ -109,6 +137,7 @@ function relativeToRoot(file) {
   return path.relative(root, abs);
 }
 
+/** @param {Summary} summary */
 function measuredFiles(summary) {
   return new Set(
     Object.keys(summary)
@@ -117,10 +146,15 @@ function measuredFiles(summary) {
   );
 }
 
-/** Per-area totals, in the same shape as the floor file. */
+/**
+ * Per-area totals, in the same shape as the floor file.
+ * @param {Summary} summary
+ * @returns {Record<string, Record<string, number>>}
+ */
 function areaTotals(summary) {
   const floor = readFloor();
   const areas = Object.keys(floor.areas);
+  /** @type {Record<string, Record<string, [number, number]>>} */
   const acc = Object.fromEntries(
     areas.map((area) => [area, Object.fromEntries(METRICS.map((m) => [m, [0, 0]]))]),
   );
@@ -129,10 +163,14 @@ function areaTotals(summary) {
     if (file === 'total') continue;
     const rel = `./${relativeToRoot(file)}`;
     const area = areas.find((candidate) => rel.startsWith(candidate));
-    if (!area) continue;
+    const totals = area === undefined ? undefined : acc[area];
+    if (totals === undefined) continue;
     for (const metric of METRICS) {
-      acc[area][metric][0] += entry[metric].covered;
-      acc[area][metric][1] += entry[metric].total;
+      const pair = totals[metric];
+      const measured = entry[metric];
+      if (pair === undefined || measured === undefined) continue;
+      pair[0] += measured.covered;
+      pair[1] += measured.total;
     }
   }
 
@@ -141,7 +179,7 @@ function areaTotals(summary) {
       area,
       Object.fromEntries(
         METRICS.map((metric) => {
-          const [covered, total] = metrics[metric];
+          const [covered, total] = metrics[metric] ?? [0, 0];
           // Floored to two decimals, so a floor written from one run is never a
           // hair above what the next identical run reports.
           return [metric, total === 0 ? 100 : Math.floor((covered / total) * 10000) / 100];
@@ -159,13 +197,18 @@ function raise() {
   }
   const floor = readFloor();
   const actual = areaTotals(JSON.parse(readFileSync(file, 'utf8')));
+  /** @type {string[]} */
   const raised = [];
 
   for (const [area, metrics] of Object.entries(actual)) {
+    const floored = floor.areas[area];
+    if (floored === undefined) continue;
     for (const metric of METRICS) {
-      if (metrics[metric] > floor.areas[area][metric]) {
-        raised.push(`${area} ${metric}: ${floor.areas[area][metric]} -> ${metrics[metric]}`);
-        floor.areas[area][metric] = metrics[metric];
+      const now = metrics[metric];
+      const have = floored[metric] ?? 0;
+      if (now !== undefined && now > have) {
+        raised.push(`${area} ${metric}: ${have} -> ${now}`);
+        floored[metric] = now;
       }
     }
   }
@@ -175,7 +218,7 @@ function raise() {
 }
 
 function check() {
-  const base = flag('base', 'HEAD');
+  const base = flag('base', 'HEAD') ?? 'HEAD';
   const floor = readFloor();
   const baseline = readBaseline(base);
 
@@ -192,7 +235,8 @@ function check() {
 
   if (baseline) {
     for (const [area, metrics] of Object.entries(baseline.areas)) {
-      if (!floor.areas[area]) {
+      const mine = floor.areas[area];
+      if (!mine) {
         // Leaving the floor is allowed; vanishing is not. The difference is a
         // line in the file saying what covers the area instead, which is a
         // thing a reviewer can disagree with.
@@ -202,9 +246,11 @@ function check() {
         continue;
       }
       for (const metric of METRICS) {
-        if (floor.areas[area][metric] < metrics[metric]) {
+        const was = metrics[metric] ?? 0;
+        const now = mine[metric] ?? 0;
+        if (now < was) {
           fail(
-            `${area} ${metric} lowered ${metrics[metric]} -> ${floor.areas[area][metric]}. ` +
+            `${area} ${metric} lowered ${was} -> ${now}. ` +
             'Floors go up. Lowering one is a human decision, with a reason.',
           );
         }

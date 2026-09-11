@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Migration runner.
  *
@@ -41,7 +42,14 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-/** The database name in a Postgres URL, or null when the URL does not parse. */
+// Narrowed to a string here, and read from here on: `main` is a hoisted
+// declaration, so the check above narrows nothing inside it.
+const target = databaseUrl;
+
+/**
+ * The database name in a Postgres URL, or null when the URL does not parse.
+ * @param {string} url
+ */
 export function databaseName(url) {
   try {
     return decodeURIComponent(new URL(url).pathname.replace(/^\/+/, '')) || null;
@@ -58,15 +66,17 @@ export function databaseName(url) {
  * — and editing the file that decides when a migration may run unattended is
  * exactly what should not be routine. The loader refuses a suffix short enough
  * to match a real database by accident.
+ * @param {string} url
+ * @param {string} [suffix]
  */
 export function acceptsAutoConfirm(url, suffix = loadConfig().database.testSuffix) {
   const name = databaseName(url);
   return name !== null && name.endsWith(suffix);
 }
 
-if (autoConfirm && !acceptsAutoConfirm(databaseUrl)) {
+if (autoConfirm && !acceptsAutoConfirm(target)) {
   console.error(
-    `migrate: refusing --yes for database "${databaseName(databaseUrl) ?? '(unparsable URL)'}".\n` +
+    `migrate: refusing --yes for database "${databaseName(target) ?? '(unparsable URL)'}".\n` +
       '         --yes stands in for a human, and only a database whose name ends in\n' +
       '         _test may take it (docs/INVARIANTS.md I8). Run interactively and\n' +
       '         answer the prompt, or point --database-url at a disposable database.',
@@ -92,7 +102,7 @@ async function listMigrationFiles() {
 }
 
 async function main() {
-  const client = new pg.Client({ connectionString: databaseUrl });
+  const client = new pg.Client({ connectionString: target });
   await client.connect();
 
   try {
@@ -121,7 +131,7 @@ async function main() {
 
     console.log('migrate: the following migrations will be applied:');
     for (const file of pending) console.log(`  - ${file}`);
-    console.log(`migrate: target database: ${redact(databaseUrl)}`);
+    console.log(`migrate: target database: ${redact(target)}`);
 
     if (!autoConfirm) {
       if (!process.stdin.isTTY) {
@@ -161,6 +171,7 @@ async function main() {
   }
 }
 
+/** @param {string} url */
 function redact(url) {
   return url.replace(/\/\/([^:]+):[^@]+@/, '//$1:***@');
 }

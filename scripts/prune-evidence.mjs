@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Keeps .generated/runs/ from growing without bound.
  *
@@ -38,6 +39,7 @@ function failedEvidence() {
   return keep;
 }
 
+/** @param {string} dir */
 function directorySize(dir) {
   let total = 0;
   for (const item of readdirSync(dir, { withFileTypes: true, recursive: true })) {

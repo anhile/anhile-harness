@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Is this branch ready to be a pull request?
  *
@@ -31,9 +32,11 @@ export const root = realpathSync(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
 );
 
+/** @param {...string} args */
 const git = (...args) =>
   execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim();
 
+/** @param {...string} args */
 const tryGit = (...args) => {
   try {
     return git(...args);
@@ -42,10 +45,30 @@ const tryGit = (...args) => {
   }
 };
 
+/**
+ * What the refusals are decided from. `gather()` reads them from the
+ * repository; the suite hands them in directly.
+ * @typedef {{
+ *   branch: string | null,
+ *   dirty: boolean,
+ *   receipt: { status?: string, treeHash?: string } | null,
+ *   headTree: string | null,
+ *   baseNewest: string | null,
+ *   branchNewest: string | null,
+ *   aheadOfBase: number,
+ *   progressTouched: boolean | null,
+ *   base?: string,
+ * }} Facts
+ */
+
 /** The base branch every pull request in this repository targets. */
 export const BASE = 'main';
 
-/** Newest `at` in the log as of some revision, or null when it has no log. */
+/**
+ * Newest `at` in the log as of some revision, or null when it has no log.
+ * @param {string} revision
+ * @returns {string | null}
+ */
 export function newestLogEntry(revision) {
   const raw = tryGit('show', `${revision}:verify-log.jsonl`);
   if (raw === null) return null;
@@ -53,7 +76,7 @@ export function newestLogEntry(revision) {
   if (lines.length === 0) return null;
   for (let i = lines.length - 1; i >= 0; i -= 1) {
     try {
-      const parsed = JSON.parse(lines[i]);
+      const parsed = JSON.parse(lines[i] ?? '');
       if (typeof parsed.at === 'string') return parsed.at;
     } catch {
       /* a line that does not parse is the append-only guard's business */
@@ -65,6 +88,8 @@ export function newestLogEntry(revision) {
 /**
  * Refusals, each one a sentence about what is wrong and what would fix it.
  * Exported so the suite can drive it without a repository in a given state.
+ * @param {Facts} facts
+ * @returns {string[]}
  */
 export function refusals({
   branch,
@@ -76,6 +101,7 @@ export function refusals({
   aheadOfBase,
   progressTouched,
 }) {
+  /** @type {string[]} */
   const out = [];
 
   if (branch === BASE || branch === null) {
@@ -117,7 +143,7 @@ export function refusals({
         `(${baseNewest}). verify-log.jsonl is append-only and its timestamps may not ` +
         `decrease, so merging this branch produces a conflict with no correct ` +
         `resolution. Run \`./verify.sh\` on this branch to append a newer line, then ` +
-        `open the pull request. docs/PARALLEL_WORK.md explains why.`,
+        `open the pull request.`,
     );
   }
 
@@ -131,10 +157,12 @@ export function refusals({
   return out;
 }
 
+/** @returns {Facts & { base: string }} */
 function gather() {
   const branch = tryGit('branch', '--show-current') || null;
   const dirty = git('status', '--porcelain') !== '';
 
+  /** @type {Facts['receipt']} */
   let receipt = null;
   const receiptPath = path.join(root, RECEIPT_FILE);
   if (existsSync(receiptPath)) {

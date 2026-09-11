@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Create a new project with this harness already in it.
  *
@@ -28,6 +29,34 @@ export const root = realpathSync(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
 );
 
+/**
+ * What a project said it has, from the prompt or from --yes flags.
+ * @typedef {{ name: string, database: boolean, api: boolean, web: boolean, browser: boolean, mcp: string[] }} Answers
+ */
+
+/**
+ * One gate step, and what has to exist for it to be in the gate.
+ * @typedef {{ n: string, name: string, command: string, needs: 'api' | 'browser' | 'database' | null }} Step
+ */
+
+/** @typedef {Step & { because: string }} DeferredStep */
+
+/**
+ * harness.manifest.json; only what the generator reads.
+ * @typedef {{
+ *   core: { scripts: string[] },
+ *   configured: { scripts: Record<string, unknown> },
+ *   elsewhere: { core: string[] },
+ *   dependencies: {
+ *     toolchain: { packages: string[] },
+ *     onlyWith: Record<string, string[] | string>,
+ *     scripts: Record<string, string[] | string>,
+ *     apps?: Record<string, string[] | string>,
+ *   },
+ * }} Manifest
+ */
+
+/** @param {string} rel */
 const read = (rel) => readFileSync(path.join(root, rel), 'utf8');
 
 /**
@@ -35,6 +64,7 @@ const read = (rel) => readFileSync(path.join(root, rel), 'utf8');
  * whose requirement is absent is left out rather than shipped broken: a gate
  * with a step that cannot pass is a gate people learn to run with `|| true`.
  */
+/** @type {Step[]} */
 export const STEPS = [
   { n: '01', name: 'eslint', command: 'pnpm exec eslint .', needs: null },
   { n: '02', name: 'typecheck', command: 'pnpm exec tsc -b --force tsconfig.build.json', needs: null },
@@ -67,7 +97,12 @@ export function chosenSteps() {
   return STEPS.filter((s) => s.needs === null);
 }
 
+/**
+ * @param {Pick<Answers, 'database' | 'api' | 'browser'>} answers
+ * @returns {DeferredStep[]}
+ */
 export function deferredSteps({ database, api, browser }) {
+  /** @type {Record<string, boolean>} */
   const wanted = { database, api, browser };
   // The reason is per step, not per answer. Two of these wait for different
   // things and one sentence covering both would be wrong about one of them.
@@ -79,6 +114,7 @@ export function deferredSteps({ database, api, browser }) {
   // the gate rather than by assuming it; a reader who takes "add it when there
   // is a Playwright suite" at face value would add the line and watch the step
   // die on a connection.
+  /** @type {Record<string, string>} */
   const because = {
     'api-e2e':
       'add it when a suite calls the API. It also needs Postgres: api_e2e calls prepare_test_database first',
@@ -88,13 +124,15 @@ export function deferredSteps({ database, api, browser }) {
   };
   return STEPS.filter((s) => s.needs !== null && wanted[s.needs] === true).map((s) => ({
     ...s,
-    because: because[s.name],
+    because: because[s.name] ?? '',
   }));
 }
 
 /**
  * The gate, with its step list replaced. Everything above the list is copied
  * byte for byte, because that part is the mechanism and is not this project's.
+ * @param {string} source
+ * @param {Step[]} steps
  */
 export function renderVerify(source, steps) {
   const lines = source.split('\n');
@@ -128,6 +166,7 @@ export function renderVerify(source, steps) {
  * write; those belong beside the harness, in the repository that maintains it.
  * What a new project gets is the mechanisms, and `scripts/__tests__/` empty and
  * waiting for guards of its own.
+ * @param {Manifest} manifest
  */
 export function copiedFiles(manifest) {
   return [
@@ -163,6 +202,7 @@ export function versionsAvailable() {
   // either — two copies of a version drift, which is the reason the manifest
   // records packages and never versions.
   const files = ['package.json', 'apps/api/package.json', 'apps/web/package.json'];
+  /** @type {Record<string, string>} */
   const available = {};
   for (const file of files) {
     if (!existsSync(path.join(root, file))) continue;
@@ -170,6 +210,7 @@ export function versionsAvailable() {
     Object.assign(available, pkg.dependencies, pkg.devDependencies);
   }
   if (existsSync(path.join(root, VERSIONS_FILE))) {
+    /** @type {Record<string, string>} */
     const recorded = JSON.parse(read(VERSIONS_FILE)).versions ?? {};
     const twice = Object.keys(recorded).filter((name) => available[name] !== undefined);
     if (twice.length > 0) {
@@ -183,25 +224,30 @@ export function versionsAvailable() {
   return available;
 }
 
+/**
+ * @param {Manifest} manifest
+ * @param {Partial<Answers>} answers
+ */
 export function dependenciesFor(manifest, answers) {
   const available = versionsAvailable();
+  const picked = /** @type {Record<string, unknown>} */ (answers);
 
   const names = new Set(manifest.dependencies.toolchain.packages);
   const skip = new Set(
     Object.entries(manifest.dependencies.onlyWith)
-      .filter(([answer]) => answers[answer] !== true)
-      .flatMap(([, scripts]) => scripts),
+      .filter(([answer]) => answer !== '//' && picked[answer] !== true)
+      .flatMap(([, scripts]) => (Array.isArray(scripts) ? scripts : [])),
   );
 
   for (const [script, packages] of Object.entries(manifest.dependencies.scripts)) {
-    if (script === '//' || skip.has(script)) continue;
+    if (script === '//' || skip.has(script) || !Array.isArray(packages)) continue;
     for (const p of packages) names.add(p);
   }
 
   // What the scaffolded applications need, and only the ones chosen. A project
   // that took neither pays for neither: no React in a repository with no page.
   for (const [group, packages] of Object.entries(manifest.dependencies.apps ?? {})) {
-    if (group === '//' || answers[group] !== true) continue;
+    if (group === '//' || picked[group] !== true || !Array.isArray(packages)) continue;
     for (const p of packages) names.add(p);
   }
 
@@ -213,9 +259,20 @@ export function dependenciesFor(manifest, answers) {
     );
   }
 
-  return Object.fromEntries([...names].sort().map((n) => [n, available[n]]));
+  /** @type {Record<string, string>} */
+  const resolved = {};
+  for (const n of [...names].sort()) {
+    const version = available[n];
+    if (version !== undefined) resolved[n] = version;
+  }
+  return resolved;
 }
 
+/**
+ * @param {string} name
+ * @param {Answers} answers
+ * @param {Record<string, string>} devDependencies
+ */
 const PACKAGE_JSON = (name, answers, devDependencies) => ({
   name,
   private: true,
@@ -245,12 +302,20 @@ const PACKAGE_JSON = (name, answers, devDependencies) => ({
  * anything else may come to depend on it, and the function last for the reason
  * given where it is written.
  */
+/**
+ * @param {Answers} answers
+ * @param {{ functions: boolean }} options
+ */
 function projectRefs(answers, { functions }) {
   return [
     { path: './packages/core' },
     ...(answers.api ? [{ path: './apps/api' }] : []),
     ...(answers.web ? [{ path: './apps/web' }] : []),
     ...(answers.api && functions ? [{ path: './tsconfig.functions.json' }] : []),
+    // The copied scripts, checked as they are: every one carries `// @ts-check`
+    // and JSDoc, and this is what makes the directive more than decoration in
+    // a project that did not write them. Last, because it depends on nothing.
+    { path: './tsconfig.scripts.json' },
   ];
 }
 
@@ -259,6 +324,7 @@ function projectRefs(answers, { functions }) {
  * really are: `apps/api` is CommonJS with decorators, `apps/web` is JSX in a
  * DOM, and neither can be checked by the other's tsconfig.
  */
+/** @param {Answers} answers */
 function jestProjects(answers) {
   const api = [
     '    {',
@@ -285,6 +351,7 @@ function jestProjects(answers) {
   return [...(answers.api ? api : []), ...(answers.web ? web : [])];
 }
 
+/** @type {Record<string, (name: string, answers: Answers) => string>} */
 const SEEDS = {
   'pnpm-workspace.yaml': (_name, answers) =>
     ['packages:', "  - 'packages/*'", ...(answers.api || answers.web ? ["  - 'apps/*'"] : []), ''].join('\n'),
@@ -510,6 +577,7 @@ const SEEDS = {
     ].join('\n'),
 };
 
+/** @param {string} name */
 const PROGRESS_SEED = (name) =>
   [
     '# Progress',
@@ -531,6 +599,7 @@ const PROGRESS_SEED = (name) =>
     '',
   ].join('\n');
 
+/** @param {Answers} answers */
 export function configFor(answers) {
   return {
     '//': 'What the harness knows about this project. Edit this rather than the scripts.',
@@ -555,7 +624,9 @@ export function configFor(answers) {
   };
 }
 
+/** @param {Answers} answers */
 export function plan(answers) {
+  /** @type {Manifest} */
   const manifest = JSON.parse(read('harness.manifest.json'));
   return {
     steps: chosenSteps(),
@@ -578,12 +649,21 @@ export function plan(answers) {
   };
 }
 
+/**
+ * @param {string} into
+ * @param {string} rel
+ * @param {string} contents
+ */
 function write(into, rel, contents) {
   const target = path.join(into, rel);
   mkdirSync(path.dirname(target), { recursive: true });
   writeFileSync(target, contents);
 }
 
+/**
+ * @param {string} into
+ * @param {Answers} answers
+ */
 export function scaffold(into, answers) {
   const { steps, deferred, copied } = plan(answers);
 
@@ -603,6 +683,7 @@ export function scaffold(into, answers) {
   execFileSync('chmod', ['+x', path.join(into, 'verify.sh')]);
 
   write(into, 'harness.config.json', `${JSON.stringify(configFor(answers), null, 2)}\n`);
+  /** @type {Manifest} */
   const manifest = JSON.parse(read('harness.manifest.json'));
   write(
     into,
@@ -636,6 +717,7 @@ export function scaffold(into, answers) {
   return { steps, deferred, copied };
 }
 
+/** @param {string} name */
 const DOCKER_COMPOSE = (name) =>
   [
     '# Postgres for the gate, and for `pnpm dev`. One container, several',
@@ -685,8 +767,14 @@ const MIGRATIONS_README = [
 ].join('\n');
 
 /** What each deferred step is waiting on, in the words its answer was given in. */
+/** @type {Record<string, string>} */
 const NEEDS = { database: 'a database', api: 'an API', browser: 'a browser UI' };
 
+/**
+ * @param {Answers} answers
+ * @param {Step[]} steps
+ * @param {DeferredStep[]} deferred
+ */
 const agentsSeed = (answers, steps, deferred) =>
   [
     '# AGENTS.md',
@@ -746,7 +834,7 @@ const agentsSeed = (answers, steps, deferred) =>
           '`.mcp.json` declares these. Declared is not connected: each is authorised',
           'once, by a person, and until then its tools are absent rather than broken.',
           '',
-          ...answers.mcp.map((n) => `- **${n}** — ${MCP[n].why}`),
+          ...answers.mcp.map((n) => `- **${n}** — ${MCP[n]?.why ?? ''}`),
           '',
           'A server whose purpose you cannot state is a tool call you should not make.',
           'Adding one is a change to this list as much as to the JSON.',
@@ -758,7 +846,7 @@ const agentsSeed = (answers, steps, deferred) =>
           '## Steps this gate does not have yet',
           '',
           'You said this project will have ' +
-            [...new Set(deferred.map((s) => NEEDS[s.needs]))].join(' and ') +
+            [...new Set(deferred.map((s) => NEEDS[String(s.needs)] ?? String(s.needs)))].join(' and ') +
             ', and the generator wrote what it could for',
           'that. These steps are not in `verify.sh`, because nothing here can pass',
           'them yet, and a gate that cannot pass is one people learn to run with',
@@ -781,6 +869,7 @@ const agentsSeed = (answers, steps, deferred) =>
         ]),
   ].join('\n');
 
+/** @param {string} name */
 const claudeSeed = (name) =>
   [
     '# Claude Code in this repository',
@@ -850,8 +939,14 @@ export const PARTS = [
  * one they asked for. Anything that is not a number in range is now an error
  * with the offending token in it.
  */
+/**
+ * @param {string} line
+ * @param {number} count
+ * @returns {number[]}
+ */
 export function parseChoice(line, count) {
   const tokens = line.split(/[\s,]+/u).filter((t) => t !== '');
+  /** @type {Set<number>} */
   const chosen = new Set();
   for (const token of tokens) {
     const n = Number(token);
@@ -863,14 +958,25 @@ export function parseChoice(line, count) {
   return [...chosen].sort((a, b) => a - b);
 }
 
+/** @returns {Promise<Answers>} */
 async function ask() {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
+  /**
+   * @param {string} text
+   * @param {string} fallback
+   */
   const question = async (text, fallback) => {
     const answer = (await rl.question(`${text} `)).trim();
     return answer === '' ? fallback : answer;
   };
 
   /** Asks until the line parses. A refusal that ends the run would lose the name. */
+  /**
+   * @template T
+   * @param {T[]} items
+   * @param {(n: number, item: T) => string} render
+   * @returns {Promise<number[]>}
+   */
   const choose = async (items, render) => {
     for (const [i, item] of items.entries()) console.log(render(i + 1, item));
     console.log('');
@@ -878,7 +984,7 @@ async function ask() {
       try {
         return parseChoice(await question('  numbers, blank for none:', ''), items.length);
       } catch (error) {
-        console.log(`  ${error.message} Try again.`);
+        console.log(`  ${error instanceof Error ? error.message : String(error)} Try again.`);
       }
     }
   };
@@ -898,17 +1004,22 @@ async function ask() {
   console.log('a person authorises each once, and until then its tools are absent.');
   console.log('');
   const names = Object.keys(MCP);
-  const mcp = await choose(names, (n, key) => `  ${n}  ${key.padEnd(9)}${MCP[key].why}`);
+  const mcp = await choose(names, (n, key) => `  ${n}  ${key.padEnd(9)}${MCP[key]?.why ?? ''}`);
 
   rl.close();
   return {
     name,
-    ...chosen,
+    database: chosen.database === true,
+    api: chosen.api === true,
+    web: chosen.web === true,
     // A React page is a browser UI, so it is what step 05 is waiting for.
     // `--browser` stays separately settable for a project whose UI this
     // generator did not write.
-    browser: chosen.web,
-    mcp: mcp.map((i) => names[i]),
+    browser: chosen.web === true,
+    mcp: mcp.flatMap((i) => {
+      const key = names[i];
+      return key === undefined ? [] : [key];
+    }),
   };
 }
 
@@ -922,13 +1033,18 @@ export async function cli() {
 
 async function main() {
   const args = process.argv.slice(2);
+  /**
+   * @param {string} key
+   * @param {string} fallback
+   */
   const flag = (key, fallback) => {
     const i = args.indexOf(`--${key}`);
-    return i === -1 ? fallback : args[i + 1];
+    return i === -1 ? fallback : (args[i + 1] ?? fallback);
   };
 
   // `--yes` is the non-interactive path, for CI and for the suite that runs
   // this a dozen times. A person gets the list in ask().
+  /** @type {Answers} */
   const answers = args.includes('--yes')
     ? {
         name: flag('name', 'my-project'),
@@ -936,7 +1052,7 @@ async function main() {
         api: args.includes('--api'),
         web: args.includes('--web'),
         browser: args.includes('--browser') || args.includes('--web'),
-        mcp: (flag('mcp', '') ?? '').split(',').filter((n) => n !== ''),
+        mcp: flag('mcp', '').split(',').filter((n) => n !== ''),
       }
     : await ask();
 

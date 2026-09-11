@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -396,6 +396,7 @@ describe('the applications it scaffolds', () => {
       './packages/core',
       './apps/api',
       './tsconfig.functions.json',
+      './tsconfig.scripts.json',
     ]);
     const functions = JSON.parse(read(dir, 'tsconfig.functions.json')) as {
       compilerOptions: { module: string };
@@ -403,6 +404,22 @@ describe('the applications it scaffolds', () => {
     // CommonJS, against a NodeNext base. Under the base this file cannot import
     // what apps/api emits at all, and the first generated project was red here.
     expect(functions.compilerOptions.module).toBe('commonjs');
+  });
+
+  it('typechecks the copied scripts, so their @ts-check is not decoration', () => {
+    // Every script the generator copies carries `// @ts-check` and JSDoc. In
+    // a project whose typecheck did not include them, the directive would
+    // check nothing and look as if it did.
+    const dir = scaffold();
+    const refs = (JSON.parse(read(dir, 'tsconfig.build.json')) as { references: { path: string }[] }).references;
+    expect(refs.map((r) => r.path)).toContain('./tsconfig.scripts.json');
+    const scripts = JSON.parse(read(dir, 'tsconfig.scripts.json')) as { include: string[]; compilerOptions: { allowJs: boolean } };
+    expect(scripts.include).toContain('scripts/*.mjs');
+    expect(scripts.compilerOptions.allowJs).toBe(true);
+    const unchecked = readdirSync(path.join(dir, 'scripts'))
+      .filter((f) => f.endsWith('.mjs'))
+      .filter((f) => !read(dir, `scripts/${f}`).includes('// @ts-check'));
+    expect(unchecked).toEqual([]);
   });
 
   it('gives each application the jest project its compiler needs', () => {

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * The gate's witness: ./verify.sh runs every step and writes complete
  * evidence for a failing run as well as a passing one.
@@ -33,9 +34,10 @@ const PROBE = path.join(root, loadConfig().verifyProbe.path);
  */
 const EXPECTED_STEPS = readFileSync(path.join(root, 'verify.sh'), 'utf8')
   .split('\n')
-  .map((line) => /^run_step (\d\d) (\S+)/u.exec(line))
-  .filter(Boolean)
-  .map(([, n, name]) => `${n}-${name}`);
+  .flatMap((line) => {
+    const m = /^run_step (\d\d) (\S+)/u.exec(line);
+    return m === null ? [] : [`${m[1]}-${m[2]}`];
+  });
 if (EXPECTED_STEPS.length === 0) {
   console.error('check-verify: verify.sh has no run_step lines, so there is nothing to witness');
   process.exit(1);
@@ -48,6 +50,11 @@ if (!EXPECTED_STEPS.includes('02-typecheck')) {
 }
 
 let failures = 0;
+/**
+ * @param {string} description
+ * @param {boolean} condition
+ * @param {string} [detail]
+ */
 function check(description, condition, detail = '') {
   if (condition) {
     console.log(`  ok    ${description}`);
@@ -62,15 +69,21 @@ function runVerify() {
     execFileSync('./verify.sh', { cwd: root, encoding: 'utf8', stdio: 'pipe' });
     return 0;
   } catch (error) {
-    return error.status ?? 1;
+    return /** @type {{ status?: number }} */ (error).status ?? 1;
   }
 }
 
 function newestEvidenceDir() {
   const dirs = readdirSync(EVIDENCE).filter((name) => /^\d{8}T\d{6}Z$/.test(name)).sort();
-  return path.join(EVIDENCE, dirs[dirs.length - 1]);
+  const newest = dirs[dirs.length - 1];
+  if (newest === undefined) throw new Error(`no evidence folder under ${EVIDENCE}`);
+  return path.join(EVIDENCE, newest);
 }
 
+/**
+ * @param {string} dir
+ * @param {{ expectFailure: boolean }} options
+ */
 function auditEvidence(dir, { expectFailure }) {
   for (const step of EXPECTED_STEPS) {
     check(`${path.basename(dir)} has ${step}.log`, existsSync(path.join(dir, `${step}.log`)));
@@ -119,9 +132,10 @@ function loggedRuns() {
   return existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean) : [];
 }
 
+/** @returns {import('./verify-log.mjs').Run | null} */
 function lastLoggedRun() {
-  const lines = loggedRuns();
-  return lines.length ? JSON.parse(lines[lines.length - 1]) : null;
+  const last = loggedRuns().at(-1);
+  return last === undefined ? null : JSON.parse(last);
 }
 
 console.log('1/2  clean tree: verify.sh must exit 0 with complete evidence');

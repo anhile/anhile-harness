@@ -216,3 +216,42 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   This branch also carries Phases 1 to 3 to `main`: #2, #3 and #4 were merged
   in the order they were stacked, each into the branch beneath it, so `main`
   had only Phase 0 until now.
+
+## 2026-09-11 — The scripts are type-checked as they are, with JSDoc and no build
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6, step 02 now covering `scripts/` and `bin/`
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  The question was whether to rewrite the scripts in TypeScript and add a
+  bundler. No: the hooks, CI's first step and the pre-push hook all run the
+  scripts in place, the commit gate hashes four of them as its trusted base,
+  and a build step would put a second copy between what is reviewed and what
+  runs — the shape link-shortener had and this repository left. What the
+  scripts were missing was the compiler, not a compiler output.
+
+  `tsconfig.scripts.json` is a project reference under `tsc -b`, `allowJs`
+  with `checkJs` off, so a file opts in with `// @ts-check` on its first line
+  and a file without it is visibly unchecked. Every script and the bin opt in
+  now, with JSDoc for each parameter and a typedef for each shape read from
+  JSON — the hook payloads, the run record, the receipt, the configuration,
+  the manifest, the answers. 361 errors before any annotation, none after;
+  the compiler found real ones: `ask()` could hand the generator an MCP list
+  with `undefined` in it, `dependenciesFor` returned versions that might not
+  exist, and three token lookups in the commit gate assumed an index was in
+  range.
+
+  The four protected scripts were annotated in `.generated/scratch/`, checked
+  there against the real siblings, and applied by a person. `pg` and
+  `@types/pg` are devDependencies here so `migrate.mjs` is checked against
+  the real types, and left `harness.versions.json` for that reason.
+
+  A generated project gets the same `tsconfig.scripts.json` and the same
+  reference, so the directive the copied scripts carry means the same thing
+  there; the init suite refuses a copied script without it.
+
+  `notion` is declared in `.mcp.json` now: `/task-intake` reads Notion rows,
+  and this repository was generated with `context7` alone.

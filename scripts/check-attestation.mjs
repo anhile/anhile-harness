@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Does this commit carry a passing verify run of its own content?
  *
@@ -23,6 +24,10 @@ import { realpathSync } from 'node:fs';
 import { treeHash } from './verify-receipt.mjs';
 import { LOG_FILE, readLines, root } from './verify-log.mjs';
 
+/**
+ * @param {string[]} lines
+ * @returns {never}
+ */
 function fail(lines) {
   console.error(`check-attestation: REJECTED\n${lines.join('\n')}`);
   process.exit(1);
@@ -36,6 +41,7 @@ function main() {
     fail([`  - ${LOG_FILE} is missing. Nothing records what has been verified.`]);
   }
 
+  /** @type {import('./verify-log.mjs').Run[]} */
   const runs = readLines(readFileSync(file, 'utf8')).map((line) => JSON.parse(line));
   const matching = runs.filter((run) => run.tree === tree);
 
@@ -58,6 +64,7 @@ function main() {
   // are history, not the verdict -- but they are worth surfacing, because the
   // same content passing and failing is the definition of a flaky step.
   const verdict = matching[matching.length - 1];
+  if (verdict === undefined) fail(['  - No recorded run to judge by.']);
   const failedRuns = matching.filter((run) => run.result !== 'pass');
 
   if (verdict.result !== 'pass') {

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * The verify receipt: what `./verify.sh` last concluded, and about which tree.
  *
@@ -57,6 +58,27 @@ function listPaths() {
 }
 
 /** A short, stable description of one path's content. */
+/**
+ * What the receipt records per path, so the hash of the tree is the hash of
+ * these and nothing else.
+ * @typedef {Record<string, string>} TreeFiles
+ */
+
+/**
+ * The receipt verify.sh writes and the commit gate reads.
+ * @typedef {{
+ *   status: string,
+ *   failedSteps: string[],
+ *   finishedAt: string,
+ *   evidence: string,
+ *   commit: string | null,
+ *   treeHashBefore: string | null,
+ *   treeHash: string,
+ *   files: TreeFiles,
+ * }} Receipt
+ */
+
+/** @param {string} rel */
 function digestOf(rel) {
   const abs = path.join(root, rel);
   let stat;
@@ -77,18 +99,21 @@ function digestOf(rel) {
 }
 
 /** Per-path digests. Kept in the receipt so a mismatch can name the files. */
+/** @returns {TreeFiles} */
 export function treeFiles() {
+  /** @type {TreeFiles} */
   const files = {};
   for (const rel of listPaths()) files[rel] = digestOf(rel);
   return files;
 }
 
+/** @param {TreeFiles} files */
 export function hashFiles(files) {
   const total = createHash('sha256');
   for (const rel of Object.keys(files).sort()) {
     total.update(rel);
     total.update('\0');
-    total.update(files[rel]);
+    total.update(files[rel] ?? '');
     total.update('\n');
   }
   return `sha256:${total.digest('hex')}`;
@@ -98,6 +123,7 @@ export function treeHash() {
   return hashFiles(treeFiles());
 }
 
+/** @returns {Receipt | null} */
 export function readReceipt() {
   try {
     return JSON.parse(readFileSync(path.join(root, RECEIPT_FILE), 'utf8'));
@@ -107,7 +133,12 @@ export function readReceipt() {
 }
 
 /** Paths whose digest differs between a recorded tree and the current one. */
+/**
+ * @param {TreeFiles | null | undefined} recorded
+ * @param {TreeFiles} current
+ */
 export function changedPaths(recorded, current) {
+  /** @type {string[]} */
   const changed = [];
   for (const rel of new Set([...Object.keys(recorded ?? {}), ...Object.keys(current)])) {
     if ((recorded ?? {})[rel] !== current[rel]) changed.push(rel);
@@ -115,9 +146,14 @@ export function changedPaths(recorded, current) {
   return changed.sort();
 }
 
+/**
+ * @param {string[]} args
+ * @param {string} name
+ * @param {string} [fallback]
+ */
 function flag(args, name, fallback = '') {
   const i = args.indexOf(`--${name}`);
-  return i === -1 ? fallback : args[i + 1];
+  return i === -1 ? fallback : (args[i + 1] ?? fallback);
 }
 
 function main() {
@@ -145,6 +181,7 @@ function main() {
     // the same code and the verdict is about no single tree. Not a pass.
     if (before && before !== after) status = 'stale';
 
+    /** @type {Receipt} */
     const receipt = {
       status,
       failedSteps: failed,

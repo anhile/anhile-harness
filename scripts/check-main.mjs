@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Is `main` green?
  *
@@ -25,6 +26,11 @@ export const root = realpathSync(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
 );
 
+/**
+ * A workflow run as `gh run list --json` reports it; only the fields read here.
+ * @typedef {{ conclusion: string | null, status: string, displayTitle?: string, url: string, createdAt: string }} GhRun
+ */
+
 /** The default branch this asks about. */
 export const BRANCH = 'main';
 
@@ -35,6 +41,8 @@ export const BRANCH = 'main';
  * concurrency: a second push arrived and superseded the first. That is normal
  * and it is also how a genuine failure hides, because the last *completed*
  * run can be a cancellation for weeks while nothing green has run at all.
+ * @param {GhRun | null} run
+ * @returns {{ known: boolean, ok: boolean, line: string | null, running?: boolean, unclear?: boolean }}
  */
 export function describe(run) {
   if (run === null) return { known: false, ok: true, line: null };
@@ -76,7 +84,10 @@ export function describe(run) {
   };
 }
 
-/** The newest run for the branch, or null when nothing here can tell. */
+/**
+ * The newest run for the branch, or null when nothing here can tell.
+ * @returns {GhRun | null}
+ */
 export function latestRun() {
   try {
     const raw = execFileSync(

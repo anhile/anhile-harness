@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Every comment on a pull request, and which of them are still unanswered.
  *
@@ -42,14 +43,38 @@ export const BOTS = new Set([
   'codecov[bot]',
 ]);
 
+/**
+ * A comment in the one shape this script reads, whatever GitHub called it.
+ * @typedef {{
+ *   id: string,
+ *   kind: 'inline' | 'review' | 'conversation',
+ *   author: string | null,
+ *   bot: boolean,
+ *   at: string | null,
+ *   path: string | null,
+ *   line: number | null,
+ *   inReplyTo: string | null,
+ *   body: string,
+ *   state?: string | null,
+ * }} Comment
+ */
+
+/**
+ * @param {unknown} author
+ * @param {unknown} type
+ */
 export const isBot = (author, type) =>
   type === 'Bot' || BOTS.has(String(author ?? '').toLowerCase());
 
 /**
  * One shape for three things GitHub keeps apart: inline comments on a diff
  * line, the body of a review, and general comments on the conversation.
+ * The three inputs are GitHub's own JSON, read field by field below.
+ * @param {{ reviewComments?: any[], reviews?: any[], issueComments?: any[] }} raw
+ * @returns {Comment[]}
  */
 export function normalise({ reviewComments = [], reviews = [], issueComments = [] }) {
+  /** @type {Comment[]} */
   const out = [];
 
   for (const c of reviewComments) {
@@ -110,17 +135,20 @@ export function normalise({ reviewComments = [], reviews = [], issueComments = [
  * Deliberately not "answered if the author commented later anywhere": a later
  * comment about something else is not an answer, and treating it as one is how
  * a thread goes quiet without being resolved.
+ * @param {Comment[]} comments
  */
 export function outstanding(comments) {
   const repliedTo = new Set(comments.map((c) => c.inReplyTo).filter(Boolean));
   return comments.filter((c) => !c.bot && c.inReplyTo === null && !repliedTo.has(c.id));
 }
 
+/** @param {string | undefined} pr */
 function fetchFor(pr) {
   const repo = execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner'], {
     cwd: root,
     encoding: 'utf8',
   }).trim();
+  /** @param {string} suffix */
   const api = (suffix) =>
     JSON.parse(
       execFileSync('gh', ['api', `repos/${repo}/${suffix}`, '--paginate'], {
@@ -136,9 +164,11 @@ function fetchFor(pr) {
   };
 }
 
+/** @param {Comment[]} comments */
 export function render(comments) {
   const bots = comments.filter((c) => c.bot);
   const open = outstanding(comments);
+  /** @type {string[]} */
   const lines = [];
 
   lines.push(`${comments.length} comment(s): ${open.length} awaiting an answer, ${bots.length} from bots`);
@@ -169,7 +199,7 @@ function main() {
   const raw =
     fromIndex === -1
       ? fetchFor(args.find((a) => /^\d+$/u.test(a)))
-      : JSON.parse(readFileSync(args[fromIndex + 1], 'utf8'));
+      : JSON.parse(readFileSync(args[fromIndex + 1] ?? '', 'utf8'));
 
   const comments = normalise(raw);
   console.log(args.includes('--json') ? JSON.stringify(comments, null, 2) : render(comments));
