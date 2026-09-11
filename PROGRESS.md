@@ -107,3 +107,42 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   needed `packageManager` in `package.json` — `pnpm/action-setup@v4` fails
   without one — so the generator writes it into every new project too, taken
   from this repository's.
+
+## 2026-09-11 — Phase 2: the package is publishable
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  What npm needs to show the package with a source, an issue tracker and a
+  node it runs on: `repository`, `homepage`, `bugs`, `author`, `keywords`,
+  `engines` pinned to the major `.nvmrc` names. Each is asserted in
+  `harness-package.spec.ts`, so a field cannot quietly go.
+
+  **The tarball no longer carries the guard suites**, nor the two workflows
+  that gate and publish this repository. 65 files became 48 and 520 KB became
+  341; what left was assertions about a repository the consumer does not have
+  and jobs a generated project cannot run. The README said the suites stay
+  here since the first draft; the tarball now agrees with it, and the spec
+  holds the two together — `.github/workflows` in the tarball must equal what
+  the manifest lists as travelling.
+
+  **`release.yml` publishes from a tag and from nowhere else**: the tag must
+  name the version in `package.json`, `CHANGELOG.md` must have an entry for
+  it, the commit must carry an attested run, and the gate must pass again on
+  the runner before `npm publish --provenance --access public`. The token is
+  a repository secret, `NPM_TOKEN`, until the package exists and npm's
+  trusted publishing can take its place. Not `provenance: true` in
+  `publishConfig`: that would make a local `npm publish` fail with a message
+  about CI, which is the right outcome and the wrong way to find out.
+
+  `CHANGELOG.md` starts at 0.1.0, the version about to be published, and the
+  spec refuses a `package.json` version the changelog has no entry for. The
+  README gained the two sections a consumer asks about last — what the
+  package carries, and how the repository checks itself.
+
+  Still ahead: the first publish needs the secret set by a person, and a tag
+  `v0.1.0` pushed after #1, #2 and this merge.

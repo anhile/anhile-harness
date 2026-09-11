@@ -98,6 +98,26 @@ That last one is refused if it does not read as deliberate — an underscore and
 at least three characters — because it is the whole of what keeps an unattended
 migration off a real database.
 
+## What the package carries
+
+`npm pack --dry-run` is the answer, and `harness-package.spec.ts` holds it
+to the manifest on every run: the scripts, the skills and the agent, the
+specs templates, `verify.sh`, the CI workflow, the pre-push hook, and the two
+files the generator reads — `harness.manifest.json` for what travels and
+`harness.versions.json` for what the scaffolds were written against. Not the
+guard suites, which assert this repository; not the workflows that gate this
+repository's own generator and publish it; not any session state.
+
+## How this repository checks itself
+
+Every push runs the gate from a clean clone, recomputes the attestation of
+each commit, and scaffolds five variants of a new project — nothing, a
+database, an API, a page, all three — installing and gating each. A version is
+published only from a tag, only if the tag names the version in
+`package.json` and `CHANGELOG.md` has an entry for it, and only after the
+attestation and the gate pass again on the runner. `CHANGELOG.md` says what
+changed for a consumer; `PROGRESS.md` says why.
+
 ## Licence
 
 MIT. The text ships with the package, in `LICENSE`.

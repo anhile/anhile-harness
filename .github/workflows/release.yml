@@ -1,0 +1,70 @@
+# Publishing, from a tag and from nowhere else.
+#
+# A version reaches npm when a tag `v<version>` is pushed, and only if the
+# tag names the version in package.json, the commit carries an attested
+# passing run, and the gate is green again on this runner. Publishing from a
+# laptop skips all three, which is why the token lives here and not there.
+#
+# `--provenance` asks npm to record which workflow of which repository built
+# the tarball, signed by GitHub's OIDC token; that is what `id-token: write`
+# is for. A consumer can then check that what they installed came from this
+# file rather than from somebody's machine.
+#
+# This workflow is this repository's and does not travel: package.json's
+# `files` excludes it, and a generated project has nothing to publish.
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: npm publish --provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: The tag must name the version package.json says
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::tag v${tag} does not match package.json version ${version}"
+            exit 1
+          fi
+          if ! grep -q "^## \[${version}\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no entry for ${version}"
+            exit 1
+          fi
+
+      # The same question CI's attest job asks of every commit, asked again of
+      # the one being published: a tag can be put on any commit.
+      - run: node scripts/check-attestation.mjs
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: ./verify.sh
+
+      - run: npm publish --provenance --access public
+        env:
+          # An automation token for the @anhile scope, stored as a repository
+          # secret. npm's trusted publishing can replace it once the package
+          # exists: configure this workflow as the trusted publisher on
+          # npmjs.com and drop the token.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
