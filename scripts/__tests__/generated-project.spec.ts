@@ -38,14 +38,11 @@ afterAll(() => {
 
 describe('a generated project, on its first run', () => {
   it('passes its own gate, every step', () => {
-    // The inner gate writes its own evidence under the probe; the outer one's
-    // EVIDENCE_DIR must not leak into it, or step 08 there reads this run's
-    // coverage. verify.sh assigns its own, and this proves that assignment.
-    const out = execFileSync('./verify.sh', {
-      cwd: dir,
-      encoding: 'utf8',
-      env: { ...process.env, VERIFY_FAIL_FAST: '0' },
-    });
+    // The inner gate inherits this process's environment, EVIDENCE_DIR from
+    // the outer gate included, and must write its own evidence under the
+    // probe regardless: verify.sh assigns its own, and this run proves it.
+    // Nothing else is set, so this is the first run as a person would make it.
+    const out = execFileSync('./verify.sh', { cwd: dir, encoding: 'utf8' });
     expect(out).toContain('RESULT: PASS (6/6 steps)');
     const summary = readFileSync(path.join(dir, '.generated', 'runs', newestRun(dir), 'summary.txt'), 'utf8');
     expect(summary).toMatch(/^PASS  01 eslint/mu);

@@ -29,14 +29,19 @@ does not meet.
   row of the table below names. The first audit found a tally and nothing to
   locate; Jest 30 prints neither PASS lines nor names without the explicit
   reporter. The generator writes the same two lines into a new project.
+- Three named cases added to existing suites, each holding something an
+  audit could not otherwise locate: "the scripts it ships are checked as they
+  run" in `harness-package.spec.ts` (AC7's artefact, since tsc prints nothing
+  on success) and "names every case in its evidence, as this repository does"
+  in `harness-init.spec.ts` (the reporter lines the generator writes).
 - Nothing else: every other mechanism already exists and is green. This
   contract records what is true, under the rules that make recording it mean
   something.
 
 ## Out of scope
 
-- Mechanisms beyond the two named in scope. A guarantee that would need a
-  third is not on this list; it is a spec of its own.
+- Mechanisms beyond those named in scope. A guarantee that would need
+  another is not on this list; it is a spec of its own.
 - The other four variants of a generated project — a database, an API, a
   page, all three. They are gated end to end by the `generate` job in CI on
   every push, named in entry #0's steps; locally, the one variant that
@@ -84,6 +89,12 @@ None.
 | AC6 | Jest — `scripts/__tests__/feature-list.spec.ts` and `scripts/__tests__/verify-log.spec.ts`, each handing the guard a tampered file | every case passes | `.generated/runs/<ts>/03-unit.log` |
 | AC7 | Jest — `harness-package.spec.ts` "the scripts it ships are checked as they run": every `scripts/*.mjs` and `bin/*.mjs` carries `// @ts-check` and `tsconfig.build.json` references `tsconfig.scripts.json`, whose `include` covers both; `harness-init.spec.ts` "typechecks the copied scripts, so their @ts-check is not decoration"; step 02 itself | both cases pass; `02-typecheck.exit` is 0 (tsc prints nothing on success, so the log is empty by design and the cases are the artefact) | `.generated/runs/<ts>/03-unit.log`, `.generated/runs/<ts>/02-typecheck.exit` |
 
+Entry #0's third step names the `generate` job in CI. It is witnessed by the
+checks on the pull request that carries the closing commit, never by the
+local evidence folder, and the auditor is expected to say so; the READY for
+#0 rests on the two local steps and AC1's row, and the journal names the
+run.
+
 Each entry closes on its own criterion: the READY that lets entry #n commit
 means AC(n+1) is confirmed by the artefact its row names and no invariant is
 violated by the diff; the other criteria are confirmed by their own closing
@@ -100,8 +111,11 @@ into a new project's `jest.config.cjs` are held by `harness-init.spec.ts`
 - `jest.config.cjs` — `verbose: true` and an explicit `reporters: ['default']`, nothing else
 - `scripts/harness-init.mjs` — the same two lines in the `jest.config.cjs` it writes for a new project, so a consumer's evidence names its cases too
 - `harness.manifest.json` — the new suite classified under `core.suites`
-- tests: `scripts/__tests__/generated-project.spec.ts`, added. No existing
-  test changed; a test modified under this contract is a finding.
+- tests: `scripts/__tests__/generated-project.spec.ts`, added;
+  `scripts/__tests__/harness-package.spec.ts` and
+  `scripts/__tests__/harness-init.spec.ts`, each extended with the named
+  cases above. No existing case changed or removed; a case weakened under
+  this contract is a finding.
 
 ## Invariants
 
