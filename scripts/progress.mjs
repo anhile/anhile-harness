@@ -40,7 +40,7 @@ export function template(date = new Date().toISOString().slice(0, 10)) {
     '- **Feature**: <closed #n — "<description>", or: none closed>',
     '- **Result**: <passing | partial | blocked>',
     '- **Verified by**: <`./verify.sh` n/n; the CI run URL>',
-    '- **Evidence**: <the `verify-log.jsonl` lines for this session>',
+    '- **Evidence**: <the `verify-log/` runs for this session>',
     `- **Contract changes**: <none, or the \`${loadConfig().contracts.package ?? 'shared contracts'}\` sign-off (I4)>`,
     '- **Notes**:',
     '',

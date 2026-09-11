@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, appendFileSync, copyFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -8,7 +8,7 @@ import path from 'node:path';
  * tree; this one asks whether a *branch* can become a pull request, and the
  * question it exists for is the merge order.
  *
- * `verify-log.jsonl` is append-only and its timestamps may not decrease, so a
+ * The record is a file per run since 2026-09-12; see the last describe.
  * branch whose newest gate run predates main's cannot be merged at all: one
  * resolution of the conflict moves a line main already had, the other goes
  * backwards in time, and the guard refuses both. Measured both ways on
@@ -49,7 +49,7 @@ function repo(): string {
   // case fails on that instead of on what it is about.
   writeFileSync(path.join(dir, '.gitignore'), '.generated/\n');
   writeFileSync(path.join(dir, 'PROGRESS.md'), '# journal\n');
-  writeFileSync(path.join(dir, 'verify-log.jsonl'), '');
+  mkdirSync(path.join(dir, 'verify-log'));
   git('add', '-A');
   git('commit', '-qm', 'base');
   return dir;
@@ -58,8 +58,15 @@ function repo(): string {
 const git = (dir: string, ...args: string[]) =>
   execFileSync('git', args, { cwd: dir, encoding: 'utf8' }).trim();
 
+/** One recorded run, named as verify.sh names an evidence folder. */
 function logLine(dir: string, at: string): void {
-  appendFileSync(path.join(dir, 'verify-log.jsonl'), `${JSON.stringify({ at, result: 'pass' })}\n`);
+  // Git keeps no empty directory, so after a checkout the record's directory
+  // exists only once a run has been recorded in it.
+  mkdirSync(path.join(dir, 'verify-log'), { recursive: true });
+  writeFileSync(
+    path.join(dir, 'verify-log', `${at.replace(/[-:.]/gu, '').slice(0, 15)}Z.json`),
+    `${JSON.stringify({ at, result: 'pass', tree: 'sha256:x', steps: {} })}\n`,
+  );
 }
 
 /** A receipt that matches the tree as it stands right now. */
@@ -156,48 +163,24 @@ describe('the receipt, because CI recomputes it from a clean clone', () => {
   });
 });
 
-describe('the merge order, which is the reason this guard exists', () => {
-  /** main runs the gate after the branch did, which is the unmergeable case. */
-  function mainMovedAhead(): string {
+describe('the order of runs, which used to be a refusal', () => {
+  // Until 2026-09-12 the record was one append-only file, two branches that
+  // both ran the gate conflicted at its end, and this guard refused a branch
+  // whose newest run was older than main's so that the merge could resolve.
+  // The record is a file per run now; the merge never conflicts and the
+  // order of runs is nobody's business.
+  it('says nothing when main recorded a newer run than the branch', () => {
     const dir = make(readyBranch);
     const branch = git(dir, 'branch', '--show-current');
     git(dir, 'checkout', '-q', 'main');
-    logLine(dir, '2026-09-11T10:00:00.000Z');
+    logLine(dir, '2027-01-01T00:00:00.000Z');
     git(dir, 'add', '-A');
     git(dir, 'commit', '-qm', 'a later run on main');
     git(dir, 'checkout', '-q', branch);
     receipt(dir);
-    return dir;
-  }
-
-  it('refuses a branch whose newest run predates main', () => {
-    expect(run(mainMovedAhead()).refusals.join(' ')).toContain('no correct resolution');
-  });
-
-  it('names both timestamps, so the reader sees which way round it is', () => {
-    const message = run(mainMovedAhead()).refusals.join(' ');
-    expect(message).toContain('2026-09-11T09:00:00.000Z');
-    expect(message).toContain('2026-09-11T10:00:00.000Z');
-  });
-
-  it('says what to do, not only that it is wrong', () => {
-    expect(run(mainMovedAhead()).refusals.join(' ')).toContain('./verify.sh');
-  });
-
-  it('allows a branch whose newest run is newer than main', () => {
-    expect(run(make(readyBranch)).ok).toBe(true);
-  });
-
-  it('says nothing about order when main has no log at all', () => {
-    const dir = make(readyBranch);
-    git(dir, 'checkout', '-q', 'main');
-    rmSync(path.join(dir, 'verify-log.jsonl'));
-    git(dir, 'add', '-A');
-    git(dir, 'commit', '-qm', 'no log on main');
-    const branch = 'some-work';
-    git(dir, 'checkout', '-q', branch);
-    receipt(dir);
-    expect(run(dir).refusals.filter((r) => r.includes('no correct resolution'))).toEqual([]);
+    const verdict = run(dir);
+    expect(verdict.ok).toBe(true);
+    expect(verdict.refusals.filter((r) => r.includes('older than'))).toEqual([]);
   });
 });
 

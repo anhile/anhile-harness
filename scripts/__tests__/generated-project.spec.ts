@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -53,10 +53,10 @@ describe('a generated project, on its first run', () => {
     expect(summary).toMatch(/^PASS  08 coverage/mu);
   }, 3 * MINUTES);
 
-  it('records the run in its own log, so its first commit can be attested', () => {
-    const log = readFileSync(path.join(dir, 'verify-log.jsonl'), 'utf8').trim().split('\n');
-    expect(log).toHaveLength(1);
-    expect(JSON.parse(log[0] ?? '{}').result).toBe('pass');
+  it('records the run in its own record, so its first commit can be attested', () => {
+    const files = readdirSync(path.join(dir, 'verify-log')).filter((f) => f.endsWith('.json'));
+    expect(files).toHaveLength(1);
+    expect(JSON.parse(readFileSync(path.join(dir, 'verify-log', files[0] ?? ''), 'utf8')).result).toBe('pass');
   });
 });
 

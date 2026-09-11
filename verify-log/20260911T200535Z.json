@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-11T20:05:56.785Z",
+  "result": "pass",
+  "tree": "sha256:e5aefbd14a548f0750857078879c667f549288bb303af11db6261aa2e158b4d7",
+  "head": "a17f7db3bd7c4b49b838c8cfa2587a3effe58538",
+  "branch": "phase-4/harness-guarantees",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260911T200535Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 19
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

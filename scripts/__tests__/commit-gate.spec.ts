@@ -79,8 +79,9 @@ beforeEach(() => {
   // describes, or writing it would invalidate itself.
   writeFileSync(path.join(repo, '.gitignore'), '.generated/\n');
   writeFileSync(path.join(repo, 'verify.sh'), '#!/usr/bin/env bash\n');
+  mkdirSync(path.join(repo, 'verify-log'));
   writeFileSync(
-    path.join(repo, 'verify-log.jsonl'),
+    path.join(repo, 'verify-log', '20260830T100000Z.json'),
     `${JSON.stringify({ at: '2026-08-30T10:00:00.000Z', result: 'pass', tree: 'sha256:aaa', steps: {} })}\n`,
   );
   writeFileSync(path.join(repo, 'source.ts'), 'export const answer = 42;\n');
@@ -233,13 +234,13 @@ describe('the commit must contain the tree that was verified', () => {
 });
 
 describe('the durable record cannot be edited around the gate', () => {
-  it('refuses a commit when verify-log.jsonl has been rewritten', () => {
-    // verify-log.jsonl sits outside the tree hash on purpose -- verify.sh
-    // appends to it at the end of every run -- so the hash alone would not
-    // notice this. The gate runs the log's own guard for exactly that window.
+  it('refuses a commit when a recorded run has been rewritten', () => {
+    // verify-log/ sits outside the tree hash on purpose -- verify.sh records
+    // a run there at the end of every run -- so the hash alone would not
+    // notice this. The gate runs the record's own guard for exactly that window.
     writeReceipt('pass');
     writeFileSync(
-      path.join(repo, 'verify-log.jsonl'),
+      path.join(repo, 'verify-log', '20260830T100000Z.json'),
       `${JSON.stringify({ at: '2026-08-30T10:00:00.000Z', result: 'pass', tree: 'sha256:zzz', steps: {} })}\n`,
     );
 
@@ -248,14 +249,15 @@ describe('the durable record cannot be edited around the gate', () => {
     expect(verdict.reason).toContain('rewritten, not appended');
   });
 
-  it('allows a commit that only appends a run', () => {
+  it('allows a commit that only records a run', () => {
     writeReceipt('pass');
-    const appended = `${JSON.stringify({ at: '2026-08-30T12:00:00.000Z', result: 'fail', tree: 'sha256:bbb', steps: {} })}\n`;
-    writeFileSync(path.join(repo, 'verify-log.jsonl'),
-      readFileSync(path.join(repo, 'verify-log.jsonl'), 'utf8') + appended);
+    writeFileSync(
+      path.join(repo, 'verify-log', '20260830T120000Z.json'),
+      `${JSON.stringify({ at: '2026-08-30T12:00:00.000Z', result: 'fail', tree: 'sha256:bbb', steps: {} })}\n`,
+    );
     // Staged, as `git add -A` does before a real commit: an unstaged change is
     // refused separately, because the commit would not carry it.
-    git('add', 'verify-log.jsonl');
+    git('add', 'verify-log');
     expect(runGate(bash('git commit -m "x"')).blocked).toBe(false);
   });
 });

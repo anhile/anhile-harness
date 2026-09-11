@@ -39,12 +39,12 @@ export const RECEIPT_FILE = '.generated/receipt.json';
 
 /**
  * Files that describe the tree and therefore cannot be part of it. verify.sh
- * appends to verify-log.jsonl at the end of every run, so hashing it would make
+ * records a run under verify-log/ at the end of every run, so hashing it would make
  * each run invalidate its own receipt. It is tracked, so it cannot simply be
  * ignored either -- which is why the commit gate runs the log's own append-only
  * guard instead of relying on this hash to notice tampering.
  */
-export const UNHASHED = new Set(['verify-log.jsonl']);
+export const UNHASHED = ['verify-log/'];
 
 function listPaths() {
   const out = execFileSync(
@@ -53,7 +53,7 @@ function listPaths() {
     { cwd: root, maxBuffer: 256 * 1024 * 1024 },
   );
   return [...new Set(out.toString('utf8').split('\0').filter(Boolean))]
-    .filter((rel) => !UNHASHED.has(rel))
+    .filter((rel) => !UNHASHED.some((prefix) => rel.startsWith(prefix)))
     .sort();
 }
 

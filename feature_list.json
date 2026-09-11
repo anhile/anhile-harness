@@ -63,7 +63,12 @@
       "pnpm exec jest --config jest.config.cjs scripts/__tests__/verify-log.spec.ts — deletions, rewrites, an emptied file, malformed lines and a backdated run are each refused"
     ],
     "passes": true,
-    "spec": "specs/2026-09-harness-guarantees.md"
+    "spec": "specs/2026-09-harness-guarantees.md",
+    "retracted": {
+      "spec": "specs/2026-09-verify-log-files.md",
+      "reason": "the record it names, verify-log.jsonl, is a directory of one file per run since 2026-09-12; the guarantee moves to #7, worded for the directory",
+      "supersededBy": 7
+    }
   },
   {
     "id": 6,
@@ -75,5 +80,16 @@
     ],
     "passes": true,
     "spec": "specs/2026-09-harness-guarantees.md"
+  },
+  {
+    "id": 7,
+    "category": "record",
+    "description": "feature_list.json accepts only its four legal edits and one closure per commit, and verify-log/ keeps every run as a file that is never edited or removed, red runs included, with no conflict between branches",
+    "steps": [
+      "pnpm exec jest --config jest.config.cjs scripts/__tests__/feature-list.spec.ts — every adversarial case passes",
+      "pnpm exec jest --config jest.config.cjs scripts/__tests__/verify-log.spec.ts — a removed, rewritten, emptied, malformed or stray run is refused, and two branches that both recorded runs merge without a conflict"
+    ],
+    "passes": false,
+    "spec": "specs/2026-09-verify-log-files.md"
   }
 ]

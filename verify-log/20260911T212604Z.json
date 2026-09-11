@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-11T21:26:32.264Z",
+  "result": "pass",
+  "tree": "sha256:7a4fc1dc56e6ecae10df2ca25a4152f367e0d9423f662697d38f6c87002382c1",
+  "head": "1d9c7f965c88d758866a888d581964d946011a66",
+  "branch": "rename/anhil3-scope",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260911T212604Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 26
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

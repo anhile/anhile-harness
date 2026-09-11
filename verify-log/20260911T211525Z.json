@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-11T21:15:47.243Z",
+  "result": "pass",
+  "tree": "sha256:d16d8b079b199cb60c66078fe5c4fc327d561bf0b9c4ee2fd3c2716977a18ec3",
+  "head": "82f606f06bbe6a27697c9de3a6b0d3fdf101f5ae",
+  "branch": "release/trusted-publishing",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260911T211525Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 19
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

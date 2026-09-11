@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-11T21:57:37.762Z",
+  "result": "pass",
+  "tree": "sha256:9c28e278625d6d6c5a4df8b84c41891efb15dcab004ef79b58851c4ea4ad5d81",
+  "head": "ba29acf6e35939a61abb791252dfa4828c1016d2",
+  "branch": "fixes/first-session",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260911T215717Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 18
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

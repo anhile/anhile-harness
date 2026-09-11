@@ -1,34 +1,52 @@
 #!/usr/bin/env node
 // @ts-check
 /**
- * verify-log.jsonl — the durable record of what ./verify.sh concluded.
+ * verify-log/ — the durable record of what ./verify.sh concluded, one file
+ * per run.
  *
- * The raw evidence under .generated/runs/ stays out of git: 110 runs of this project
- * weigh 64 MB, most of it Playwright reports, and none of it survives a clone.
- * What goes into history instead is one line per run: the verdict, every step's
- * exit code and duration, and the hash of the tree it ran against.
+ * The raw evidence under .generated/runs/ stays out of git: it weighs
+ * megabytes, carries one machine's paths and timings, and none of it survives
+ * a clone. What goes into history instead is one small file per run: the
+ * verdict, every step's exit code and duration, and the hash of the tree it
+ * ran against. The file is named after the run's evidence folder, so two runs
+ * cannot share a name and a run's file never changes once written.
  *
- * **Every run is appended, including failures.** A record that keeps only the
- * green runs lies by omission, and this repository has the failure mode to
- * prove it: two commits made on a red verify.sh left no durable trace at all.
- * Red runs are also where the useful signal is -- a step that fails one run in
- * five is invisible until someone can count.
+ * **Every run is recorded, including failures.** A record that keeps only the
+ * green runs lies by omission, and the repository this harness came from had
+ * the failure mode to prove it: two commits made on a red verify.sh left no
+ * durable trace at all. Red runs are also where the useful signal is -- a
+ * step that fails one run in five is invisible until someone can count.
  *
- * Append-only, on the same reasoning as feature_list.json: a session that can
- * rewrite the record of its own verification can say anything about it. The
- * file at HEAD must remain a line-for-line prefix of the working file.
+ * **Append-only, on the same reasoning as feature_list.json:** a session that
+ * can rewrite the record of its own verification can say anything about it.
+ * Here that means a recorded run's file is never edited and never removed;
+ * `check` compares every file at the baseline with the same file now.
+ *
+ * **One file per run, not one line per run, since 2026-09-12.** The record
+ * was a single append-only verify-log.jsonl for its first two weeks. Two
+ * branches that both ran the gate both appended to its end, so every merge
+ * of two working branches conflicted in that file, and the rule that fixed
+ * the conflicts — a branch's newest run must be newer than main's, rerun the
+ * gate before every merge — was a tax on parallel work that nothing else
+ * asked for. GitHub does not honour a union merge for pull requests, so the
+ * file itself had to stop being one file. Files with distinct names never
+ * conflict, and "append-only" for a directory is a rule git can state in one
+ * command: nothing modified, nothing deleted.
  *
  * Usage:
  *   node scripts/verify-log.mjs append --evidence <dir>
  *   node scripts/verify-log.mjs check [--base <ref>] [--at <ref>]
  *   node scripts/verify-log.mjs tail [n]
+ *   node scripts/verify-log.mjs flakes [days]
  */
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readReceipt } from './verify-receipt.mjs';
 
 /**
- * One line of verify-log.jsonl: a run, as the receipt described it.
+ * One recorded run, as the receipt described it.
  * @typedef {{
  *   at: string,
  *   result: 'pass' | 'fail' | 'stale' | string,
@@ -40,64 +58,75 @@ import { readReceipt } from './verify-receipt.mjs';
  *   steps: Record<string, { exit: number, seconds: number }>,
  * }} Run
  */
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { realpathSync } from 'node:fs';
 
 export const root = realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
-export const LOG_FILE = 'verify-log.jsonl';
+export const LOG_DIR = 'verify-log';
+
+/** A run's file is named after its evidence folder: the UTC timestamp verify.sh started at. */
+export const RUN_FILE = /^(\d{8}T\d{6}Z)\.json$/u;
 
 const REQUIRED = ['at', 'result', 'tree', 'steps'];
 
-function logPath() {
-  return path.join(root, LOG_FILE);
-}
+const logDir = () => path.join(root, LOG_DIR);
 
 /**
- * The non-empty lines of the log, each one a JSON record.
- * @param {string} text
- * @returns {string[]}
+ * The run files in a directory listing, oldest first. Names are what they
+ * are sorted by, and a name is a timestamp, so order is chronological.
+ * @param {string[]} names
  */
-export function readLines(text) {
-  return text.split('\n').filter((line) => line.trim() !== '');
-}
+const runFiles = (names) => names.filter((n) => RUN_FILE.test(n)).sort();
 
-export function currentLines() {
-  if (!existsSync(logPath())) return [];
-  return readLines(readFileSync(logPath(), 'utf8'));
+/**
+ * The record as it stands in the working tree: file name to contents.
+ * @returns {Map<string, string>}
+ */
+export function currentFiles() {
+  if (!existsSync(logDir())) return new Map();
+  return new Map(runFiles(readdirSync(logDir())).map((n) => [n, readFileSync(path.join(logDir(), n), 'utf8')]));
 }
 
 /**
- * The log as it stood at a commit, or empty if it did not exist yet.
+ * The record as it stood at a commit: file name to contents. Empty when the
+ * directory did not exist there.
  * @param {string} ref
+ * @returns {Map<string, string>}
  */
-function showAt(ref) {
+export function filesAt(ref) {
+  let listing;
   try {
-    return execFileSync('git', ['show', `${ref}:${LOG_FILE}`], {
+    listing = execFileSync('git', ['ls-tree', '--name-only', `${ref}:${LOG_DIR}`], {
       cwd: root,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     });
   } catch {
-    return '';
+    return new Map();
   }
+  return new Map(
+    runFiles(listing.split('\n')).map((n) => [
+      n,
+      execFileSync('git', ['show', `${ref}:${LOG_DIR}/${n}`], { cwd: root, encoding: 'utf8' }),
+    ]),
+  );
 }
 
-/** @param {string} base */
-function baselineLines(base) {
-  try {
-    return readLines(
-      execFileSync('git', ['show', `${base}:${LOG_FILE}`], {
-        cwd: root,
-        encoding: 'utf8',
-        // git narrates a missing path on stderr; that is an expected state here.
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }),
-    );
-  } catch {
-    // Not in the baseline at all: the file is new, and every line is an append.
-    return [];
+/**
+ * The recorded runs, oldest first, from the working tree or from a commit.
+ * A file that does not parse is skipped here and refused by `check`.
+ * @param {string} [ref]
+ * @returns {Run[]}
+ */
+export function readRuns(ref) {
+  /** @type {Run[]} */
+  const runs = [];
+  for (const text of (ref === undefined ? currentFiles() : filesAt(ref)).values()) {
+    try {
+      runs.push(JSON.parse(text));
+    } catch {
+      /* the guard's business */
+    }
   }
+  return runs;
 }
 
 /**
@@ -110,7 +139,8 @@ function readSteps(evidenceDir) {
   if (!existsSync(file)) return {};
   /** @type {Run['steps']} */
   const steps = {};
-  for (const line of readLines(readFileSync(file, 'utf8'))) {
+  for (const line of readFileSync(file, 'utf8').split('\n')) {
+    if (line.trim() === '') continue;
     const { step, exit, seconds } = JSON.parse(line);
     steps[step] = { exit, seconds };
   }
@@ -130,6 +160,18 @@ function flag(args, name, fallback = '') {
 /** @param {string[]} args */
 function append(args) {
   const evidence = path.relative(root, path.resolve(flag(args, 'evidence')));
+  const id = path.basename(evidence);
+  if (!RUN_FILE.test(`${id}.json`)) {
+    process.stderr.write(`verify-log: the evidence folder "${evidence}" is not named as a run id (<yyyymmdd>T<hhmmss>Z)\n`);
+    process.exit(2);
+  }
+  const file = path.join(logDir(), `${id}.json`);
+  if (existsSync(file)) {
+    // Two runs cannot start in the same second from the same gate, so this is
+    // a script being run twice for one folder, and the first record stands.
+    process.stderr.write(`verify-log: run ${id} is already recorded; a recorded run is never rewritten\n`);
+    process.exit(1);
+  }
   // The verdict and the tree come from the receipt rather than from arguments,
   // so the durable record and the thing the commit gate reads cannot disagree
   // -- including when the receipt downgraded the run to `stale`.
@@ -162,57 +204,63 @@ function append(args) {
     evidence,
     steps: readSteps(evidence),
   };
-  appendFileSync(logPath(), `${JSON.stringify(entry)}\n`);
+  mkdirSync(logDir(), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(entry, null, 2)}\n`);
   process.stdout.write(`${entry.result} ${entry.tree}\n`);
 }
 
 /** @param {string[]} args */
 function check(args) {
   const base = flag(args, 'base', 'HEAD');
-  // See check-feature-list.mjs: --at reads the file at a commit rather than from
-  // the working tree, so CI can walk pushed commits one at a time.
+  // See check-feature-list.mjs: --at reads the record at a commit rather than
+  // from the working tree, so CI can walk pushed commits one at a time.
   const at = flag(args, 'at');
-  const current = at ? readLines(showAt(at)) : currentLines();
-  const baseline = baselineLines(base);
+  const current = at ? filesAt(at) : currentFiles();
+  const baseline = filesAt(base);
   /** @type {string[]} */
   const problems = [];
 
-  if (current.length < baseline.length) {
-    problems.push(
-      `${LOG_FILE} has ${current.length} line(s); ${base} has ${baseline.length}. ` +
-      'Runs are never removed from the record.',
-    );
+  for (const [name, text] of baseline) {
+    const now = current.get(name);
+    if (now === undefined) problems.push(`run ${name} was removed. Recorded runs are never removed.`);
+    else if (now !== text) problems.push(`run ${name} was rewritten. Recorded runs are not edited.`);
   }
 
-  for (let i = 0; i < Math.min(baseline.length, current.length); i += 1) {
-    if (baseline[i] !== current[i]) {
-      problems.push(`line ${i + 1} was rewritten. Recorded runs are not edited.`);
-      break;
-    }
+  // Everything under the directory has to be a run: a stray file there is
+  // either a record nothing wrote or a record renamed, and both are refused.
+  const listing = at
+    ? (() => {
+        try {
+          return execFileSync('git', ['ls-tree', '--name-only', `${at}:${LOG_DIR}`], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+            .split('\n')
+            .filter(Boolean);
+        } catch {
+          return [];
+        }
+      })()
+    : existsSync(logDir())
+      ? readdirSync(logDir())
+      : [];
+  for (const name of listing) {
+    if (!RUN_FILE.test(name)) problems.push(`${LOG_DIR}/${name} is not a run: a run's file is named after its evidence folder, <yyyymmdd>T<hhmmss>Z.json`);
   }
 
-  /** @type {string | null} */
-  let previousAt = null;
-  current.forEach((line, i) => {
+  for (const [name, text] of current) {
     /** @type {any} */
     let entry;
     try {
-      entry = JSON.parse(line);
+      entry = JSON.parse(text);
     } catch {
-      problems.push(`line ${i + 1} is not valid JSON`);
-      return;
+      problems.push(`run ${name} is not valid JSON`);
+      continue;
     }
     const missing = REQUIRED.filter((key) => entry[key] === undefined);
-    if (missing.length) problems.push(`line ${i + 1} is missing: ${missing.join(', ')}`);
-    if (previousAt && entry.at < previousAt) {
-      problems.push(`line ${i + 1} is dated before the line above it`);
-    }
-    previousAt = entry.at;
-  });
+    if (missing.length) problems.push(`run ${name} is missing: ${missing.join(', ')}`);
+  }
 
-  const appended = current.length - baseline.length;
-  console.log(`check-verify-log: ${current.length} run(s) recorded, baseline ${base}`);
-  if (appended > 0) console.log(`  note: ${appended} run(s) appended`);
+  const appended = [...current.keys()].filter((n) => !baseline.has(n)).length;
+  console.log(`check-verify-log: ${current.size} run(s) recorded, baseline ${base}`);
+  if (appended > 0) console.log(`  note: ${appended} run(s) recorded since ${base}`);
 
   if (problems.length) {
     console.error('check-verify-log: REJECTED');
@@ -225,8 +273,7 @@ function check(args) {
 /** @param {string[]} args */
 function tail(args) {
   const n = Number(args[0] ?? 10);
-  for (const line of currentLines().slice(-n)) {
-    const e = JSON.parse(line);
+  for (const e of readRuns().slice(-n)) {
     const failed = Object.entries(e.steps ?? {})
       .filter(([, s]) => s.exit !== 0)
       .map(([name]) => name);
@@ -240,8 +287,8 @@ function tail(args) {
 /**
  * Flakiness, from the record. A step that failed on some tree and passed on
  * that same tree — identical content, different verdicts — did not fail
- * because of the code. Failing runs are kept in the log precisely so this can
- * be counted; until 2026-09-08 nothing counted it.
+ * because of the code. Failing runs are kept in the record precisely so this
+ * can be counted; until 2026-09-08 nothing counted it.
  *
  * Returns one row per flaky step: how many trees it flaked on, how many times,
  * and when it last did. A tree with only failures is a real failure and is not
@@ -283,8 +330,7 @@ export function flakes(entries, { since = null } = {}) {
 function report(args) {
   const days = Number(args[0] ?? 30);
   const since = new Date(Date.now() - days * 86_400_000).toISOString();
-  /** @type {Run[]} */
-  const entries = currentLines().map((line) => JSON.parse(line));
+  const entries = readRuns();
   const rows = flakes(entries, { since });
   const window = entries.filter((e) => e.at >= since).length;
   console.log(`verify-log flakes: last ${days} day(s), ${window} run(s) on record`);

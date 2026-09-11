@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-11T19:51:37.577Z",
+  "result": "pass",
+  "tree": "sha256:177a1277ad25367eb8425ab3052d447e69ac5f366f22d2637fd7264cc47d7798",
+  "head": "14bf863faa7fad708f04d815c4d97157fe30570d",
+  "branch": "ts-check-scripts",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260911T195118Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 17
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

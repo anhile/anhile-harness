@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-11T19:22:22.140Z",
+  "result": "pass",
+  "tree": "sha256:2ccda641964862b2aef77c34c491e229dd4841fb3eec00009cce960c27555364",
+  "head": "06206561237a0ef81116abed820f26095bd8130c",
+  "branch": "receipt-quiet-before-first-commit",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260911T192202Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 18
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 1
+    }
+  }
+}

@@ -9,16 +9,10 @@
  * discovers late and expensively.
  *
  * The check that could not have been written before 2026-09-11 is the merge
- * order. `verify-log.jsonl` is append-only and its timestamps must not
- * decrease, so two branches that both ran the gate produce a conflict whose
- * only resolution is to put the incoming lines at the end. That works when the
- * incoming lines are newer than everything on main, and is *unresolvable* when
- * they are not. Discovering that at merge time means a person staring at
- * conflict markers with no correct resolution available; discovering it here
- * costs one line of output. See docs/PARALLEL_WORK.md.
- *
- *   node scripts/check-pr-ready.mjs           # human output, exit 1 on refusal
- *   node scripts/check-pr-ready.mjs --json    # the same as data
+ * order. Until 2026-09-12 it also refused a branch whose newest gate run was
+ * older than main's: the record was one append-only file then, and two
+ * branches appending to its end conflicted on every merge. The record is a
+ * file per run now, and nothing about order is left to refuse.
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -53,8 +47,6 @@ const tryGit = (...args) => {
  *   dirty: boolean,
  *   receipt: { status?: string, treeHash?: string } | null,
  *   headTree: string | null,
- *   baseNewest: string | null,
- *   branchNewest: string | null,
  *   aheadOfBase: number,
  *   progressTouched: boolean | null,
  *   base?: string,
@@ -63,27 +55,6 @@ const tryGit = (...args) => {
 
 /** The base branch every pull request in this repository targets. */
 export const BASE = 'main';
-
-/**
- * Newest `at` in the log as of some revision, or null when it has no log.
- * @param {string} revision
- * @returns {string | null}
- */
-export function newestLogEntry(revision) {
-  const raw = tryGit('show', `${revision}:verify-log.jsonl`);
-  if (raw === null) return null;
-  const lines = raw.split('\n').filter((l) => l.trim() !== '');
-  if (lines.length === 0) return null;
-  for (let i = lines.length - 1; i >= 0; i -= 1) {
-    try {
-      const parsed = JSON.parse(lines[i] ?? '');
-      if (typeof parsed.at === 'string') return parsed.at;
-    } catch {
-      /* a line that does not parse is the append-only guard's business */
-    }
-  }
-  return null;
-}
 
 /**
  * Refusals, each one a sentence about what is wrong and what would fix it.
@@ -96,8 +67,6 @@ export function refusals({
   dirty,
   receipt,
   headTree,
-  baseNewest,
-  branchNewest,
   aheadOfBase,
   progressTouched,
 }) {
@@ -133,17 +102,6 @@ export function refusals({
     out.push(
       'the tree changed after the last green run, so the receipt describes something ' +
         'other than what this branch would carry. Run `./verify.sh` again.',
-    );
-  }
-
-  // The one that is not obvious, and the reason this file exists.
-  if (baseNewest !== null && branchNewest !== null && branchNewest < baseNewest) {
-    out.push(
-      `this branch's newest gate run (${branchNewest}) is older than ${BASE}'s ` +
-        `(${baseNewest}). verify-log.jsonl is append-only and its timestamps may not ` +
-        `decrease, so merging this branch produces a conflict with no correct ` +
-        `resolution. Run \`./verify.sh\` on this branch to append a newer line, then ` +
-        `open the pull request.`,
     );
   }
 
@@ -188,8 +146,6 @@ function gather() {
     dirty,
     receipt,
     headTree: treeHash(),
-    baseNewest: newestLogEntry(base),
-    branchNewest: newestLogEntry('HEAD'),
     aheadOfBase,
     progressTouched,
     base,

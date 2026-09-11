@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-11T18:40:22.375Z",
+  "result": "pass",
+  "tree": "sha256:de5ea6826915b772aaeb1c145513aaad2f33edc0dc8a330e71179fef31f9c439",
+  "head": "79858be8b426631d1cb89dd887c9ec2703708c5e",
+  "branch": "phase-0/green-gate",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260911T184003Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 17
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

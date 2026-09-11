@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-11T18:51:59.465Z",
+  "result": "fail",
+  "tree": "sha256:fe116b619d9112272807d8292aa43367df623e1b9a7a82403482fa06a490e259",
+  "head": "c9a716401fffabd21ff2ec3b05eda692e883f2c3",
+  "branch": "phase-1/ci-and-gate",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260911T185138Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "02-typecheck": {
+      "exit": 1,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 19
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "08-coverage": {
+      "exit": 1,
+      "seconds": 0
+    }
+  }
+}

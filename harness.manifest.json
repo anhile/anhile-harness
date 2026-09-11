@@ -237,7 +237,7 @@
       "CLAUDE.md",
       "PROGRESS.md",
       "feature_list.json",
-      "verify-log.jsonl",
+      "verify-log/",
       "coverage-floor.json",
       "docs/DOMAIN_RULES.md"
     ],

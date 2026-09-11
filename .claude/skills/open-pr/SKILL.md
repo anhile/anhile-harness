@@ -21,11 +21,10 @@ is a stop: report its lines, do what they say, run it again. Do not open the
 pull request to "see what CI thinks", and do not argue with a refusal in the
 pull request body.
 
-The one refusal worth explaining, because it reads like a formality and is not:
-**the branch's newest gate run is older than main's.** `verify-log.jsonl` is
-append-only and its timestamps may not decrease, so that merge has no correct
-resolution at all — not a hard one, none. Running `./verify.sh` on the branch
-appends a newer line and fixes it.
+Until 2026-09-12 one refusal needed a paragraph: a branch whose newest gate
+run was older than main's, because the record was one append-only file and
+two branches appending to it conflicted on every merge. The record is a file
+per run now, and that refusal is gone with its reason.
 
 ## Steps
 
@@ -49,7 +48,7 @@ Each of these is a fact somewhere in the repository, never a recollection:
 - **entries opened, closed, retracted** — from `git diff origin/main..HEAD --
   feature_list.json`, reading the `passes` and `retracted` fields, not the
   commit subjects
-- **the verify line** — the last entry of `verify-log.jsonl` on this branch:
+- **the verify run** — the newest file under `verify-log/` on this branch:
   its `at`, `result`, and `tree`
 - **the audit verdict** — `node scripts/audit-receipt.mjs show`, if a commit
   in the range closes an entry; otherwise "not a closing change"

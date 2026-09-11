@@ -430,3 +430,40 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   as string arrays; `pnpm` and bash as unstated prerequisites; no upgrade
   path for a project that adopted 0.1.0, which is the one this entry is
   about.
+
+## 2026-09-12 — The record of runs is a file per run
+
+- **Feature**: #5 retracted under `specs/2026-09-verify-log-files.md`, its guarantee moved to #7, appended; #7 closes in its own commit on a READY audit
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the run recorded under `verify-log/` for this tree
+- **Contract changes**: none
+- **Notes**:
+
+  The first debt from the review of 0.1.0, and the one the person chose:
+  `verify-log.jsonl` grew a line per run — 45 in the first four hours — and
+  two branches that both ran the gate conflicted at its end on every merge.
+  The rule that resolved it, rerun the gate before every merge so the
+  branch's newest run is newer than main's, taxed parallel work for nothing
+  the record needed. GitHub does not honour `merge=union` for pull requests,
+  measured before designing, so the file could not stay one file.
+
+  `verify-log/` holds one file per run, named after the run's evidence
+  folder. Append-only for a directory is a rule git can state in one
+  command: nothing modified, nothing deleted. `check` compares every file at
+  the baseline with the same file now and refuses a stray name; `tail` and
+  `flakes` read the directory; attestation, the readiness check, the review
+  brief, evidence pruning and the witness read it too. The readiness check
+  lost its order rule, and the suite that held that rule lost five cases and
+  gained one saying why. `verify-log.spec.ts` now merges two branches that
+  both recorded runs, with `--no-ff`, and runs the guard against both
+  parents: the case that decided the design.
+
+  The 51 recorded lines became 51 files, each named by the evidence folder
+  the line already carried. Entry #5 named the old file in its description,
+  and a description is immutable: retracted under the contract, with the
+  guarantee moved to #7, worded for the directory.
+
+  Three protected files carry the change through `.generated/scratch/log/`:
+  the prefix the tree hash leaves out, the commit gate's message, a comment
+  in the gate.

@@ -21,6 +21,7 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './harness-config.mjs';
+import { readRuns } from './verify-log.mjs';
 
 export const root = realpathSync(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
@@ -93,22 +94,12 @@ export function entryChanges(before, after) {
 
 /**
  * The newest recorded run at a revision, as the reviewer should quote it.
- * @param {string} raw
+ * @param {string} ref
  * @returns {{ at: string, result: string | null, tree: string | null } | null}
  */
-export function newestRun(raw) {
-  const lines = raw.split('\n').filter((l) => l.trim() !== '');
-  for (let i = lines.length - 1; i >= 0; i -= 1) {
-    try {
-      const parsed = JSON.parse(lines[i] ?? '');
-      if (typeof parsed.at === 'string') {
-        return { at: parsed.at, result: parsed.result ?? null, tree: parsed.tree ?? null };
-      }
-    } catch {
-      /* the append-only guard's business, not this one's */
-    }
-  }
-  return null;
+export function newestRun(ref) {
+  const last = readRuns(ref).at(-1);
+  return last === undefined ? null : { at: last.at, result: last.result ?? null, tree: last.tree ?? null };
 }
 
 /** @param {string[]} files */
@@ -146,7 +137,7 @@ export function brief() {
     files,
     entries,
     specs,
-    evidence: newestRun(git('show', 'HEAD:verify-log.jsonl')),
+    evidence: newestRun('HEAD'),
     surface: surfaceTouched(files),
     journal: files.includes('PROGRESS.md'),
     tests: files.filter((f) => f.endsWith('.spec.ts') || f.includes('/test/')),

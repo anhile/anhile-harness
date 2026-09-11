@@ -109,30 +109,41 @@ only route.
 
 ## I12 — What verification concluded is recorded, durably and append-only
 
-Every `./verify.sh` run appends one line to `verify-log.jsonl`, which is
-tracked: the verdict, every step's exit code and duration, the hash of the tree
-it ran against, and the commit it was based on. Lines are never edited or
-removed.
+Every `./verify.sh` run writes one file under `verify-log/`, which is
+tracked, named after the run's evidence folder: the verdict, every step's
+exit code and duration, the hash of the tree it ran against, and the commit
+it was based on. A run's file is never edited and never removed.
 
-**Failing runs are appended too.** A record that keeps only the green runs is
+**Failing runs are recorded too.** A record that keeps only the green runs is
 not a record — it is a highlight reel, and it lies by omission.
 
-The raw output under `.generated/runs/` stays git-ignored. The line in
-`verify-log.jsonl` is what survives a clone. It is deliberately outside the
-tree hash of I11 — `verify.sh` appends to it at the end of every run, so
-hashing it would make each run invalidate its own receipt. The commit gate
+**One file per run, not one line per run, since 2026-09-12.** For two weeks
+the record was a single append-only file, and two branches that both ran the
+gate both appended to its end: every merge of two working branches
+conflicted there, and the rule that resolved it — rerun the gate before
+every merge so the branch's newest run is newer than main's — taxed
+parallel work for nothing the record needed. GitHub does not honour a union
+merge for pull requests, so the file had to stop being one file. Files with
+distinct names never conflict, and the guard accepts a merged record against
+either parent.
+
+The raw output under `.generated/runs/` stays git-ignored. The files under
+`verify-log/` are what survive a clone. They are deliberately outside the
+tree hash of I11 — `verify.sh` records the run at the end of every run, so
+hashing them would make each run invalidate its own receipt. The commit gate
 closes that window by running this guard itself before allowing a commit.
 
 **How it is checked**
-- `scripts/verify-log.mjs check`, `verify.sh` step 07: the file at `HEAD` must
-  remain a line-for-line prefix of the working file, every line must parse and
-  carry `at`, `result`, `tree` and `steps`, and timestamps must not go
-  backwards.
+- `scripts/verify-log.mjs check`, `verify.sh` step 07: every file under
+  `verify-log/` at `HEAD` must be present and byte-identical in the working
+  tree, every file must be named as a run and parse and carry `at`,
+  `result`, `tree` and `steps`.
 - `scripts/check-commit-gate.mjs` runs the same guard before a commit.
-- `scripts/__tests__/verify-log.spec.ts`, step 03: fires deletions, rewrites,
-  an emptied file, malformed lines and a backdated run at the guard.
+- `scripts/__tests__/verify-log.spec.ts`, step 03: fires removals, rewrites,
+  an emptied record, malformed files and stray files at the guard, and merges
+  two branches that both recorded runs to show the record never conflicts.
 - `scripts/check-verify.mjs`, in CI's witness job: a passing run and a
-  deliberately broken run each append exactly one line, and the broken one is
+  deliberately broken run each record exactly one file, and the broken one is
   recorded as `fail` naming the step that failed.
 
 ## I13 — A commit's claim to be verified is checkable off the author's machine

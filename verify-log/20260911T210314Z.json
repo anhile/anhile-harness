@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-11T21:03:37.116Z",
+  "result": "pass",
+  "tree": "sha256:6c16736d947960dcd7e466135769eb4f085791ac1bc43ee7d9c6d1e6063f7257",
+  "head": "15a931925894cf5f93208cffcfb51b77dd8adf1d",
+  "branch": "release/0.1.0-changelog",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260911T210314Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 20
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 1
+    }
+  }
+}
