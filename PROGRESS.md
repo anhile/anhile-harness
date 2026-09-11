@@ -302,3 +302,30 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   Left where the plan left it: the upgrade path for a project that adopted an
   earlier version. README says it is not there, and a guarantee without a
   mechanism is not an entry.
+
+## 2026-09-12 — CI walks a merge commit against the branch it merged
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  `main` went red the moment #7 merged — the first merge that closed
+  anything. The `attest` job walks every pushed commit against its parent,
+  which is right for the branch's commits and wrong for the merge commit:
+  against its first parent, `main`, the seven closures the branch made one
+  per commit collapse into seven at once, and the guard says "born passing"
+  about entries every commit on the branch had handled legally. The
+  workflow's own header describes exactly this collapse for a span; the
+  merge commit is a span with one hash.
+
+  A merge commit is compared with its second parent now — the branch tip,
+  whose commits the same loop has already walked. A clean merge is an empty
+  diff there; a conflict resolution shows as exactly the edit it made and is
+  checked as one. `verify.yml` is protected, so the change went through
+  `.generated/scratch/` and a person; `ci-workflow.spec.ts` reads the file
+  for the comparison and reproduces the shape in a throwaway repository, so
+  the guard's two answers are on record: refused against the first parent,
+  accepted against the second.
