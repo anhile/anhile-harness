@@ -27,12 +27,31 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
+import { loadConfig } from './harness-config.mjs';
 
 const root = realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
-const FILE = path.join(root, '.claude', '.work-budget.json');
+// Under .generated/, which every project ignores. This lived under .claude/
+// until 2026-09-12, untracked and unignored, and the tree hash counts such
+// files: every tool call rewrote it, every gate run after one went stale, and
+// the commit gate refused. Found in this repository, fixed for it, and only
+// then noticed in the .gitignore the generator writes.
+const FILE = path.join(root, '.generated', 'work-budget.json');
 
-/** Tool calls between one message from the person and the next. */
-const LIMIT = Number(process.env.WORK_BUDGET_LIMIT ?? 30);
+/**
+ * Tool calls between one message from the person and the next. The
+ * environment wins, then `session.workBudget` in harness.config.json, then
+ * thirty. Read leniently: a hook that throws on a malformed configuration
+ * would stop every tool call, which is a worse outcome than a default.
+ */
+function limit() {
+  if (process.env.WORK_BUDGET_LIMIT !== undefined) return Number(process.env.WORK_BUDGET_LIMIT);
+  try {
+    return loadConfig().session?.workBudget ?? 30;
+  } catch {
+    return 30;
+  }
+}
+const LIMIT = limit();
 
 /**
  * Commands that only look. A Bash call whose every segment starts with one of

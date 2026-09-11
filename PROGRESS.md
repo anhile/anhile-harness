@@ -386,3 +386,47 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   the command it installs and the repository share one name. Nothing
   generated changes: the name appears in the usage text, the README, the
   changelog and one assertion, and in no file a new project gets.
+
+## 2026-09-12 — What a consumer's first session would have found, fixed before one has it
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  A critical read of the published 0.1.0, measured rather than recalled,
+  found five defects and a list of design debts. The defects are fixed here,
+  each with a case that would have caught it:
+
+  - The budget hook wrote `.claude/.work-budget.json`, the generated
+    `.gitignore` did not name it, and the tree hash counts unignored files.
+    Proved on a probe: writing the file changed the hash. Every consumer's
+    first session would have had every gate run go stale. The state is under
+    `.generated/` now; `harness-init.spec.ts` writes it in a scaffold and
+    holds the hash still.
+  - The tarball carried `specs/2026-09-harness-guarantees.md`, this
+    repository's own contract, because `files` named `specs` whole. The
+    package suite now refuses anything under `.claude/`, `.github/` or
+    `specs/` the manifest does not list as travelling.
+  - `verify-task` and `review-pr` delegated to `security-check`, which was
+    product-tier in link-shortener and never shipped. A general one travels
+    now: the attack surface from the configuration, the seven places to look
+    in any project, the same verdict line the receipt records.
+  - `task-intake` carried one product's Notion database, three ids in a code
+    block. `intake.notion` in `harness.config.json`, validated, null here.
+  - Actions were pinned to major tags with Node 20 warnings already showing;
+    the release pipeline installed `npm@latest`. Pinned to commits and to
+    12.0.2. `verify.yml` is protected and went through `.generated/scratch/`.
+
+  Two debts paid on the way: the work budget is a configuration key with a
+  lenient read, since a hook that throws stops every tool call; and the
+  coverage floor here is raised to what the code actually has, with the
+  generator telling a new project to do the same after its first green run.
+
+  Debts recorded and not paid: `verify-log.jsonl` growing on every run and
+  conflicting between branches; audit receipts that no log keeps; templates
+  as string arrays; `pnpm` and bash as unstated prerequisites; no upgrade
+  path for a project that adopted 0.1.0, which is the one this entry is
+  about.

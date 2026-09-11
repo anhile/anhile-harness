@@ -47,9 +47,10 @@ One of the two places intake reads from, and the user says which:
   file this skill writes always says `status: Draft`.
 
 For Notion:
-Its database, data source and view ids are at the top of
-`.claude/skills/task-intake/SKILL.md` and are deliberately not copied here: an id
-that lives in two files is an id that gets updated in one of them.
+Its database, data source and view ids are `intake.notion` in
+`harness.config.json` and are deliberately not copied here: an id that lives in
+two files is an id that gets updated in one of them. When the key is `null`,
+the inbox is the only output.
 
 A loose Notion page is not an acceptable output, however good it is. Intake
 rejects any page that is not a row of that data source, so a spec written

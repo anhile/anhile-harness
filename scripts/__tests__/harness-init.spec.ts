@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -348,6 +348,22 @@ describe('the project it writes', () => {
     expect(rules).toContain('a spec for probe');
     expect(rules).toMatch(/^\| R1 \| </mu);
     expect(rules).not.toMatch(/generated project passes|harness\.versions/u);
+  });
+
+  it('lets a hook write its state without moving the tree hash', () => {
+    // The commit gate hashes every unignored file, and check-work-budget.mjs
+    // writes after every tool call. In 0.1.0 it wrote under .claude/, which
+    // the generated .gitignore did not name, so a consumer's first session
+    // had every gate run go stale. The state is under .generated/ now and the
+    // generated .gitignore ignores that directory.
+    const dir = scaffold();
+    execFileSync('git', ['init', '-q'], { cwd: dir });
+    const hash = () => execFileSync('node', [path.join(dir, 'scripts', 'verify-receipt.mjs'), 'hash'], { cwd: dir, encoding: 'utf8' }).trim();
+    const before = hash();
+    mkdirSync(path.join(dir, '.generated'), { recursive: true });
+    writeFileSync(path.join(dir, '.generated', 'work-budget.json'), '{"count":1}\n');
+    expect(hash()).toBe(before);
+    expect(read(dir, '.gitignore')).toContain('.generated/');
   });
 
   it('gives the project a CONTRIBUTING.md, which the pull request template points at', () => {

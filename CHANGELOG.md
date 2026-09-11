@@ -11,6 +11,36 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-09-12
+
+The first session of a generated project under Claude Code found what the
+generate job could not: the hooks. Everything here came out of reading the
+published 0.1.0 as a consumer would.
+
+### Fixed
+
+- The work-budget hook kept its state under `.claude/`, which the generated
+  `.gitignore` did not name, and the commit gate hashes every unignored file:
+  in a consumer's first session every gate run went stale after the next
+  tool call. The state is under `.generated/` now, which every project
+  ignores.
+- The tarball carried this repository's own contract under `specs/`. It
+  carries the templates and nothing written under them here.
+- `verify-task` and `review-pr` delegated to a `security-check` agent that
+  did not travel. It does now, general rather than the product's.
+- `task-intake` carried the URL of one product's Notion database. It reads
+  `intake.notion` from `harness.config.json`, and stops when it is `null`.
+
+### Changed
+
+- The work budget is `session.workBudget` in `harness.config.json`, thirty
+  by default; the environment still overrides it.
+- The generator's next steps and the seeded `AGENTS.md` say to raise the
+  coverage floor after the first green run, so it starts where the project
+  starts and not at zero.
+- The workflows pin every action to a commit and the release pipeline pins
+  the npm it installs.
+
 ## [0.1.0] — 2026-09-11
 
 The first version published from its own repository. Until now the harness
@@ -60,5 +90,6 @@ would otherwise find a different package than the one on npm.
 - Upgrading a project that adopted an earlier version. A generated project
   keeps the snapshot it was given.
 
-[Unreleased]: https://github.com/anhile/anhile-harness/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/anhile/anhile-harness/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/anhile/anhile-harness/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/anhile/anhile-harness/releases/tag/v0.1.0

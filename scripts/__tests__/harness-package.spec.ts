@@ -102,9 +102,22 @@ describe('what the tarball carries', () => {
     expect(read('verify.sh')).toContain('run_step 01 ');
   });
 
-  it('the skills and the agent, which are the harness for a session', () => {
+  it('the skills and both agents, which are the harness for a session', () => {
     expect(paths.filter((f) => f.startsWith('.claude/skills/')).length).toBeGreaterThan(4);
     expect(paths).toContain('.claude/agents/spec-auditor.md');
+    // verify-task and review-pr delegate to it whenever the diff touches the
+    // attack surface; a project with an API has one from the first commit.
+    // 0.1.0 shipped the skills that call it and not the agent.
+    expect(paths).toContain('.claude/agents/security-check.md');
+  });
+
+  it('under .claude, .github and specs, only what the manifest says travels', () => {
+    // 0.1.0 shipped this repository's own contract, because `files` named
+    // the specs directory whole. The rule the manifest states is that a new
+    // project gets the templates and nothing written under them here.
+    const travelling = new Set(manifest.elsewhere.core);
+    const extra = paths.filter((f) => /^(\.claude|\.github|specs)\//u.test(f) && !travelling.has(f));
+    expect(extra).toEqual([]);
   });
 
   it('the bin, the README and the licence', () => {
@@ -114,10 +127,10 @@ describe('what the tarball carries', () => {
   });
 
   it('no session state', () => {
-    // .claude/.work-budget.json is written by a hook during a session and was
-    // in the first dry run: `files` lists `.claude` and npm takes the directory
-    // whole. Shipping it hands every consumer a count from somebody else's
-    // afternoon.
+    // The budget hook's state was under .claude/ until 2026-09-12 and was in
+    // the first dry run: `files` lists `.claude` and npm takes the directory
+    // whole. It lives under .generated/ now, which is ignored; this keeps the
+    // old name out should it ever come back.
     expect(paths.filter((f) => f.endsWith('.work-budget.json'))).toEqual([]);
     expect(paths.filter((f) => f.startsWith('.generated/'))).toEqual([]);
   });

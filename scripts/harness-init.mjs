@@ -370,7 +370,7 @@ const SEEDS = {
     ['packages:', "  - 'packages/*'", ...(answers.api || answers.web ? ["  - 'apps/*'"] : []), ''].join('\n'),
 
   '.gitignore': () =>
-    ['node_modules/', 'dist/', 'dist-types/', '.generated/', '.env', '.env.local', 'coverage/'].join('\n') + '\n',
+    ['node_modules/', 'dist/', 'dist-types/', '.generated/', '.env', '.env.local', 'coverage/', '.DS_Store'].join('\n') + '\n',
 
   '.nvmrc': () => `${process.version.replace('v', '')}\n`,
 
@@ -640,6 +640,11 @@ export function configFor(answers) {
     // Commits allowed to close more than one entry, because they predate the
     // rule. A new project has none.
     featureList: { exemptCommits: [] },
+    // Tool calls a session may make between two messages before the budget
+    // hook asks it to stop; where /task-intake reads specs from, or null for
+    // the inbox alone.
+    session: { workBudget: 30 },
+    intake: { notion: null },
   };
 }
 
@@ -843,6 +848,8 @@ const agentsSeed = (answers, steps, deferred) =>
     '',
     '- `docs/DOMAIN_RULES.md` — the constraints a spec is checked against; the',
     '  file is a template with the shape and no rules',
+    '- the coverage floor: `node scripts/check-coverage.mjs --raise` after the',
+    '  first green run, so it starts where the project starts and not at zero',
     '- the layer rules in `eslint.config.mjs`, and a suite that fires at them',
     '',
     ...(answers.mcp.length === 0
@@ -1108,6 +1115,7 @@ async function main() {
   console.log('  git init && pnpm install');
   console.log('  ./verify.sh          # green on an empty project, which is the point');
   console.log('  git add -A && git commit -m "chore: the harness, before anything it guards"');
+  console.log('  node scripts/check-coverage.mjs --raise   # the floor starts where you start, not at zero');
   console.log('');
   console.log('Then fill in docs/DOMAIN_RULES.md, and add your own invariants below the');
   console.log("harness's in docs/INVARIANTS.md. Until those exist the gate checks that the");

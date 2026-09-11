@@ -12,7 +12,7 @@
  * throwaway directory and driven through stdin exactly as the hook would.
  */
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -26,6 +26,9 @@ beforeEach(() => {
   mkdirSync(path.join(dir, 'scripts'));
   script = path.join(dir, 'scripts', 'check-work-budget.mjs');
   copyFileSync(path.join(REPO, 'scripts', 'check-work-budget.mjs'), script);
+  // The hook reads its limit through the loader; the throwaway repository
+  // carries the loader and, unless a case writes one, no configuration.
+  copyFileSync(path.join(REPO, 'scripts', 'harness-config.mjs'), path.join(dir, 'scripts', 'harness-config.mjs'));
 });
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
@@ -47,13 +50,54 @@ function fire(payload: Record<string, unknown>, limit = 30): { status: number; s
 
 function count(): number {
   try {
-    return (JSON.parse(readFileSync(path.join(dir, '.claude', '.work-budget.json'), 'utf8')) as { count: number }).count;
+    return (JSON.parse(readFileSync(path.join(dir, '.generated', 'work-budget.json'), 'utf8')) as { count: number }).count;
   } catch {
     return 0;
   }
 }
 
 const bash = (command: string) => ({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command } });
+
+/** Like fire(), with no limit in the environment, so the configuration decides. */
+function fireUnset(payload: Record<string, unknown>): number {
+  const env = { ...process.env };
+  delete env.WORK_BUDGET_LIMIT;
+  try {
+    execFileSync('node', [script], { input: JSON.stringify(payload), encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], env });
+    return 0;
+  } catch (error) {
+    return (error as { status?: number }).status ?? -1;
+  }
+}
+
+describe('where the limit comes from', () => {
+  it('keeps its state under .generated, which every project ignores', () => {
+    // It lived under .claude/ until 2026-09-12, unignored, and the tree hash
+    // counts unignored files: every tool call moved the hash, and every gate
+    // run followed by one went stale.
+    fire(bash('touch x'));
+    expect(existsSync(path.join(dir, '.generated', 'work-budget.json'))).toBe(true);
+    expect(existsSync(path.join(dir, '.claude'))).toBe(false);
+  });
+
+  it('reads session.workBudget from harness.config.json when the environment says nothing', () => {
+    writeFileSync(
+      path.join(dir, 'harness.config.json'),
+      JSON.stringify({
+        ...JSON.parse(readFileSync(path.join(REPO, 'harness.config.json'), 'utf8')),
+        session: { workBudget: 2 },
+      }),
+    );
+    expect(fireUnset(bash('touch a'))).toBe(0);
+    expect(fireUnset(bash('touch b'))).toBe(0);
+    expect(fireUnset(bash('touch c'))).not.toBe(0);
+  });
+
+  it('falls back to thirty rather than stopping every tool call when the configuration is unreadable', () => {
+    writeFileSync(path.join(dir, 'harness.config.json'), '{ not json');
+    expect(fireUnset(bash('touch a'))).toBe(0);
+  });
+});
 const edit = { hook_event_name: 'PreToolUse', tool_name: 'Edit', tool_input: { file_path: 'x.ts' } };
 
 describe('what spends the budget', () => {

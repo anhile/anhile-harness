@@ -34,6 +34,8 @@ export const CONFIG_FILE = 'harness.config.json';
  *   attackSurface: { paths: string[] },
  *   contracts: { package: string | null },
  *   featureList?: { exemptCommits: string[] },
+ *   session?: { workBudget?: number },
+ *   intake?: { notion: { database: string, dataSource?: string, view?: string } | null },
  * }} Config
  */
 
@@ -71,6 +73,18 @@ const OPTIONAL = {
   // Commits exempt from one-closure-per-commit in check-feature-list.mjs:
   // full shas, of commits already on main.
   'featureList.exemptCommits': (v) => Array.isArray(v) && v.every((s) => /^[0-9a-f]{40}$/u.test(s)),
+  // Tool calls a session may make between two messages from the person
+  // before check-work-budget.mjs asks it to stop.
+  'session.workBudget': (v) => typeof v === 'number' && Number.isInteger(v) && v > 0,
+  // Where /task-intake reads feature specs from, or null for the inbox alone.
+  // A URL of the Notion database; the data source and view ids when the
+  // database has more than one.
+  'intake.notion': (v) =>
+    v === null ||
+    (typeof v === 'object' &&
+      v !== null &&
+      typeof (/** @type {{ database?: unknown }} */ (v)).database === 'string' &&
+      /^https:\/\//u.test(String((/** @type {{ database?: unknown }} */ (v)).database))),
 };
 
 /**

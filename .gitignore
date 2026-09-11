@@ -6,4 +6,3 @@ dist-types/
 .env.local
 coverage/
 .DS_Store
-.claude/.work-budget.json
