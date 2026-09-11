@@ -81,7 +81,8 @@
         "the migrations directory"
       ],
       "scripts/check-verify.mjs": [
-        "the path it writes the deliberate error into"
+        "the path it writes the deliberate error into",
+        "the step list, read from verify.sh rather than carried"
       ],
       "scripts/migrate.mjs": [
         "the database name prefix",

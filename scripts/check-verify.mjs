@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * feature_list.json #31 — ./verify.sh runs every step and writes complete
+ * The gate's witness: ./verify.sh runs every step and writes complete
  * evidence for a failing run as well as a passing one.
  *
  * This deliberately lives OUTSIDE verify.sh. It runs verify.sh twice, so making
@@ -23,17 +23,29 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EVIDENCE = path.join(root, '.generated', 'runs');
 const PROBE = path.join(root, loadConfig().verifyProbe.path);
 
-const EXPECTED_STEPS = [
-  '01-eslint',
-  '02-typecheck',
-  '03-unit',
-  '04-api-e2e',
-  '05-browser-e2e',
-  '06-feature-list',
-  '07-verify-log',
-  '08-coverage',
-  '09-migrations',
-];
+/**
+ * The steps the gate runs, read from the gate. This used to be a literal list
+ * of nine, written when every project had all nine; the generator writes a
+ * gate with the steps a project can pass, so the witness of a six-step gate
+ * demanded evidence for three steps that were never there and failed on a
+ * green run. What a step is called is decided in one place, verify.sh, and
+ * the witness asks it.
+ */
+const EXPECTED_STEPS = readFileSync(path.join(root, 'verify.sh'), 'utf8')
+  .split('\n')
+  .map((line) => /^run_step (\d\d) (\S+)/u.exec(line))
+  .filter(Boolean)
+  .map(([, n, name]) => `${n}-${name}`);
+if (EXPECTED_STEPS.length === 0) {
+  console.error('check-verify: verify.sh has no run_step lines, so there is nothing to witness');
+  process.exit(1);
+}
+// The deliberate error below is a type error, so the step it breaks has to be
+// in the gate for the witness to mean anything.
+if (!EXPECTED_STEPS.includes('02-typecheck')) {
+  console.error('check-verify: verify.sh has no 02-typecheck step, which the deliberate error targets');
+  process.exit(1);
+}
 
 let failures = 0;
 function check(description, condition, detail = '') {
@@ -88,9 +100,10 @@ function auditEvidence(dir, { expectFailure }) {
     check('summary records the failing step', /FAIL\s+02 typecheck/.test(summary), summary.trim());
     check('summary verdict is FAIL', /RESULT: FAIL/.test(summary));
     // The point of the feature: later steps still ran.
+    const after = EXPECTED_STEPS.slice(EXPECTED_STEPS.indexOf('02-typecheck') + 1);
     check(
       'steps after the failure still produced logs',
-      ['03-unit', '04-api-e2e', '05-browser-e2e', '06-feature-list'].every((step) =>
+      after.every((step) =>
         /PASS|FAIL/.test(summary.match(new RegExp(`^(PASS|FAIL)\\s+${step.slice(0, 2)} `, 'm'))?.[0] ?? ''),
       ),
       summary.trim(),

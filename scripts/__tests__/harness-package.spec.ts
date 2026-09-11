@@ -35,6 +35,7 @@ const pkg = JSON.parse(read('package.json')) as {
   name: string;
   version: string;
   type?: string;
+  packageManager?: string;
   license: string;
   bin: Record<string, string>;
   files: string[];
@@ -195,6 +196,10 @@ describe('the package as npm will see it', () => {
     // Two places say which pg: the peer range for whoever installs this
     // package, and the versions file for whoever gets a project from it.
     expect(pkg.peerDependencies.pg).toBe(versions.versions.pg);
+  });
+
+  it('names its package manager, which CI reads and the generator copies', () => {
+    expect(pkg.packageManager).toMatch(/^pnpm@\d+\.\d+\.\d+$/u);
   });
 
   it('ships the licence it claims, rather than only naming one', () => {

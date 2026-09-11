@@ -220,6 +220,15 @@ describe('the project it writes', () => {
     expect(JSON.parse(read(scaffold(['--database']), 'package.json')).devDependencies.pg).toBeDefined();
   });
 
+  it('names the package manager, which the copied CI workflow reads', () => {
+    // pnpm/action-setup@v4 takes the version from `packageManager` and fails
+    // without one. The generated project gets this repository's, so the two
+    // run the same pnpm.
+    const mine = JSON.parse(readFileSync(path.join(REPO, 'package.json'), 'utf8')) as { packageManager: string };
+    expect(mine.packageManager).toMatch(/^pnpm@\d/u);
+    expect(JSON.parse(read(scaffold(), 'package.json')).packageManager).toBe(mine.packageManager);
+  });
+
   it('installs the toolchain the gate steps call by name', () => {
     const deps = JSON.parse(read(scaffold(), 'package.json')).devDependencies;
     for (const tool of ['eslint', 'typescript', 'jest', 'ts-jest']) {
