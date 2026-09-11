@@ -3,24 +3,24 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 /**
- * The package, and the three links between it and the repository it is built
- * from.
+ * The package, and the links between it and the repository it is.
  *
- * `scripts/` stays the source of truth: it is where the guards live, where
- * their suites fire at them, and where the gate runs them every day. A second
- * copy maintained by hand would drift, and the drift would ship — to somebody
- * else's repository, where nothing here could notice.
+ * In link-shortener the package was assembled at pack time from the manifest,
+ * and this suite held three links: manifest to build, build to tarball. Here
+ * there is no build — `scripts/` at the root is what ships and `files` in
+ * package.json names the real directories — so there are two: the boundary
+ * suite says the manifest is complete, and this one asks npm what the tarball
+ * would carry and holds that to the manifest.
  *
- * So the package is assembled at pack time from `harness.manifest.json`, and
- * three checks hold the chain: the boundary suite says the manifest is
- * complete, this file says the build matches the manifest, and `npm pack`
- * says the tarball matches the build.
+ * Asked of `npm pack --dry-run`, never of `files`. The field is a set of globs
+ * npm interprets, and the interpretation is what has surprised people: what a
+ * dot-directory does, what a negation does, what an ignore file does inside a
+ * listed directory. The tarball is the fact; `files` is a claim about it.
  */
 const REPO = path.resolve(__dirname, '..', '..');
-const PKG = path.join(REPO, 'packages', 'harness');
-const read = (...parts: string[]) => readFileSync(path.join(...parts), 'utf8');
+const read = (...parts: string[]) => readFileSync(path.join(REPO, ...parts), 'utf8');
 
-const manifest = JSON.parse(read(REPO, 'harness.manifest.json')) as {
+const manifest = JSON.parse(read('harness.manifest.json')) as {
   core: { scripts: string[]; suites: string[] };
   configured: { scripts: Record<string, unknown> };
   elsewhere: { core: string[] };
@@ -31,150 +31,144 @@ const manifest = JSON.parse(read(REPO, 'harness.manifest.json')) as {
   };
 };
 
-const pkg = JSON.parse(read(PKG, 'package.json')) as {
+const pkg = JSON.parse(read('package.json')) as {
   name: string;
   version: string;
+  type?: string;
   license: string;
   bin: Record<string, string>;
   files: string[];
-  dependencies: Record<string, string>;
+  dependencies?: Record<string, string>;
+  devDependencies: Record<string, string>;
   peerDependencies: Record<string, string>;
   peerDependenciesMeta: Record<string, { optional: boolean }>;
   publishConfig: { access: string };
 };
 
-/** The build is deterministic, so running it here is cheap and safe. */
-function build(): string[] {
-  execFileSync('node', [path.join(PKG, 'build.mjs')], { cwd: REPO, encoding: 'utf8' });
-  return (JSON.parse(read(PKG, 'harness', 'CONTENTS.json')) as { files: string[] }).files;
+const versions = JSON.parse(read('harness.versions.json')) as { versions: Record<string, string> };
+
+const named = (groups: Record<string, string[] | string>): string[] =>
+  Object.entries(groups)
+    .filter(([key]) => key !== '//')
+    .flatMap(([, packages]) => packages as string[]);
+
+/** What the tarball would carry, asked of npm rather than of the config. */
+function packed(): string[] {
+  const listed = execFileSync('npm', ['pack', '--dry-run', '--json'], {
+    cwd: REPO,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  // A lifecycle script, should one ever be added, prints to the same stream,
+  // so the JSON is not assumed to start at the first byte.
+  const [tarball] = JSON.parse(listed.slice(listed.indexOf('['))) as { files: { path: string }[] }[];
+  if (tarball === undefined) throw new Error('npm pack --dry-run --json listed no tarball');
+  return tarball.files.map((f) => f.path);
 }
 
-describe('what the build assembles', () => {
-  const built = build();
+describe('what the tarball carries', () => {
+  const paths = packed();
 
-  it('carries every script the manifest says travels', () => {
+  it('every script the manifest says travels', () => {
     const expected = [...manifest.core.scripts, ...Object.keys(manifest.configured.scripts)].filter(
       (f) => f !== '//',
     );
-    expect(expected.filter((f) => !built.includes(f))).toEqual([]);
+    expect(expected.filter((f) => !paths.includes(f))).toEqual([]);
   });
 
-  it('carries no guard suite, because they assert the repository they were written in', () => {
-    expect(built.filter((f) => f.includes('__tests__'))).toEqual([]);
+  it('every file the generator copies beside the scripts', () => {
+    expect(manifest.elsewhere.core.filter((f) => !paths.includes(f))).toEqual([]);
   });
 
-  it('carries the manifest itself, which the generator reads from its own root', () => {
-    expect(built).toContain('harness.manifest.json');
+  it('the manifest itself, which the generator reads from its own root', () => {
+    expect(paths).toContain('harness.manifest.json');
   });
 
-  it('carries verify.sh, the one file the generator rewrites rather than copies', () => {
-    expect(built).toContain('verify.sh');
-    expect(read(PKG, 'harness', 'verify.sh')).toContain('run_step 01 ');
+  it('the versions file, which the generator resolves the applications from', () => {
+    // Without it `npx @anhile/harness init --web` refuses in the consumer's
+    // shell for a reason that only makes sense in this repository.
+    expect(paths).toContain('harness.versions.json');
   });
 
-  it('carries the skills and the agent, which are the harness for a session', () => {
-    expect(built.filter((f) => f.startsWith('.claude/skills/')).length).toBeGreaterThan(4);
-    expect(built).toContain('.claude/agents/spec-auditor.md');
+  it('verify.sh, the one file the generator rewrites rather than copies', () => {
+    expect(paths).toContain('verify.sh');
+    expect(read('verify.sh')).toContain('run_step 01 ');
   });
 
-  it('carries no product document', () => {
+  it('the skills and the agent, which are the harness for a session', () => {
+    expect(paths.filter((f) => f.startsWith('.claude/skills/')).length).toBeGreaterThan(4);
+    expect(paths).toContain('.claude/agents/spec-auditor.md');
+  });
+
+  it('the bin, the README and the licence', () => {
+    for (const file of ['bin/harness.mjs', 'README.md', 'LICENSE', 'package.json']) {
+      expect(paths).toContain(file);
+    }
+  });
+
+  it('no session state', () => {
+    // .claude/.work-budget.json is written by a hook during a session and was
+    // in the first dry run: `files` lists `.claude` and npm takes the directory
+    // whole. Shipping it hands every consumer a count from somebody else's
+    // afternoon.
+    expect(paths.filter((f) => f.endsWith('.work-budget.json'))).toEqual([]);
+    expect(paths.filter((f) => f.startsWith('.generated/'))).toEqual([]);
+  });
+
+  it('nothing git ignores', () => {
+    // A file in the tarball that git ignores is a file no review saw and no
+    // clean clone can reproduce. The work-budget file above is one instance;
+    // this is the rule it is an instance of. Untracked-but-not-ignored is
+    // allowed, so a file being added shows up here before it is staged.
+    const known = new Set(
+      execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {
+        cwd: REPO,
+        encoding: 'utf8',
+      }).split('\n'),
+    );
+    expect(paths.filter((f) => !known.has(f))).toEqual([]);
+  });
+
+  it('no product document', () => {
     // DOMAIN_RULES and ARCHITECTURE describe a URL shortener. A new project
     // inheriting somebody else's domain rules is worse than starting with none.
     for (const gone of ['docs/DOMAIN_RULES.md', 'docs/ARCHITECTURE.md', 'docs/MCP_SERVER.md']) {
-      expect(built).not.toContain(gone);
+      expect(paths).not.toContain(gone);
     }
-  });
-
-  it('refuses to build when the manifest names a file that is not there', () => {
-    const probe = `
-      import { assemble } from ${JSON.stringify(path.join(PKG, 'build.mjs'))};
-      import { readFileSync, writeFileSync } from 'node:fs';
-      const file = ${JSON.stringify(path.join(REPO, 'harness.manifest.json'))};
-      const before = readFileSync(file, 'utf8');
-      const broken = JSON.parse(before);
-      broken.core.scripts.push('scripts/does-not-exist.mjs');
-      writeFileSync(file, JSON.stringify(broken));
-      try { assemble(); } catch (e) { console.log(e.message); }
-      finally { writeFileSync(file, before); }
-    `;
-    const out = execFileSync('node', ['--input-type=module', '-e', probe], { encoding: 'utf8' });
-    expect(out).toContain('does-not-exist.mjs');
-    expect(out).toContain('would ship a missing file');
   });
 });
 
-describe('the versions it ships', () => {
-  it('resolves every dependency the manifest names', () => {
-    build();
-    const contents = JSON.parse(read(PKG, 'harness', 'package.json')) as {
-      devDependencies: Record<string, string>;
-    };
-    const named = [
-      ...manifest.dependencies.toolchain.packages,
-      ...Object.entries(manifest.dependencies.scripts)
-        .filter(([f]) => f !== '//')
-        .flatMap(([, p]) => p as string[]),
-    ];
-    expect(named.filter((n) => contents.devDependencies[n] === undefined)).toEqual([]);
+describe('the versions it can give a new project', () => {
+  const fromPackageJson = { ...pkg.dependencies, ...pkg.devDependencies };
+  const available = { ...fromPackageJson, ...versions.versions };
+  const wanted = [
+    ...manifest.dependencies.toolchain.packages,
+    ...named(manifest.dependencies.scripts),
+    ...named(manifest.dependencies.apps),
+  ];
+
+  it('resolves every package the manifest names, whatever a project answers', () => {
+    // The generator refuses a name it cannot resolve, at generation time. That
+    // refusal is right, and this case is what keeps it from ever firing for a
+    // consumer: the check runs here, against the same two files.
+    expect(wanted.filter((n) => available[n] === undefined)).toEqual([]);
   });
 
-  it('ships what the manifest names, and only that', () => {
-    // This case used to say the package ships no NestJS and no React. That
-    // stopped being true on 2026-09-11, deliberately: the generator writes an
-    // API and a page, so it has to be able to say which versions they were
-    // written against. What replaces it is the statement that was underneath
-    // all along — the manifest decides what travels, and nothing reaches a new
-    // project because it happened to be installed here.
-    const contents = JSON.parse(read(PKG, 'harness', 'package.json')) as {
-      devDependencies: Record<string, string>;
-    };
-    const named = new Set([
-      ...manifest.dependencies.toolchain.packages,
-      ...Object.entries(manifest.dependencies.scripts)
-        .filter(([f]) => f !== '//')
-        .flatMap(([, p]) => p as string[]),
-      ...Object.entries(manifest.dependencies.apps)
-        .filter(([g]) => g !== '//')
-        .flatMap(([, p]) => p as string[]),
-    ]);
-    expect(Object.keys(contents.devDependencies).filter((n) => !named.has(n))).toEqual([]);
+  it('records in harness.versions.json only what package.json cannot give', () => {
+    // Two copies of a version drift. The resolver refuses a name in both; this
+    // says the same about the files as they are committed.
+    expect(Object.keys(versions.versions).filter((n) => fromPackageJson[n] !== undefined)).toEqual([]);
   });
 
-  it('ships nothing that is this product rather than this harness', () => {
-    // The other direction, and the one the old case was really about. These
-    // are installed here and are nobody else's business: an authentication
-    // vendor, a QR encoder, the mutation runner, this repository's own
-    // workspace package.
-    const contents = JSON.parse(read(PKG, 'harness', 'package.json')) as {
-      devDependencies: Record<string, string>;
-    };
-    for (const theirs of [
-      'stytch',
-      'qrcode',
-      '@playwright/test',
-      '@stryker-mutator/core',
-      '@anhile-links/contracts',
-    ]) {
-      expect(contents.devDependencies[theirs]).toBeUndefined();
-    }
+  it('records in harness.versions.json nothing the manifest does not name', () => {
+    // A version for a package nothing generates is a version nobody will
+    // notice going stale.
+    expect(Object.keys(versions.versions).filter((n) => !wanted.includes(n))).toEqual([]);
   });
 
-  it('takes the versions from this repository, so the two cannot disagree', () => {
-    // Root and the applications both, because that is where a monorepo keeps
-    // them: React's version is in apps/web/package.json and nowhere else.
-    const available: Record<string, string> = {};
-    for (const file of ['package.json', 'apps/api/package.json', 'apps/web/package.json']) {
-      const pkg = JSON.parse(read(REPO, file)) as {
-        dependencies?: Record<string, string>;
-        devDependencies?: Record<string, string>;
-      };
-      Object.assign(available, pkg.dependencies, pkg.devDependencies);
-    }
-    const contents = JSON.parse(read(PKG, 'harness', 'package.json')) as {
-      devDependencies: Record<string, string>;
-    };
-    for (const [name, version] of Object.entries(contents.devDependencies)) {
-      expect(version).toBe(available[name]);
+  it('records versions as ranges, in the form package.json would', () => {
+    for (const [name, version] of Object.entries(versions.versions)) {
+      expect({ name, ok: /^[\^~]?\d+\.\d+\.\d+/u.test(version) }).toEqual({ name, ok: true });
     }
   });
 });
@@ -185,26 +179,30 @@ describe('the package as npm will see it', () => {
     expect(pkg.publishConfig.access).toBe('public');
   });
 
-  it('has a bin that exists', () => {
-    const entry = Object.values(pkg.bin)[0];
-    expect(existsSync(path.join(PKG, entry))).toBe(true);
+  it('has a bin that exists and is a module, since it uses top-level await', () => {
+    const [entry] = Object.values(pkg.bin);
+    expect(entry).toBeDefined();
+    expect(existsSync(path.join(REPO, entry ?? ''))).toBe(true);
+    expect(pkg.type).toBe('module');
   });
 
   it('makes pg optional, since a project without a database never imports it', () => {
     expect(pkg.peerDependencies.pg).toBeDefined();
-    expect(pkg.peerDependenciesMeta.pg.optional).toBe(true);
+    expect(pkg.peerDependenciesMeta.pg?.optional).toBe(true);
   });
 
-  it('publishes the assembled directory, the bin, the README and the licence', () => {
-    expect(pkg.files.sort()).toEqual(['LICENSE', 'README.md', 'bin', 'harness']);
+  it('pins the pg peer to the version the generator would write', () => {
+    // Two places say which pg: the peer range for whoever installs this
+    // package, and the versions file for whoever gets a project from it.
+    expect(pkg.peerDependencies.pg).toBe(versions.versions.pg);
   });
 
   it('ships the licence it claims, rather than only naming one', () => {
     // package.json said MIT and no licence text shipped. A claim about terms
     // with no terms attached gives a user nothing to rely on.
     expect(pkg.license).toBe('MIT');
-    expect(read(PKG, 'LICENSE')).toContain('MIT License');
-    expect(read(PKG, 'LICENSE')).toContain('WITHOUT WARRANTY OF ANY KIND');
+    expect(read('LICENSE')).toContain('MIT License');
+    expect(read('LICENSE')).toContain('WITHOUT WARRANTY OF ANY KIND');
   });
 
   it('names its command after the scope, because a bin has no namespace', () => {
@@ -216,28 +214,8 @@ describe('the package as npm will see it', () => {
     expect(Object.keys(pkg.bin)).toEqual(['anhile-harness']);
   });
 
-  it('the tarball really carries the harness, asked of npm rather than of the config', () => {
-    build();
-    const listed = execFileSync('npm', ['pack', '--dry-run', '--json'], {
-      cwd: PKG,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    });
-    // `prepack` runs the build and prints to the same stream, so the JSON does
-    // not start at the first byte.
-    const [tarball] = JSON.parse(listed.slice(listed.indexOf('['))) as { files: { path: string }[] }[];
-    const paths = tarball.files.map((f) => f.path);
-
-    expect(paths).toContain('bin/harness.mjs');
-    expect(paths).toContain('harness/verify.sh');
-    expect(paths).toContain('harness/scripts/verify-receipt.mjs');
-    expect(paths).toContain('README.md');
-    expect(paths).toContain('LICENSE');
-    expect(paths.filter((p) => p.includes('__tests__'))).toEqual([]);
-  });
-
   it('the README says what it does not do, which is the part people find out late', () => {
-    const readme = read(PKG, 'README.md');
+    const readme = read('README.md');
     expect(readme).toContain('Upgrade a project that already adopted it');
     expect(readme).toContain('nothing in your project notices');
   });

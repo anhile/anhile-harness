@@ -15,9 +15,11 @@
     ".githooks",
     ".github",
     "verify.sh",
-    "harness.manifest.json",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "harness.manifest.json",
+    "harness.versions.json",
+    "!.claude/.work-budget.json"
   ],
   "publishConfig": {
     "access": "public"

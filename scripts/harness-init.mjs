@@ -146,22 +146,39 @@ export function copiedFiles(manifest) {
  * major of the library the copied script was written against. Resolving the
  * name here means the two cannot disagree.
  */
+export const VERSIONS_FILE = 'harness.versions.json';
+
 export function versionsAvailable() {
   // Root first, then the applications, because that is where a monorepo keeps
   // the versions of the things only one application uses: React is in
-  // apps/web/package.json and nowhere else. Reading only the root was fine
-  // while the harness shipped scripts; a generator that writes a React page
-  // has to be able to say which React it was written against.
+  // apps/web/package.json and nowhere else. That was the whole story while the
+  // generator lived inside a product that happened to contain one of
+  // everything.
   //
-  // The assembled package has no apps/ of its own — build.mjs resolves the
-  // same names here and writes the result into the single package.json it
-  // ships — so the missing files are skipped rather than being an error.
+  // This repository is the harness alone, with no API and no page in it, so
+  // what the generator writes for --api, --web and --database is resolved from
+  // harness.versions.json instead: the versions those templates were written
+  // against, recorded once, for exactly the packages no package.json here can
+  // give a version for. A name in both is refused rather than resolved from
+  // either — two copies of a version drift, which is the reason the manifest
+  // records packages and never versions.
   const files = ['package.json', 'apps/api/package.json', 'apps/web/package.json'];
   const available = {};
   for (const file of files) {
     if (!existsSync(path.join(root, file))) continue;
     const pkg = JSON.parse(read(file));
     Object.assign(available, pkg.dependencies, pkg.devDependencies);
+  }
+  if (existsSync(path.join(root, VERSIONS_FILE))) {
+    const recorded = JSON.parse(read(VERSIONS_FILE)).versions ?? {};
+    const twice = Object.keys(recorded).filter((name) => available[name] !== undefined);
+    if (twice.length > 0) {
+      throw new Error(
+        `${VERSIONS_FILE} records ${twice.join(', ')}, which package.json already gives a version for. ` +
+          'One place per version: remove it from the file and let package.json decide.',
+      );
+    }
+    Object.assign(available, recorded);
   }
   return available;
 }

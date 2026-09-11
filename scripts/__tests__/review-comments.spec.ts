@@ -93,17 +93,17 @@ describe('the three things GitHub keeps apart become one shape', () => {
 describe('bots are filtered and counted, never quietly discarded', () => {
   it('marks a Vercel deployment notice as a bot', () => {
     const [c] = parse({ issueComments: [{ id: 7, user: { login: 'vercel[bot]' }, body: '[vc]: …' }] });
-    expect(c.bot).toBe(true);
+    expect(c?.bot).toBe(true);
   });
 
   it('marks anything GitHub types as a Bot, whatever it is called', () => {
     const [c] = parse({ issueComments: [{ id: 7, user: { login: 'some-new-thing', type: 'Bot' }, body: 'x' }] });
-    expect(c.bot).toBe(true);
+    expect(c?.bot).toBe(true);
   });
 
   it('does not mark a person whose name merely ends in bot', () => {
     const [c] = parse({ issueComments: [{ id: 7, user: { login: 'robotnik', type: 'User' }, body: 'x' }] });
-    expect(c.bot).toBe(false);
+    expect(c?.bot).toBe(false);
   });
 
   it('says how many it filtered and who they were, so the reader can disagree', () => {

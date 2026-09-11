@@ -1,5 +1,10 @@
 # Handover
 
+> **Later the same day:** Phase 0 closed the two causes below — see the
+> PROGRESS.md entry "Phase 0: the gate goes green". The sections "What passes
+> today" and "Why the other seven fail" describe the seed as it was, and are
+> kept as the measurement they were.
+
 This repository was seeded on 2026-09-11 from
 `anhile/link-shortener`, where the harness was a package inside the
 product's monorepo (`packages/harness`). Nothing there was changed or
