@@ -10,7 +10,7 @@
  * every merge. The last describe here is the case that decided it.
  */
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -132,6 +132,16 @@ describe('what the record refuses', () => {
     expect(verdict.reason).toContain('is missing: result, tree, steps');
   });
 
+  it('refuses a run dated before it started, which is what is left of the rule against backdating', () => {
+    writeFileSync(
+      path.join(repo, LOG, '20260830T120000Z.json'),
+      `${JSON.stringify(run({ at: '2026-08-30T11:59:00.000Z' }), null, 2)}\n`,
+    );
+    const verdict = check();
+    expect(verdict.rejected).toBe(true);
+    expect(verdict.reason).toContain('run 20260830T120000Z.json is dated 2026-08-30T11:59:00.000Z, before it started');
+  });
+
   it('refuses a file that is not named as a run, which is a record nothing wrote or a run renamed', () => {
     writeFileSync(path.join(repo, LOG, 'notes.json'), '{}\n');
     const verdict = check();
@@ -186,6 +196,39 @@ describe('two branches that both ran the gate', () => {
         encoding: 'utf8',
       });
     }
+  });
+});
+
+describe('migrate: the record\'s earlier shape into files', () => {
+  // verify-log.jsonl, one line per run, was the record until 2026-09-12. A
+  // project on an earlier version runs this once after taking the scripts.
+  const lines = [
+    { ...first, evidence: '.generated/runs/20260830T100000Z' },
+    { ...second, evidence: '.generated/runs/20260830T110000Z', result: 'fail' },
+    { ...run({ at: '2026-08-30T12:00:00.000Z' }), evidence: '.generated/runs/20260830T120000Z' },
+  ];
+  const migrate = () =>
+    execFileSync('node', [path.join(repo, 'scripts', 'verify-log.mjs'), 'migrate'], { cwd: repo, encoding: 'utf8' });
+
+  it('writes one file per line with the same fields, and removes the file', () => {
+    rmSync(path.join(repo, LOG), { recursive: true, force: true });
+    writeFileSync(path.join(repo, 'verify-log.jsonl'), lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
+    expect(migrate()).toContain('3 run(s) in verify-log.jsonl, 3 file(s) written, the file removed');
+    expect(existsSync(path.join(repo, 'verify-log.jsonl'))).toBe(false);
+    for (const l of lines) {
+      const file = path.join(repo, LOG, `${path.basename(l.evidence as string)}.json`);
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(l);
+    }
+  });
+
+  it('is a no-op the second time, and refuses to overwrite a file that differs', () => {
+    rmSync(path.join(repo, LOG), { recursive: true, force: true });
+    writeFileSync(path.join(repo, 'verify-log.jsonl'), lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
+    migrate();
+    expect(migrate()).toContain('no verify-log.jsonl to migrate');
+    writeFileSync(path.join(repo, 'verify-log.jsonl'), `${JSON.stringify({ ...lines[0], result: 'stale' })}\n`);
+    expect(() => migrate()).toThrow(/exists and differs/u);
+    expect(JSON.parse(readFileSync(path.join(repo, LOG, '20260830T100000Z.json'), 'utf8')).result).toBe('pass');
   });
 });
 

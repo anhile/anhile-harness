@@ -73,6 +73,19 @@ beforeEach(() => {
 
 afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
+describe('what the tree hash leaves out', () => {
+  it('is verify-log/ and nothing else', () => {
+    // The record must sit outside the hash, or recording a run would change
+    // the tree the run is about. Since 2026-09-12 that is a directory prefix
+    // rather than one file name; this pins that nothing wider slipped in.
+    const before = currentTree();
+    recordRun({ tree: 'sha256:whatever' });
+    expect(currentTree()).toBe(before);
+    writeFileSync(path.join(repo, 'verify-log-notes.txt'), 'not the record\n');
+    expect(currentTree()).not.toBe(before);
+  });
+});
+
 describe('a commit no run covers', () => {
   it('is refused when the record is missing entirely', () => {
     const verdict = attest();

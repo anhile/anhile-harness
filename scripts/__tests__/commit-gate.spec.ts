@@ -249,6 +249,22 @@ describe('the durable record cannot be edited around the gate', () => {
     expect(verdict.reason).toContain('rewritten, not appended');
   });
 
+  it('refuses a commit when a recorded run has been removed', () => {
+    writeReceipt('pass');
+    rmSync(path.join(repo, 'verify-log', '20260830T100000Z.json'));
+    const verdict = runGate(bash('git commit -m "x"'));
+    expect(verdict.blocked).toBe(true);
+    expect(verdict.reason).toContain('rewritten, not appended');
+  });
+
+  it('refuses a commit when something that is not a run sits under verify-log/', () => {
+    writeReceipt('pass');
+    writeFileSync(path.join(repo, 'verify-log', 'notes.json'), '{}\n');
+    const verdict = runGate(bash('git commit -m "x"'));
+    expect(verdict.blocked).toBe(true);
+    expect(verdict.reason).toContain('rewritten, not appended');
+  });
+
   it('allows a commit that only records a run', () => {
     writeReceipt('pass');
     writeFileSync(

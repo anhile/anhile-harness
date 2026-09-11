@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -53,11 +53,33 @@ describe('a generated project, on its first run', () => {
     expect(summary).toMatch(/^PASS  08 coverage/mu);
   }, 3 * MINUTES);
 
-  it('records the run in its own record, so its first commit can be attested', () => {
+  it('records the run in its own record, named after its evidence folder, so its first commit can be attested', () => {
     const files = readdirSync(path.join(dir, 'verify-log')).filter((f) => f.endsWith('.json'));
     expect(files).toHaveLength(1);
-    expect(JSON.parse(readFileSync(path.join(dir, 'verify-log', files[0] ?? ''), 'utf8')).result).toBe('pass');
+    expect(files[0]).toBe(`${newestRun(dir)}.json`);
+    const recorded = JSON.parse(readFileSync(path.join(dir, 'verify-log', files[0] ?? ''), 'utf8')) as Record<string, unknown>;
+    expect(recorded.result).toBe('pass');
+    expect(recorded.tree).toMatch(/^sha256:[0-9a-f]{64}$/u);
+    expect(recorded.evidence).toBe(`.generated/runs/${newestRun(dir)}`);
+    expect(Object.keys(recorded.steps as object)).toEqual(['01-eslint', '02-typecheck', '03-unit', '06-feature-list', '07-verify-log', '08-coverage']);
   });
+
+  it('records a red run too, as a second file naming the step that failed', () => {
+    // The record's claim is "red runs included". The witness proves it in CI
+    // weekly; this proves it here, on the generated project, every commit.
+    const probe = path.join(dir, 'packages', 'core', 'src', '__verify_probe.ts');
+    writeFileSync(probe, "export const broken: number = 'not a number';\n");
+    try {
+      expect(() => execFileSync('./verify.sh', { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })).toThrow();
+    } finally {
+      rmSync(probe, { force: true });
+    }
+    const files = readdirSync(path.join(dir, 'verify-log')).filter((f) => f.endsWith('.json')).sort();
+    expect(files).toHaveLength(2);
+    const red = JSON.parse(readFileSync(path.join(dir, 'verify-log', files[1] ?? ''), 'utf8')) as { result: string; steps: Record<string, { exit: number }> };
+    expect(red.result).toBe('fail');
+    expect(red.steps['02-typecheck']?.exit).not.toBe(0);
+  }, 3 * MINUTES);
 });
 
 function newestRun(root: string): string {

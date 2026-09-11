@@ -38,9 +38,10 @@
  *   node scripts/verify-log.mjs check [--base <ref>] [--at <ref>]
  *   node scripts/verify-log.mjs tail [n]
  *   node scripts/verify-log.mjs flakes [days]
+ *   node scripts/verify-log.mjs migrate     # verify-log.jsonl, from before 2026-09-12, into files
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readReceipt } from './verify-receipt.mjs';
@@ -66,6 +67,10 @@ export const LOG_DIR = 'verify-log';
 export const RUN_FILE = /^(\d{8}T\d{6}Z)\.json$/u;
 
 const REQUIRED = ['at', 'result', 'tree', 'steps'];
+
+/** The moment a run started, from its id. */
+const startedAt = (/** @type {string} */ id) =>
+  new Date(`${id.slice(0, 4)}-${id.slice(4, 6)}-${id.slice(6, 8)}T${id.slice(9, 11)}:${id.slice(11, 13)}:${id.slice(13, 15)}Z`);
 
 const logDir = () => path.join(root, LOG_DIR);
 
@@ -256,6 +261,16 @@ function check(args) {
     }
     const missing = REQUIRED.filter((key) => entry[key] === undefined);
     if (missing.length) problems.push(`run ${name} is missing: ${missing.join(', ')}`);
+    // The name is when the run started and `at` is when it was recorded, so
+    // `at` before the name is a record claiming to predate its own run. This
+    // is what is left of the old rule that lines may not be backdated: a
+    // file cannot be dated against its neighbours, since branches record in
+    // their own time, but it can be dated against itself.
+    const recorded = Date.parse(String(entry.at));
+    const match = RUN_FILE.exec(name);
+    if (match && !Number.isNaN(recorded) && recorded < startedAt(match[1] ?? '').getTime()) {
+      problems.push(`run ${name} is dated ${entry.at}, before it started`);
+    }
   }
 
   const appended = [...current.keys()].filter((n) => !baseline.has(n)).length;
@@ -345,13 +360,55 @@ function report(args) {
   console.log('  a step listed here failed on content that also passed: the code is not why');
 }
 
+/**
+ * verify-log.jsonl, the record's shape before 2026-09-12, into files. Each
+ * line becomes `verify-log/<evidence folder>.json`, byte-for-byte the same
+ * fields; a file already there with the same record is left alone, one with
+ * a different record stops the migration, and the old file is removed only
+ * when every line has a file. A project on an earlier version runs this
+ * once after taking the new scripts.
+ */
+function migrate() {
+  const old = path.join(root, 'verify-log.jsonl');
+  if (!existsSync(old)) {
+    console.log('verify-log: no verify-log.jsonl to migrate');
+    return;
+  }
+  const lines = readFileSync(old, 'utf8').split('\n').filter((l) => l.trim() !== '');
+  mkdirSync(logDir(), { recursive: true });
+  let written = 0;
+  for (const [i, line] of lines.entries()) {
+    /** @type {Run} */
+    const entry = JSON.parse(line);
+    const id = path.basename(String(entry.evidence ?? ''));
+    if (!RUN_FILE.test(`${id}.json`)) {
+      process.stderr.write(`verify-log: line ${i + 1} names no evidence folder to take a name from; not migrated\n`);
+      process.exit(1);
+    }
+    const file = path.join(logDir(), `${id}.json`);
+    const text = `${JSON.stringify(entry, null, 2)}\n`;
+    if (existsSync(file)) {
+      if (readFileSync(file, 'utf8') !== text) {
+        process.stderr.write(`verify-log: ${LOG_DIR}/${id}.json exists and differs from line ${i + 1}; not migrated\n`);
+        process.exit(1);
+      }
+      continue;
+    }
+    writeFileSync(file, text);
+    written += 1;
+  }
+  rmSync(old);
+  console.log(`verify-log: ${lines.length} run(s) in verify-log.jsonl, ${written} file(s) written, the file removed`);
+}
+
 function main() {
   const [command, ...args] = process.argv.slice(2);
   if (command === 'append') return append(args);
+  if (command === 'migrate') return migrate();
   if (command === 'check') return check(args);
   if (command === 'tail') return tail(args);
   if (command === 'flakes') return report(args);
-  process.stderr.write('usage: verify-log.mjs append|check|tail|flakes [days]\n');
+  process.stderr.write('usage: verify-log.mjs append|check|tail|flakes [days]|migrate\n');
   process.exit(2);
 }
 

@@ -8,11 +8,13 @@
  * nothing else asks, and which has an answer that can be wrong in ways CI
  * discovers late and expensively.
  *
- * The check that could not have been written before 2026-09-11 is the merge
- * order. Until 2026-09-12 it also refused a branch whose newest gate run was
- * older than main's: the record was one append-only file then, and two
- * branches appending to its end conflicted on every merge. The record is a
- * file per run now, and nothing about order is left to refuse.
+ * Until 2026-09-12 it also refused a branch whose newest gate run was older
+ * than main's: the record was one append-only file then, and two branches
+ * appending to its end conflicted on every merge. The record is a file per
+ * run now, and nothing about order is left to refuse.
+ *
+ *   node scripts/check-pr-ready.mjs
+ *   node scripts/check-pr-ready.mjs --json
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';

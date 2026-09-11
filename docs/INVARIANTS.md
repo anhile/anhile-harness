@@ -137,7 +137,12 @@ closes that window by running this guard itself before allowing a commit.
 - `scripts/verify-log.mjs check`, `verify.sh` step 07: every file under
   `verify-log/` at `HEAD` must be present and byte-identical in the working
   tree, every file must be named as a run and parse and carry `at`,
-  `result`, `tree` and `steps`.
+  `result`, `tree` and `steps`, and no file may be dated before the run its
+  name says it is — what is left of the old rule against backdating, now that
+  branches record in their own time.
+- `scripts/verify-log.mjs migrate` turns the record's earlier shape, one
+  line per run in `verify-log.jsonl`, into files with the same fields, and
+  refuses to overwrite a file that differs.
 - `scripts/check-commit-gate.mjs` runs the same guard before a commit.
 - `scripts/__tests__/verify-log.spec.ts`, step 03: fires removals, rewrites,
   an emptied record, malformed files and stray files at the guard, and merges

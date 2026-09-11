@@ -208,7 +208,9 @@
       "does not write those, and this repository does not have them. CONTRIBUTING.md",
       "and docs/INVARIANTS.md travel as copies, under `core`; docs/DOMAIN_RULES.md is",
       "written as a template, and AGENTS.md tells the new project to fill it in.",
-      "`product` is empty here for the reason the product tier above is. security-check.md was product-tier in link-shortener and is general now, so it travels."
+      "`product` is empty here for the reason the product tier above is. security-check.md was product-tier in link-shortener and is general now, so it travels.",
+      "",
+      "verify-log/ is not seeded: git keeps no empty directory, and the first gate run creates it. check-attestation.mjs refuses a project with no run on record, which is the state a project is born in."
     ],
     "core": [
       "verify.sh",
@@ -237,7 +239,6 @@
       "CLAUDE.md",
       "PROGRESS.md",
       "feature_list.json",
-      "verify-log/",
       "coverage-floor.json",
       "docs/DOMAIN_RULES.md"
     ],

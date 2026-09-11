@@ -50,20 +50,31 @@ None.
 - **AC3** (ubiquitous) — Two branches that each recorded runs shall merge
   without a conflict under `verify-log/`, and the merged record shall pass
   the guard against either parent.
+- **AC4** (event-driven) — When `verify-log.mjs migrate` runs in a project
+  that still has `verify-log.jsonl`, it shall write one file per line with the
+  same fields, remove the file, refuse to overwrite a file that differs, and
+  do nothing the second time.
 
 ## Verification plan
 
 | Criterion | Verification mechanism | Pass condition | Evidence output |
 |---|---|---|---|
-| AC1 | Jest — `generated-project.spec.ts` "records the run in its own record, so its first commit can be attested"; `attestation.spec.ts`, every case, which reads runs as files | the cases pass | `.generated/runs/<ts>/03-unit.log` |
-| AC2 | Jest — `verify-log.spec.ts` "what the record refuses", five cases; `commit-gate.spec.ts` "refuses a commit when a recorded run has been rewritten" | the cases pass | `.generated/runs/<ts>/03-unit.log` |
+| AC1 | Jest — `generated-project.spec.ts` "records the run in its own record, named after its evidence folder" (the name, the tree, the evidence path, the six steps) and "records a red run too, as a second file naming the step that failed"; `attestation.spec.ts` "what the tree hash leaves out" | the cases pass | `.generated/runs/<ts>/03-unit.log` |
+| AC2 | Jest — `verify-log.spec.ts` "what the record refuses", six cases including a run dated before it started; `commit-gate.spec.ts` "refuses a commit when a recorded run has been rewritten", "…removed", "…something that is not a run sits under verify-log/" | the cases pass | `.generated/runs/<ts>/03-unit.log` |
 | AC3 | Jest — `verify-log.spec.ts` "two branches that both ran the gate": a real `git merge --no-ff` of two branches that each recorded a run, then the guard against `HEAD^` and `HEAD^2` | the case passes | `.generated/runs/<ts>/03-unit.log` |
 
-Entry #7 closes on AC1 to AC3 together: one entry, one commit, one audit.
+| AC4 | Jest — `verify-log.spec.ts` "migrate: the record's earlier shape into files", two cases | the cases pass; and, for this repository's own migration, the 51 lines of `verify-log.jsonl` at `main` compared field for field with the 51 files, recorded in the journal | `.generated/runs/<ts>/03-unit.log`; `PROGRESS.md` |
+
+Entry #7 closes on AC1 to AC4 together: one entry, one commit, one audit.
+The first audit of it found the gate exercised on one of the three shapes
+AC2 names, the migration untested, the guard's rule against backdating gone
+with the order rule, the hash's prefix pinned by nothing, and "red runs
+included" proved only by the witness in CI; each is a case now.
 
 ## Affected modules
 
 - `verify-log/` — new; `verify-log.jsonl` — removed
+- `specs/2026-09-verify-log-files.md` — this file
 - `scripts/verify-log.mjs`, `scripts/check-attestation.mjs`, `scripts/check-pr-ready.mjs`, `scripts/pr-review-brief.mjs`, `scripts/prune-evidence.mjs`, `scripts/check-verify.mjs`, `scripts/progress.mjs`, `scripts/harness-init.mjs`
 - `scripts/verify-receipt.mjs`, `scripts/check-commit-gate.mjs`, `verify.sh` — protected; the prefix the tree hash leaves out, one message, one comment; applied by a person
 - `harness.manifest.json`, `feature_list.json`, `PROGRESS.md`, `CHANGELOG.md`, `docs/INVARIANTS.md`, `CONTRIBUTING.md`, `README.md`, `AGENTS.md`, `.github/pull_request_template.md`, `.claude/skills/open-pr/SKILL.md`, `.claude/skills/setup-repo/SKILL.md`, `.claude/agents/spec-auditor.md`

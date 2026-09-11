@@ -17,9 +17,10 @@ minor, a fix to a copied script is a patch.
   run, in place of the single append-only `verify-log.jsonl`. Two branches
   that both ran the gate no longer conflict on merge, and the readiness
   check no longer asks a branch to rerun the gate because main ran later.
-  A project on an earlier version migrates by writing each line of the old
-  file to `verify-log/<evidence folder name>.json` and removing the file;
-  `verify-log.mjs` does not read the old file.
+  A project on an earlier version runs `node scripts/verify-log.mjs migrate`
+  once after taking the new scripts: one file per line, same fields, the old
+  file removed. The guard refuses a run dated before the moment its name
+  says it started.
 
 ## [0.1.1] — 2026-09-12
 
