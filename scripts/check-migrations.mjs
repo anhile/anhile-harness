@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Guard for migrations/.
  *
@@ -30,19 +31,32 @@ const root = realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.ur
 const DIR = loadConfig().migrations.directory;
 
 const args = process.argv.slice(2);
+/**
+ * @param {string} name
+ * @param {string | null} [fallback]
+ * @returns {string | null}
+ */
 const flag = (name, fallback = null) => {
   const i = args.indexOf(`--${name}`);
-  return i === -1 ? fallback : args[i + 1];
+  return i === -1 ? fallback : (args[i + 1] ?? fallback);
 };
 const base = flag('base', 'HEAD');
 const at = flag('at');
 
+/** @type {string[]} */
 const problems = [];
+/** @type {string[]} */
 const notes = [];
+/** @param {string} text */
 const digest = (text) => createHash('sha256').update(text).digest('hex').slice(0, 16);
 
-/** The `.sql` files and their digests, either at a commit or on disk. */
+/**
+ * The `.sql` files and their digests, either at a commit or on disk.
+ * @param {string | null} ref
+ * @returns {Record<string, string> | null}
+ */
 function readTree(ref) {
+  /** @type {Record<string, string>} */
   const files = {};
   if (ref) {
     let listing;

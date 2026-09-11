@@ -219,8 +219,9 @@ describe('the package as npm will see it', () => {
 
   it('pins the pg peer to the version the generator would write', () => {
     // Two places say which pg: the peer range for whoever installs this
-    // package, and the versions file for whoever gets a project from it.
-    expect(pkg.peerDependencies.pg).toBe(versions.versions.pg);
+    // package, and package.json's devDependency — there since migrate.mjs is
+    // type-checked against @types/pg — for whoever gets a project from it.
+    expect(pkg.peerDependencies.pg).toBe(pkg.devDependencies.pg);
   });
 
   it('names its package manager, which CI reads and the generator copies', () => {

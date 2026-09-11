@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * "End every session with an entry in PROGRESS.md", enforced. A Claude Code
  * `Stop` hook: exit 2 keeps the session going with this script's stderr as the
@@ -31,6 +32,22 @@ import { fileURLToPath } from 'node:url';
 import { newestEntry, root, sessionFile } from './session-start.mjs';
 import { template } from './progress.mjs';
 
+/**
+ * What Claude Code hands the Stop hook on stdin; only the fields read here.
+ * @typedef {{ hook_event_name?: string, session_id?: string, stop_hook_active?: boolean }} StopPayload
+ */
+
+/**
+ * The session record session-start.mjs wrote; only the fields read here.
+ * @typedef {{ head?: string | null, reminded?: boolean, remindedPush?: boolean, remindedAt?: string }} SessionRecord
+ */
+
+/**
+ * What the hook decided, and why. `kind` names the reminder when it blocks.
+ * @typedef {{ block: boolean, reason: string, kind?: 'progress' | 'push', pushed?: boolean }} Verdict
+ */
+
+/** @param {...string} args */
 function git(...args) {
   try {
     return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -39,7 +56,10 @@ function git(...args) {
   }
 }
 
-/** The blob id of PROGRESS.md at a commit, or '' when it is absent. */
+/**
+ * The blob id of PROGRESS.md at a commit, or '' when it is absent.
+ * @param {string} commit
+ */
 function progressBlobAt(commit) {
   return git('rev-parse', `${commit}:PROGRESS.md`);
 }
@@ -67,6 +87,7 @@ export function unpushed() {
  * installed, not authenticated, no network — this says so rather than
  * guessing, and the caller stays quiet, which is the same rule the rest of
  * this file follows about checks that cannot see.
+ * @returns {{ known: boolean, open: boolean, pushed: boolean, branch: string, number?: number }}
  */
 export function prForHead() {
   const branch = git('branch', '--show-current');
@@ -104,6 +125,11 @@ export function prForHead() {
   }
 }
 
+/**
+ * @param {StopPayload} payload
+ * @param {SessionRecord | null} record
+ * @returns {Verdict}
+ */
 export function verdict(payload, record) {
   if (payload.stop_hook_active) return { block: false, reason: 'already continuing from a stop hook' };
   if (!record || !record.head) return { block: false, reason: 'no session record' };
@@ -135,23 +161,30 @@ export function verdict(payload, record) {
   return { block: false, reason: record.reminded ? 'reminded once already' : 'nothing to remind about' };
 }
 
+/**
+ * @param {SessionRecord} record
+ * @param {string} head
+ * @returns {Verdict}
+ */
 function progressVerdict(record, head) {
+  const start = record.head ?? '';
   // The session's starting commit may be gone — a rebase, a reset. Nothing to
   // compare against, so say nothing.
-  if (git('rev-parse', '--verify', '--quiet', `${record.head}^{commit}`) === '') {
+  if (git('rev-parse', '--verify', '--quiet', `${start}^{commit}`) === '') {
     return { block: false, reason: 'the starting commit is no longer reachable' };
   }
-  const before = progressBlobAt(record.head);
+  const before = progressBlobAt(start);
   const after = progressBlobAt(head);
   if (before !== after) return { block: false, reason: 'PROGRESS.md changed in a commit this session' };
-  const count = git('rev-list', '--count', `${record.head}..${head}`) || '?';
+  const count = git('rev-list', '--count', `${start}..${head}`) || '?';
   return {
     block: true,
-    reason: `${count} commit(s) landed since ${record.head.slice(0, 7)} and none touched PROGRESS.md`,
+    reason: `${count} commit(s) landed since ${start.slice(0, 7)} and none touched PROGRESS.md`,
   };
 }
 
 function main() {
+  /** @type {StopPayload} */
   let payload = {};
   try {
     payload = JSON.parse(readFileSync(0, 'utf8') || '{}');

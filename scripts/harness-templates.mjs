@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * The applications a generated project can start from, and the MCP servers it
  * can talk to.
@@ -31,6 +32,7 @@
  * - the path arrives in `__p`, because catch-all routing matched one segment
  * - a failed boot is forgotten, or one bad second poisons a warm instance
  */
+/** @type {Record<string, (name: string) => string>} */
 export const API = {
   'apps/api/package.json': (name) =>
     JSON.stringify(
@@ -352,6 +354,7 @@ export const API = {
 };
 
 /** A React page, built by Vite, and one assertion about what a person sees. */
+/** @type {Record<string, (name: string) => string>} */
 export const WEB = {
   'apps/web/package.json': (name) =>
     JSON.stringify(
@@ -518,7 +521,19 @@ export const WEB = {
  * worked. Putting the intended path in a query parameter makes depth stop
  * meaning anything.
  */
+/** @param {{ api: boolean, web: boolean, name: string }} answers */
 export function vercelConfig({ api, web, name }) {
+  /**
+   * @type {{
+   *   $schema: string,
+   *   framework?: string,
+   *   outputDirectory?: string,
+   *   buildCommand?: string,
+   *   installCommand?: string,
+   *   functions?: Record<string, { maxDuration: number }>,
+   *   rewrites?: { source: string, destination: string }[],
+   * }}
+   */
   const config = { $schema: 'https://openapi.vercel.sh/vercel.json' };
 
   if (web) {
@@ -555,6 +570,7 @@ export function vercelConfig({ api, web, name }) {
  * the schema — a comment key in a file a client validates is a file that stops
  * loading.
  */
+/** @type {Record<string, { url: string, why: string }>} */
 export const MCP = {
   context7: {
     url: 'https://mcp.context7.com/mcp',
@@ -570,12 +586,19 @@ export const MCP = {
   },
 };
 
+/** @param {string[]} chosen */
 export function mcpConfig(chosen) {
   return (
     JSON.stringify(
       {
         mcpServers: Object.fromEntries(
-          chosen.map((n) => [n, { type: 'http', url: MCP[n].url }]),
+          chosen.map((n) => {
+            const server = MCP[n];
+            // The CLI refuses an unknown name before this runs; this is the
+            // same refusal for a caller that did not go through the CLI.
+            if (server === undefined) throw new Error(`unknown MCP server: ${n}`);
+            return [n, { type: 'http', url: server.url }];
+          }),
         ),
       },
       null,

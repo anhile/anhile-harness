@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * The audit receipt: what the spec-auditor concluded, and about which tree.
  *
@@ -34,6 +35,15 @@ import { readReceipt, root, treeHash } from './verify-receipt.mjs';
 export const AUDIT_FILE = '.generated/audit.json';
 export const VERDICTS = ['READY', 'NOT_READY', 'CANNOT_VERIFY'];
 
+/**
+ * The audit receipt /verify-task writes and the commit gate reads.
+ * @typedef {{ spec: string, verdict: string, security: string | null, at: string, treeHash: string, verifyEvidence: string | null, commit: string | null }} Audit
+ */
+
+/** An entry the index flips to passing, as the gate names it. */
+/** @typedef {{ id: number, spec: string | null, description: string }} Closing */
+
+/** @param {...string} args */
 function git(...args) {
   try {
     return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
@@ -42,6 +52,10 @@ function git(...args) {
   }
 }
 
+/**
+ * @param {string} ref
+ * @returns {any[] | null}
+ */
 function listAt(ref) {
   const raw = git('show', `${ref}:feature_list.json`);
   if (raw === null) return null;
@@ -58,10 +72,12 @@ function listAt(ref) {
  * The index rather than the working tree, because the index is what the
  * commit will contain. Nothing to compare gives nothing, not a guess.
  */
+/** @returns {Closing[]} */
 export function closingEntries() {
   const before = listAt('HEAD');
   const after = listAt(''); // the index
   if (!before || !after) return [];
+  /** @type {Closing[]} */
   const closing = [];
   for (let i = 0; i < Math.min(before.length, after.length); i += 1) {
     if (before[i]?.passes === false && after[i]?.passes === true) {
@@ -71,6 +87,7 @@ export function closingEntries() {
   return closing;
 }
 
+/** @returns {Audit | null} */
 export function readAudit() {
   try {
     return JSON.parse(readFileSync(path.join(root, AUDIT_FILE), 'utf8'));
@@ -84,8 +101,13 @@ export function readAudit() {
  * `expectedTree` is the tree the verify receipt names — the audit has to be
  * about the same bytes verify.sh passed.
  */
+/**
+ * @param {string | null} expectedTree
+ * @param {Closing[]} closing
+ */
 export function auditProblems(expectedTree, closing) {
   const audit = readAudit();
+  /** @type {string[]} */
   const problems = [];
   if (!audit) {
     problems.push(`no audit receipt at ${AUDIT_FILE}`);
@@ -105,11 +127,18 @@ export function auditProblems(expectedTree, closing) {
   return problems;
 }
 
+/**
+ * @param {string[]} args
+ * @param {string} name
+ * @param {string | null} [fallback]
+ * @returns {string | null}
+ */
 function flag(args, name, fallback = '') {
   const i = args.indexOf(`--${name}`);
   return i === -1 ? fallback : (args[i + 1] ?? fallback);
 }
 
+/** @param {string[]} args */
 function write(args) {
   const spec = flag(args, 'spec');
   const verdict = flag(args, 'verdict');
@@ -118,11 +147,12 @@ function write(args) {
     process.stderr.write('audit-receipt: --spec <path> is required\n');
     process.exit(1);
   }
-  if (!VERDICTS.includes(verdict)) {
+  if (verdict === null || !VERDICTS.includes(verdict)) {
     process.stderr.write(`audit-receipt: --verdict must be one of ${VERDICTS.join(', ')}\n`);
     process.exit(1);
   }
   const verify = readReceipt();
+  /** @type {Audit} */
   const receipt = {
     spec,
     verdict,

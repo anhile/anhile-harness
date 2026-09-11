@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * The commit gate. A Claude Code `PreToolUse` hook.
  *
@@ -40,36 +41,49 @@ import { AUDIT_FILE, auditProblems, closingEntries } from './audit-receipt.mjs';
 /** Global git flags that swallow the next token, so it is not the subcommand. */
 const GIT_FLAGS_WITH_ARG = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--exec-path', '--super-prefix']);
 
+/**
+ * What Claude Code hands the PreToolUse hook on stdin; only the fields read here.
+ * @typedef {{ tool_name?: string, tool_input?: { command?: unknown, file_path?: string, notebook_path?: string } }} HookPayload
+ */
+
+/**
+ * @param {string} message
+ * @returns {never}
+ */
 function block(message) {
   process.stderr.write(`${message}\n`);
   process.exit(2);
 }
 
 /** Split a shell command into segments that each start a fresh command. */
+/** @param {string} command */
 function segments(command) {
   return command.split(/\n|;|&&|\|\||\||&/g);
 }
 
 /** Does this segment invoke `git <subcommand>`? Returns the subcommand or null. */
+/** @param {string} segment */
 function gitSubcommand(segment) {
   const tokens = segment.trim().split(/\s+/).filter(Boolean);
   let i = 0;
   // Leading environment assignments: `GIT_AUTHOR_NAME=x git commit`.
-  while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i])) i += 1;
+  while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i] ?? '')) i += 1;
   if (tokens[i] !== 'git') return null;
   i += 1;
-  while (i < tokens.length && tokens[i].startsWith('-')) {
-    if (GIT_FLAGS_WITH_ARG.has(tokens[i])) i += 1;
+  while (i < tokens.length && (tokens[i] ?? '').startsWith('-')) {
+    if (GIT_FLAGS_WITH_ARG.has(tokens[i] ?? '')) i += 1;
     i += 1;
   }
   return tokens[i] ?? null;
 }
 
+/** @param {string} command */
 function createsACommit(command) {
   return segments(command).some((segment) => gitSubcommand(segment) === 'commit');
 }
 
 /** Does the commit stage tracked modifications itself? `git commit -a`. */
+/** @param {string} command */
 function stagesEverythingTracked(command) {
   return segments(command).some((segment) => {
     if (gitSubcommand(segment) !== 'commit') return false;
@@ -96,13 +110,16 @@ function stagesEverythingTracked(command) {
  * recomputes the hash from a clean clone — refused it. Unstaged modifications
  * usually move the hash too; this catches them with a clearer message.
  */
+/** @param {string} command */
 function indexMatchesWorkingTree(command) {
   const status = execFileSync('git', ['status', '--porcelain=v1'], {
     cwd: root,
     encoding: 'utf8',
   });
 
+  /** @type {string[]} */
   const untracked = [];
+  /** @type {string[]} */
   const unstaged = [];
   for (const line of status.split('\n').filter(Boolean)) {
     const code = line.slice(0, 2);
@@ -121,6 +138,10 @@ function indexMatchesWorkingTree(command) {
  * appearing as a redirect destination, or as an argument to a command that
  * modifies files. `grep foo verify.sh` reads and is left alone.
  */
+/**
+ * @param {string} command
+ * @param {string} target
+ */
 function shellWritesTo(command, target) {
   const quoted = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const asPath = `\\.?/?${quoted}`;
@@ -135,7 +156,9 @@ function shellWritesTo(command, target) {
  * may not exist yet, so this resolves the deepest ancestor that does and
  * re-appends the rest.
  */
+/** @param {string} target */
 function realpathDeepest(target) {
+  /** @type {string[]} */
   const parts = [];
   let current = target;
   for (;;) {
@@ -150,12 +173,17 @@ function realpathDeepest(target) {
   }
 }
 
+/** @param {string | undefined} filePath */
 function relativeToRoot(filePath) {
   if (!filePath) return null;
   const abs = path.isAbsolute(filePath) ? filePath : path.resolve(root, filePath);
   return path.relative(root, realpathDeepest(abs));
 }
 
+/**
+ * @param {string} target
+ * @param {string} how
+ */
 function protectionMessage(target, how) {
   return `BLOCKED: commit gate (docs/INVARIANTS.md I11) — ${how} ${target}
 
@@ -168,6 +196,7 @@ want to change and why, and let them make the edit or lift the hook in
 .claude/settings.json.`;
 }
 
+/** @param {HookPayload} payload */
 function checkProtectedPaths(payload) {
   const toolName = payload.tool_name ?? '';
   const input = payload.tool_input ?? {};
@@ -197,6 +226,7 @@ function checkProtectedPaths(payload) {
  * because their next message re-baselines it. That asymmetry is the point --
  * the gate binds the session, not the human.
  */
+/** @param {HookPayload} payload */
 function checkProtectedContent(payload) {
   if ((payload.tool_name ?? '') !== 'Bash') return;
   const command = (payload.tool_input ?? {}).command;
@@ -218,6 +248,7 @@ or lift the hook in .claude/settings.json. Their next message re-baselines these
 files, so an edit they make themselves does not trip this.`);
 }
 
+/** @param {HookPayload} payload */
 function checkCommit(payload) {
   if ((payload.tool_name ?? '') !== 'Bash') return;
   const command = (payload.tool_input ?? {}).command;
@@ -275,7 +306,7 @@ smaller commit does not help — the gate is about the tree, not the diff.`);
       stdio: ['ignore', 'ignore', 'pipe'],
     });
   } catch (error) {
-    const detail = String((error && error.stderr) || '').trim();
+    const detail = String(/** @type {{ stderr?: unknown }} */ (error ?? {}).stderr ?? '').trim();
     block(`BLOCKED: commit gate (docs/INVARIANTS.md I12)
 
 verify-log.jsonl has been rewritten, not appended to. The record of what has
@@ -339,8 +370,10 @@ gate to get past.`);
 
   const { untracked, unstaged } = indexMatchesWorkingTree(command);
   if (untracked.length > 0 || unstaged.length > 0) {
+    /** @param {string[]} paths */
     const list = (paths) => paths.slice(0, 15).map((p) => `    ${p}`).join('\n') +
       (paths.length > 15 ? `\n    … and ${paths.length - 15} more` : '');
+    /** @type {string[]} */
     const parts = [];
     if (untracked.length) parts.push(`not tracked, so not in the commit:\n${list(untracked)}`);
     if (unstaged.length) parts.push(`changed since they were staged:\n${list(unstaged)}`);
@@ -358,6 +391,7 @@ with \`git add -A\`, or put what does not belong in .gitignore.`);
 }
 
 function main() {
+  /** @type {HookPayload} */
   let payload = {};
   try {
     payload = JSON.parse(readFileSync(0, 'utf8') || '{}');

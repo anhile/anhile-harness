@@ -51,6 +51,7 @@ it, R1 to R7. One thing is still yours to write:
 once, by a person, and until then its tools are absent rather than broken.
 
 - **context7** — Current documentation for a library, by name. Read it before writing against an API from memory — that is rule 6 with a tool attached.
+- **notion** — Where feature specs live. `/task-intake` reads a row and refuses anything that is not one.
 
 A server whose purpose you cannot state is a tool call you should not make.
 Adding one is a change to this list as much as to the JSON.

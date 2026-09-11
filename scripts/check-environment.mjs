@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Can this machine run the gate?
  *
@@ -28,6 +29,29 @@ export const root = realpathSync(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
 );
 
+/**
+ * What the machine looks like, gathered here or handed in with --from.
+ * @typedef {{
+ *   nvmrc: string | null,
+ *   nodeVersion: string,
+ *   pnpm: boolean,
+ *   databaseRequired?: boolean,
+ *   docker: boolean,
+ *   dockerRunning: boolean,
+ *   env: string,
+ *   nodeModules: boolean,
+ *   ports: Record<string, boolean>,
+ *   gh: boolean,
+ *   ghAuth: boolean,
+ * }} Facts
+ */
+
+/**
+ * One line of the report: a requirement, whether it is met, and what to do.
+ * @typedef {{ name: string, ok: boolean, optional?: boolean, detail: string, remedy: string | null }} Finding
+ */
+
+/** @param {string} cmd */
 const has = (cmd) => {
   try {
     execFileSync('command', ['-v', cmd], { shell: '/bin/sh', stdio: 'ignore' });
@@ -42,6 +66,10 @@ const has = (cmd) => {
   }
 };
 
+/**
+ * @param {string} cmd
+ * @param {string[]} args
+ */
 const output = (cmd, args) => {
   try {
     return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -50,7 +78,10 @@ const output = (cmd, args) => {
   }
 };
 
-/** Major version only. The repository pins a patch; a matching major runs it. */
+/**
+ * Major version only. The repository pins a patch; a matching major runs it.
+ * @param {unknown} version
+ */
 export function majorOf(version) {
   const m = /v?(\d+)\./u.exec(String(version ?? ''));
   return m === null ? null : Number(m[1]);
@@ -62,6 +93,8 @@ export function majorOf(version) {
  * has published *succeeds* — so the loopback version of this check reported
  * Postgres's own 5433 as free while Postgres was serving on it. A check that
  * answers wrongly is worse than no check, since the reader believes it.
+ * @param {number} port
+ * @returns {Promise<boolean>}
  */
 export function portFree(port) {
   return new Promise((resolve) => {
@@ -76,9 +109,18 @@ export function portFree(port) {
  * Findings from facts. Pure, so the suite can put this machine into states no
  * developer machine can be put into on demand — no Docker daemon, a node three
  * majors out, a port already taken.
+ * @param {Facts} facts
+ * @returns {Finding[]}
  */
 export function evaluate(facts) {
+  /** @type {Finding[]} */
   const out = [];
+  /**
+   * @param {string} name
+   * @param {boolean} ok
+   * @param {string} detail
+   * @param {string} remedy
+   */
   const need = (name, ok, detail, remedy) => out.push({ name, ok, detail, remedy: ok ? null : remedy });
 
   const wanted = majorOf(facts.nvmrc);
@@ -155,6 +197,7 @@ export function evaluate(facts) {
   return out;
 }
 
+/** @returns {Promise<Facts>} */
 async function gather() {
   return {
     nvmrc: existsSync(path.join(root, '.nvmrc'))
@@ -180,7 +223,9 @@ async function gather() {
   };
 }
 
+/** @param {Finding[]} findings */
 export function render(findings) {
+  /** @type {string[]} */
   const lines = [];
   const required = findings.filter((f) => f.optional !== true);
   const missing = required.filter((f) => !f.ok);
@@ -215,7 +260,7 @@ async function main() {
 
   const fromIndex = args.indexOf('--from');
   const facts =
-    fromIndex === -1 ? await gather() : JSON.parse(readFileSync(args[fromIndex + 1], 'utf8'));
+    fromIndex === -1 ? await gather() : JSON.parse(readFileSync(args[fromIndex + 1] ?? '', 'utf8'));
   const findings = evaluate(facts);
 
   console.log(args.includes('--json') ? JSON.stringify(findings, null, 2) : render(findings));

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * The inbox, checked before intake reads it.
  *
@@ -27,6 +28,7 @@ export const STATUSES = ['Draft', 'Ready for intake', 'In progress', 'Done'];
 export const SECTIONS = ['Problem', 'In scope', 'Out of scope', 'Acceptance criteria', 'Open questions'];
 
 /** The five EARS patterns, each as the shape its sentence must take. */
+/** @type {Record<string, RegExp>} */
 export const PATTERNS = {
   ubiquitous: /^The .+ shall .+/u,
   'event-driven': /^When .+, the .+ shall .+/u,
@@ -37,29 +39,48 @@ export const PATTERNS = {
 
 const CRITERION = /^- \*\*AC-(\d+)\*\* \(([\w-]+)\) — (.+)$/u;
 
+/**
+ * One acceptance-criterion line, parsed or refused.
+ * @typedef {{ id: number, pattern: string, sentence: string, line: string, malformed: false }
+ *   | { id: null, pattern: null, sentence: null, line: string, malformed: true }} Criterion
+ */
+
+/** @param {string} text */
 export function parse(text) {
   const m = text.match(/^---\n([\s\S]*?)\n---\n/u);
+  // The front-matter as YAML gave it. Untyped on purpose: problemsOf() checks
+  // every field before intake reads one.
+  /** @type {any} */
   let front = null;
+  /** @type {string | null} */
   let frontError = null;
   if (m) {
     try {
-      front = loadYaml(m[1]);
+      front = loadYaml(m[1] ?? '');
     } catch (error) {
-      frontError = error.message.split('\n')[0];
+      frontError = (error instanceof Error ? error.message : String(error)).split('\n')[0] ?? '';
     }
   }
   const body = m ? text.slice(m[0].length) : text;
-  const sections = [...body.matchAll(/^## (.+)$/gmu)].map((h) => h[1].trim());
+  const sections = [...body.matchAll(/^## (.+)$/gmu)].map((h) => (h[1] ?? '').trim());
+  /** @type {Criterion[]} */
   const criteria = body.split('\n').filter((line) => /^- \*\*AC-/u.test(line)).map((line) => {
     const c = line.match(CRITERION);
-    return c ? { id: Number(c[1]), pattern: c[2], sentence: c[3].trim(), line } : { line, malformed: true };
+    return c
+      ? { id: Number(c[1]), pattern: c[2] ?? '', sentence: (c[3] ?? '').trim(), line, malformed: false }
+      : { id: null, pattern: null, sentence: null, line, malformed: true };
   });
   return { front, frontError, sections, criteria };
 }
 
-/** Everything wrong with the file, as sentences; empty when intake may read it. */
+/**
+ * Everything wrong with the file, as sentences; empty when intake may read it.
+ * @param {string} text
+ * @param {{ requireReady?: boolean }} [options]
+ */
 export function problemsOf(text, { requireReady = true } = {}) {
   const { front, frontError, sections, criteria } = parse(text);
+  /** @type {string[]} */
   const out = [];
   if (frontError) return [`front-matter does not parse: ${frontError}`];
   if (!front || typeof front !== 'object') return ['no front-matter: the file must start with a --- block naming name, status, owner and updated'];
@@ -95,6 +116,7 @@ export function problemsOf(text, { requireReady = true } = {}) {
   return out;
 }
 
+/** @param {string[]} args */
 function fileArg(args) {
   const rel = args[0];
   if (!rel) { console.error('inbox: a file is required'); process.exit(2); }

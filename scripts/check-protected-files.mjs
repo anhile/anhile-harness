@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * Content-based protection for the gate's own machinery.
  *
@@ -57,6 +58,12 @@ const TRIPWIRE_FILE = path.join(root, '.generated', 'protected-tripwire.json');
 /** A missing file is a state, not an absence: deleting the gate is a change. */
 const ABSENT = 'absent';
 
+/**
+ * What Claude Code hands a hook on stdin; only the field read here.
+ * @typedef {{ hook_event_name?: string }} HookPayload
+ */
+
+/** @param {string} relative */
 function hashOf(relative) {
   try {
     return `sha256:${createHash('sha256').update(readFileSync(path.join(root, relative))).digest('hex')}`;
@@ -70,7 +77,9 @@ function hashAll() {
 }
 
 /** What HEAD says these files are. The fallback when no baseline was recorded. */
+/** @returns {Record<string, string>} */
 function hashesAtHead() {
+  /** @type {Record<string, string>} */
   const at = {};
   for (const file of PROTECTED) {
     try {
@@ -91,6 +100,7 @@ function hashesAtHead() {
   return at;
 }
 
+/** @returns {Record<string, string> | null} */
 function readBaseline() {
   try {
     const parsed = JSON.parse(readFileSync(BASELINE_FILE, 'utf8'));
@@ -101,6 +111,10 @@ function readBaseline() {
   return null;
 }
 
+/**
+ * @param {string} file
+ * @param {unknown} value
+ */
 function writeJson(file, value) {
   try {
     mkdirSync(path.dirname(file), { recursive: true });
@@ -127,6 +141,7 @@ function recordBaseline() {
 }
 
 function main() {
+  /** @type {HookPayload} */
   let payload = {};
   try {
     payload = JSON.parse(readFileSync(0, 'utf8') || '{}');

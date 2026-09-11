@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * The harness, as a command.
  *
@@ -92,7 +93,7 @@ async function main() {
     // package's own root: the manifest, the scripts and verify.sh are all
     // directly there.
     const init = await import(path.join(HARNESS, 'scripts', 'harness-init.mjs'));
-    process.argv = [process.argv[0], path.join(HARNESS, 'scripts', 'harness-init.mjs'), ...rest];
+    process.argv = [process.argv[0] ?? 'node', path.join(HARNESS, 'scripts', 'harness-init.mjs'), ...rest];
     await init.cli();
     return;
   }

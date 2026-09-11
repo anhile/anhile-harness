@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 /**
  * The session-start ritual, performed rather than remembered. A Claude Code
  * `SessionStart` hook: whatever this prints is added to the session's context.
@@ -26,6 +27,12 @@ import { describe, latestRun } from './check-main.mjs';
 
 export const root = realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 
+/**
+ * An entry of feature_list.json; only the fields read here.
+ * @typedef {{ id?: number, category?: string, description?: string, passes?: boolean, retracted?: unknown }} FeatureEntry
+ */
+
+/** @param {...string} args */
 function git(...args) {
   try {
     return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -34,26 +41,38 @@ function git(...args) {
   }
 }
 
+/** @param {string | undefined} sessionId */
 export function sessionFile(sessionId) {
   const safe = String(sessionId || 'unknown').replace(/[^A-Za-z0-9_.-]/gu, '_');
   return path.join(root, '.generated', 'sessions', `${safe}.json`);
 }
 
-/** The newest `## YYYY-MM-DD — title` heading in PROGRESS.md, with its date. */
+/**
+ * The newest `## YYYY-MM-DD — title` heading in PROGRESS.md, with its date.
+ * @param {string} progress
+ * @returns {{ date: string, title: string } | null}
+ */
 export function newestEntry(progress) {
-  const headings = [...progress.matchAll(/^## (\d{4}-\d{2}-\d{2}) — (.+)$/gmu)];
-  if (headings.length === 0) return null;
-  const last = headings[headings.length - 1];
-  return { date: last[1], title: last[2].trim() };
+  const last = [...progress.matchAll(/^## (\d{4}-\d{2}-\d{2}) — (.+)$/gmu)].at(-1);
+  if (last === undefined) return null;
+  return { date: last[1] ?? '', title: (last[2] ?? '').trim() };
 }
 
-/** Entries that are neither passing nor retracted, with their positions. */
+/**
+ * Entries that are neither passing nor retracted, with their positions.
+ * @param {FeatureEntry[]} featureList
+ */
 export function openEntries(featureList) {
   return featureList
     .map((entry, index) => ({ index, ...entry }))
     .filter((entry) => entry.passes === false && !entry.retracted);
 }
 
+/**
+ * @param {string} file
+ * @param {unknown} fallback
+ * @returns {unknown}
+ */
 function readJson(file, fallback) {
   try {
     return JSON.parse(readFileSync(file, 'utf8'));
@@ -63,6 +82,7 @@ function readJson(file, fallback) {
 }
 
 export function briefing() {
+  /** @type {string[]} */
   const lines = [];
   const head = git('rev-parse', 'HEAD');
   const branch = git('branch', '--show-current') || '(detached)';
@@ -119,11 +139,12 @@ export function briefing() {
   }
 
   lines.push('');
-  lines.push('If the work touches the UI, run ./init.sh and create one link through the browser first.');
+  lines.push('If the work touches the UI, start the application (pnpm dev:web, pnpm dev:api) and use it once through the browser first.');
   lines.push('End the session with an entry in PROGRESS.md; scripts/session-stop.mjs checks that committed work has one.');
   return `${lines.join('\n')}\n`;
 }
 
+/** @param {{ session_id?: string, source?: string }} payload */
 function record(payload) {
   const file = sessionFile(payload.session_id);
   // A resumed or compacted session is the same session: keep its baseline.
