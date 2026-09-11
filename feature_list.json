@@ -62,7 +62,7 @@
       "pnpm exec jest --config jest.config.cjs scripts/__tests__/feature-list.spec.ts — every adversarial case passes",
       "pnpm exec jest --config jest.config.cjs scripts/__tests__/verify-log.spec.ts — deletions, rewrites, an emptied file, malformed lines and a backdated run are each refused"
     ],
-    "passes": false,
+    "passes": true,
     "spec": "specs/2026-09-harness-guarantees.md"
   },
   {
