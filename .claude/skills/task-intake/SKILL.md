@@ -51,11 +51,12 @@ contract is authoritative from the moment it is written.
 
 #### Notion
 
-```
-Database:    https://app.notion.com/p/3cb2aabbd02a80fea98eed0ca1eb3a33
-Data source: collection://3cb2aabb-d02a-80df-ae64-000b724ff1f4
-View:        view://3cb2aabb-d02a-800e-b039-000c155f711f
-```
+The database is `intake.notion` in `harness.config.json`: its URL under
+`database`, and the `dataSource` and `view` ids when the database has more
+than one. When the key is `null`, this project has no Notion and the inbox is
+the only input; say so and stop rather than searching Notion for something
+that looks like a spec. The ids live in the configuration and nowhere else:
+an id that lives in two files is an id that gets updated in one of them.
 
 A Notion page that is not a row of that data source is **not** a valid input,
 even when it is titled like a feature, lives under the same parent, and contains

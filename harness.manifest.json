@@ -24,7 +24,6 @@
       "scripts/check-main.mjs",
       "scripts/check-pr-ready.mjs",
       "scripts/check-protected-files.mjs",
-      "scripts/check-work-budget.mjs",
       "scripts/harness-config.mjs",
       "scripts/harness-init.mjs",
       "scripts/harness-templates.mjs",
@@ -84,6 +83,9 @@
       ],
       "scripts/check-migrations.mjs": [
         "the migrations directory"
+      ],
+      "scripts/check-work-budget.mjs": [
+        "the number of tool calls a session may make before it is asked to stop"
       ],
       "scripts/check-verify.mjs": [
         "the path it writes the deliberate error into",
@@ -206,7 +208,7 @@
       "does not write those, and this repository does not have them. CONTRIBUTING.md",
       "and docs/INVARIANTS.md travel as copies, under `core`; docs/DOMAIN_RULES.md is",
       "written as a template, and AGENTS.md tells the new project to fill it in.",
-      "`product` is empty here for the reason the product tier above is."
+      "`product` is empty here for the reason the product tier above is. security-check.md was product-tier in link-shortener and is general now, so it travels."
     ],
     "core": [
       "verify.sh",
@@ -227,7 +229,8 @@
       ".github/pull_request_template.md",
       "CONTRIBUTING.md",
       "docs/INVARIANTS.md",
-      "tsconfig.scripts.json"
+      "tsconfig.scripts.json",
+      ".claude/agents/security-check.md"
     ],
     "seeded": [
       "AGENTS.md",

@@ -28,5 +28,11 @@
   },
   "featureList": {
     "exemptCommits": []
+  },
+  "session": {
+    "workBudget": 30
+  },
+  "intake": {
+    "notion": null
   }
 }
