@@ -329,3 +329,19 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   for the comparison and reproduces the shape in a throwaway repository, so
   the guard's two answers are on record: refused against the first parent,
   accepted against the second.
+
+## 2026-09-12 — 0.1.0 is the version, and the changelog says what it holds
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  The person chose 0.1.0 over 0.2.0 for the first publish: nothing had been
+  on npm, so there is no consumer for whom the generator's behaviour
+  "changed". The Unreleased section of `CHANGELOG.md` moved under 0.1.0 as a
+  block of its own, headed for the reader of the seed commit who would
+  otherwise find a different package than the one published. `release.yml`
+  holds the tag to `package.json` and to this entry; both say 0.1.0.
