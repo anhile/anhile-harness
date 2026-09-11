@@ -103,6 +103,11 @@ beforeEach(() => {
     path.join(REPO, 'scripts', 'check-feature-list.mjs'),
     path.join(repo, 'scripts', 'check-feature-list.mjs'),
   );
+  // The guard reads its exemptions from harness.config.json through the
+  // loader, so the throwaway repository carries both. This repository's
+  // configuration exempts nothing, which is what these cases assume.
+  copyFileSync(path.join(REPO, 'scripts', 'harness-config.mjs'), path.join(repo, 'scripts', 'harness-config.mjs'));
+  copyFileSync(path.join(REPO, 'harness.config.json'), path.join(repo, 'harness.config.json'));
   writeSpec();
   write(committed());
   git('init', '-q');

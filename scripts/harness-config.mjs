@@ -42,6 +42,17 @@ const REQUIRED = {
   'contracts.package': (v) => v === null || (typeof v === 'string' && v.length > 0),
 };
 
+/**
+ * Keys a script may read and a configuration may leave out. Validated when
+ * present: a malformed optional key is refused like a required one, because
+ * a guard that reads `undefined` from a typo checks nothing.
+ */
+const OPTIONAL = {
+  // Commits exempt from one-closure-per-commit in check-feature-list.mjs:
+  // full shas, of commits already on main.
+  'featureList.exemptCommits': (v) => Array.isArray(v) && v.every((s) => /^[0-9a-f]{40}$/u.test(s)),
+};
+
 const at = (object, dotted) =>
   dotted.split('.').reduce((node, key) => (node == null ? undefined : node[key]), object);
 
@@ -66,9 +77,10 @@ export function loadConfig(file = path.join(root, CONFIG_FILE)) {
     throw new Error(`${CONFIG_FILE} does not parse: ${error?.message ?? error}`);
   }
 
-  const wrong = Object.entries(REQUIRED)
-    .filter(([key, ok]) => !ok(at(parsed, key)))
-    .map(([key]) => key);
+  const wrong = [
+    ...Object.entries(REQUIRED).filter(([key, ok]) => !ok(at(parsed, key))),
+    ...Object.entries(OPTIONAL).filter(([key, ok]) => at(parsed, key) !== undefined && !ok(at(parsed, key))),
+  ].map(([key]) => key);
 
   if (wrong.length > 0) {
     throw new Error(
@@ -87,3 +99,4 @@ export function resetConfigCache() {
 }
 
 export const KEYS = Object.keys(REQUIRED);
+export const OPTIONAL_KEYS = Object.keys(OPTIONAL);

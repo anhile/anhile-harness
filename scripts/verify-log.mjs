@@ -107,14 +107,17 @@ function append(args) {
     // commit, so this is a starting point, not an identity.
     head: (() => {
       try {
-        return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+        return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
       } catch {
         return null;
       }
     })(),
     branch: (() => {
       try {
-        return execFileSync('git', ['branch', '--show-current'], { cwd: root, encoding: 'utf8' }).trim() || null;
+        return (
+          execFileSync('git', ['branch', '--show-current'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() ||
+          null
+        );
       } catch {
         return null;
       }

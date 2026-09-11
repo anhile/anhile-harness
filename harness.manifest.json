@@ -21,7 +21,6 @@
       "scripts/audit-receipt.mjs",
       "scripts/check-attestation.mjs",
       "scripts/check-commit-gate.mjs",
-      "scripts/check-feature-list.mjs",
       "scripts/check-main.mjs",
       "scripts/check-pr-ready.mjs",
       "scripts/check-protected-files.mjs",
@@ -42,12 +41,13 @@
       "scripts/__tests__/audit-receipt.spec.ts",
       "scripts/__tests__/check-main.spec.ts",
       "scripts/__tests__/commit-gate.spec.ts",
+      "scripts/__tests__/environment.spec.ts",
       "scripts/__tests__/feature-list.spec.ts",
-      "scripts/__tests__/inbox.spec.ts",
       "scripts/__tests__/harness-boundary.spec.ts",
       "scripts/__tests__/harness-config.spec.ts",
       "scripts/__tests__/harness-init.spec.ts",
       "scripts/__tests__/harness-package.spec.ts",
+      "scripts/__tests__/inbox.spec.ts",
       "scripts/__tests__/permissions.spec.ts",
       "scripts/__tests__/pr-ready.spec.ts",
       "scripts/__tests__/progress.spec.ts",
@@ -76,6 +76,9 @@
       "scripts/check-environment.mjs": [
         "the gate's ports",
         "whether Docker is needed at all"
+      ],
+      "scripts/check-feature-list.mjs": [
+        "the commits exempt from one-closure-per-commit, which were another repository's"
       ],
       "scripts/check-migrations.mjs": [
         "the migrations directory"
@@ -197,10 +200,10 @@
       "into a new project rather than editing them in this one.",
       "",
       "`seeded` is what the generator writes fresh for a new project. In",
-      "link-shortener it also named CONTRIBUTING.md and four documents under docs/;",
-      "the generator does not write those yet, and this repository does not have",
-      "them, so they are not listed. AGENTS.md tells the new project which of them",
-      "it still has to write.",
+      "link-shortener it also named four more documents under docs/; the generator",
+      "does not write those, and this repository does not have them. CONTRIBUTING.md",
+      "and docs/INVARIANTS.md travel as copies, under `core`; docs/DOMAIN_RULES.md is",
+      "written as a template, and AGENTS.md tells the new project to fill it in.",
       "`product` is empty here for the reason the product tier above is."
     ],
     "core": [
@@ -219,7 +222,9 @@
       ".claude/skills/review-pr/SKILL.md",
       ".claude/skills/address-comments/SKILL.md",
       ".claude/skills/setup-repo/SKILL.md",
-      ".github/pull_request_template.md"
+      ".github/pull_request_template.md",
+      "CONTRIBUTING.md",
+      "docs/INVARIANTS.md"
     ],
     "seeded": [
       "AGENTS.md",
@@ -227,7 +232,8 @@
       "PROGRESS.md",
       "feature_list.json",
       "verify-log.jsonl",
-      "coverage-floor.json"
+      "coverage-floor.json",
+      "docs/DOMAIN_RULES.md"
     ],
     "product": []
   }

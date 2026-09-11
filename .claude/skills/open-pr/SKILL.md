@@ -25,7 +25,7 @@ The one refusal worth explaining, because it reads like a formality and is not:
 **the branch's newest gate run is older than main's.** `verify-log.jsonl` is
 append-only and its timestamps may not decrease, so that merge has no correct
 resolution at all — not a hard one, none. Running `./verify.sh` on the branch
-appends a newer line and fixes it. `docs/PARALLEL_WORK.md` has the measurement.
+appends a newer line and fixes it.
 
 ## Steps
 
@@ -55,7 +55,7 @@ Each of these is a fact somewhere in the repository, never a recollection:
   in the range closes an entry; otherwise "not a closing change"
 - **the journal entry** — the `## <date> — <title>` heading this branch added
   to `PROGRESS.md`
-- **UI** — whether any file under `apps/web`, `packages/ui` or `e2e` changed,
+- **UI** — whether any file under `apps/web` or an `e2e` directory changed,
   and if so what was tried in a real browser
 
 A claim you cannot source from one of those does not go in the body.

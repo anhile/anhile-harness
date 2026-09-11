@@ -233,11 +233,15 @@ the verification plan table in `specs/TEMPLATE.md` expects the evidence path:
 |---|---|---|
 | 1 | ESLint, incl. the layer-boundary rules in `eslint.config.mjs` | `.generated/runs/<ts>/01-eslint.log` |
 | 1 | `tsc -b` across all packages, through project references | `.generated/runs/<ts>/02-typecheck.log` |
-| 1 | Jest unit (`contracts`, `api`, `web` projects) | `.generated/runs/<ts>/03-unit.log` |
-| 1 | Jest API e2e via supertest | `.generated/runs/<ts>/04-api-e2e.log` |
+| 1 | Jest unit, every package's suites and the guards | `.generated/runs/<ts>/03-unit.log` |
+| 1 | Jest API e2e via supertest — step 04, once the project has added it | `.generated/runs/<ts>/04-api-e2e.log` |
 | 1 | Migration dry run: `node scripts/migrate.mjs --status` | quoted in the spec |
-| 3 | Playwright, in a real browser | `.generated/runs/<ts>/05-browser-e2e.log`, `playwright-report/` |
+| 3 | A real browser — step 05, once the project has added it | `.generated/runs/<ts>/05-browser-e2e.log` |
 | 1 | `feature_list.json` append-only guard | `.generated/runs/<ts>/06-feature-list.log` |
+
+Steps 04, 05 and 09 are deferred in a new project; `AGENTS.md` says which are
+in the gate. A criterion that names a deferred step as its mechanism is a
+criterion nothing can verify yet, and the spec must say so.
 
 ### Gate 4 - internal consistency
 
@@ -250,11 +254,12 @@ periods). Report conflicts as open questions with both sources quoted.
 This repository has no `docs/CONSTITUTION.md`. Its constitution is split across
 three files, and all three are read at this gate:
 
-- `docs/ARCHITECTURE.md` - layers, dependency direction, the contracts package
-- `docs/INVARIANTS.md` - what must never change, cited by ID (`I1`..`I15`)
-- `docs/DOMAIN_RULES.md` - domain constraints, cited by ID (`R1`..`R8`)
+- `AGENTS.md` - the working rules, and what refuses what
+- `docs/INVARIANTS.md` - what must never change, cited by ID (`I<n>`)
+- `docs/DOMAIN_RULES.md` - domain constraints, cited by ID (`R<n>`)
 
-Also read `CLAUDE.md` for the working rules a contract must not contradict.
+A project may add `docs/ARCHITECTURE.md` for its layers and dependency
+direction; read it when it exists.
 Two bite most often:
 
 - `feature_list.json` is append-only, enforced by `verify.sh` step 06. A new
