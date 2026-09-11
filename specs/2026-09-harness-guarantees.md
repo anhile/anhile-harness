@@ -29,10 +29,12 @@ does not meet.
   row of the table below names. The first audit found a tally and nothing to
   locate; Jest 30 prints neither PASS lines nor names without the explicit
   reporter. The generator writes the same two lines into a new project.
-- Three named cases added to existing suites, each holding something an
-  audit could not otherwise locate: "the scripts it ships are checked as they
-  run" in `harness-package.spec.ts` (AC7's artefact, since tsc prints nothing
-  on success) and "names every case in its evidence, as this repository does"
+- Named cases added to existing suites, each holding something an audit
+  could not otherwise locate: the describe "the scripts it ships are checked
+  as they run" in `harness-package.spec.ts` — four cases, the last of which
+  runs `tsc` on a copy of the scripts once clean and once with a script that
+  lies about a type, because an empty log on success shows opt-in and never
+  detection — and "names every case in its evidence, as this repository does"
   in `harness-init.spec.ts` (the reporter lines the generator writes).
 - Nothing else: every other mechanism already exists and is green. This
   contract records what is true, under the rules that make recording it mean
@@ -87,7 +89,7 @@ None.
 | AC4 | Jest — `scripts/__tests__/harness-boundary.spec.ts` describe "core names nothing about this product", proved live against the manifest's prose | every case passes | `.generated/runs/<ts>/03-unit.log` |
 | AC5 | Jest — `scripts/__tests__/commit-gate.spec.ts`, firing the gate in a throwaway repository | every case passes | `.generated/runs/<ts>/03-unit.log` |
 | AC6 | Jest — `scripts/__tests__/feature-list.spec.ts` and `scripts/__tests__/verify-log.spec.ts`, each handing the guard a tampered file | every case passes | `.generated/runs/<ts>/03-unit.log` |
-| AC7 | Jest — `harness-package.spec.ts` "the scripts it ships are checked as they run": every `scripts/*.mjs` and `bin/*.mjs` carries `// @ts-check` and `tsconfig.build.json` references `tsconfig.scripts.json`, whose `include` covers both; `harness-init.spec.ts` "typechecks the copied scripts, so their @ts-check is not decoration"; step 02 itself | both cases pass; `02-typecheck.exit` is 0 (tsc prints nothing on success, so the log is empty by design and the cases are the artefact) | `.generated/runs/<ts>/03-unit.log`, `.generated/runs/<ts>/02-typecheck.exit` |
+| AC7 | Jest — `harness-package.spec.ts` "the scripts it ships are checked as they run": every `scripts/*.mjs` and `bin/*.mjs` carries `// @ts-check`, `tsconfig.build.json` references `tsconfig.scripts.json`, whose `include` covers both, and "tsc refuses one with a type error under the same project" — a copy of the scripts passes clean and fails with `TS2322` naming the broken file once one is added; `harness-init.spec.ts` "typechecks the copied scripts, so their @ts-check is not decoration"; step 02 itself | every case passes; `02-typecheck.exit` is 0 (tsc prints nothing on success, so the log is empty by design and the cases are the artefact) | `.generated/runs/<ts>/03-unit.log`, `.generated/runs/<ts>/02-typecheck.exit` |
 
 Entry #0's third step names the `generate` job in CI. It is witnessed by the
 checks on the pull request that carries the closing commit, never by the

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -306,6 +306,44 @@ describe('the scripts it ships are checked as they run', () => {
     // visibly unchecked rather than silently included.
     expect(scripts.compilerOptions.checkJs).toBe(false);
   });
+
+  it('and tsc refuses one with a type error under the same project, which an empty log cannot show', () => {
+    // Step 02's log is empty on success, so the cases above can only show
+    // opt-in and wiring. This shows detection: the same scripts and the same
+    // project, once clean and once with a script that lies about a type. Under
+    // .generated so node_modules resolves and the tree hash does not see it.
+    const probe = mkdtempSync(path.join(REPO, '.generated', 'tsc-probe-'));
+    const tsc = path.join(REPO, 'node_modules', '.bin', 'tsc');
+    const run = (): { status: number; out: string } => {
+      try {
+        execFileSync(tsc, ['-p', 'tsconfig.scripts.json', '--noEmit'], { cwd: probe, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+        return { status: 0, out: '' };
+      } catch (error) {
+        const err = error as { status?: number; stdout?: string };
+        return { status: err.status ?? 1, out: err.stdout ?? '' };
+      }
+    };
+    try {
+      for (const dir of ['scripts', 'bin']) {
+        mkdirSync(path.join(probe, dir));
+        for (const f of readdirSync(path.join(REPO, dir)).filter((n) => n.endsWith('.mjs'))) {
+          copyFileSync(path.join(REPO, dir, f), path.join(probe, dir, f));
+        }
+      }
+      for (const f of ['tsconfig.base.json', 'tsconfig.scripts.json']) copyFileSync(path.join(REPO, f), path.join(probe, f));
+      expect(run().status).toBe(0);
+      writeFileSync(
+        path.join(probe, 'scripts', '__broken.mjs'),
+        "// @ts-check\n/** @type {number} */\nconst n = 'not a number';\nexport { n };\n",
+      );
+      const broken = run();
+      expect(broken.status).not.toBe(0);
+      expect(broken.out).toContain('__broken.mjs');
+      expect(broken.out).toContain('TS2322');
+    } finally {
+      rmSync(probe, { recursive: true, force: true });
+    }
+  }, 120_000);
 });
 
 describe('the release workflow', () => {
