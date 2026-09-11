@@ -8,7 +8,7 @@
       "node bin/harness.mjs init --yes --name probe --database --api --web --into /tmp/probe — the output names three deferred steps and six in the gate",
       "the generate job in CI: five variants scaffolded, installed and gated on every push, all green on the pull request that closes this entry"
     ],
-    "passes": false,
+    "passes": true,
     "spec": "specs/2026-09-harness-guarantees.md"
   },
   {
