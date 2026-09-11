@@ -196,3 +196,23 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   fix is protected and waits in `.generated/scratch/`. `.claude/settings.json`
   still allows `playwright test` and `docker compose down`; harmless, and
   protected.
+
+## 2026-09-11 — The receipt stops printing git's complaint before the first commit
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  `verify-receipt.mjs` is protected, so the two-line change waited in
+  `.generated/scratch/` for a person and was applied by one: git's stderr is
+  ignored on `rev-parse HEAD`, whose failure before a project's first commit
+  was already handled and already answered with `null`. The same change went
+  into `verify-log.mjs` under Phase 3. A new project's first `./verify.sh`
+  now prints its own verdict and nothing else.
+
+  This branch also carries Phases 1 to 3 to `main`: #2, #3 and #4 were merged
+  in the order they were stacked, each into the branch beneath it, so `main`
+  had only Phase 0 until now.
