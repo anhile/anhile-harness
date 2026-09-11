@@ -11,7 +11,17 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
-### Changed
+## [0.1.0] — 2026-09-11
+
+The first version published from its own repository. Until now the harness
+lived inside `anhile/link-shortener` as `packages/harness`, assembled at pack
+time; here `scripts/` at the root is what ships.
+
+### Changed before the first publish
+
+Nothing had been published, so these are part of 0.1.0 rather than a
+release of their own; they are listed because a reader of the seed commit
+would otherwise find a different package than the one on npm.
 
 - Every script under `scripts/` and the `bin` carry `// @ts-check` and JSDoc,
   and `tsconfig.scripts.json` puts them under `tsc -b` — step 02 of the gate —
@@ -23,12 +33,6 @@ minor, a fix to a copied script is a patch.
 - `check-environment.mjs` asks for Docker only when the project has a
   database; `check-feature-list.mjs` reads its exempt commits from
   `harness.config.json` (`featureList.exemptCommits`).
-
-## [0.1.0] — 2026-09-11
-
-The first version published from its own repository. Until now the harness
-lived inside `anhile/link-shortener` as `packages/harness`, assembled at pack
-time; here `scripts/` at the root is what ships.
 
 ### Added
 
