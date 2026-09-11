@@ -345,3 +345,27 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   block of its own, headed for the reader of the seed commit who would
   otherwise find a different package than the one published. `release.yml`
   holds the tag to `package.json` and to this entry; both say 0.1.0.
+
+## 2026-09-12 — The first publish is a person's, and every one after is the workflow's
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  The release job failed twice on `v0.1.0` with `EOTP`, the second time
+  with a granular token set to bypass 2FA. Measured rather than guessed:
+  since 2026-08 a bypass token no longer performs package-management
+  operations, and creating a package is one; staged publishing and trusted
+  publishing both require a package that already exists. There is no token
+  that publishes a new name from CI today.
+
+  So 0.1.0 is published once by hand, with 2FA, from the tagged commit after
+  a green gate — the same shape as `git push --no-verify` for the seed
+  commit: a visible act, the only one of its kind, written down. From the
+  next version `release.yml` publishes with a credential GitHub mints for
+  the run, no token in any secret, provenance attached; the workflow is
+  named as the package's trusted publisher on npmjs.com, which is a person's
+  setting and the last thing standing between a tag and the registry.

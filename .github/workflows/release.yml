@@ -2,13 +2,19 @@
 #
 # A version reaches npm when a tag `v<version>` is pushed, and only if the
 # tag names the version in package.json, the commit carries an attested
-# passing run, and the gate is green again on this runner. Publishing from a
-# laptop skips all three, which is why the token lives here and not there.
+# passing run, and the gate is green again on this runner.
 #
-# `--provenance` asks npm to record which workflow of which repository built
-# the tarball, signed by GitHub's OIDC token; that is what `id-token: write`
-# is for. A consumer can then check that what they installed came from this
+# No token. npm's trusted publishing lets this workflow, named on the
+# package's settings page at npmjs.com, publish with a credential GitHub
+# mints for this one run; `id-token: write` is what lets it ask for one, and
+# `--provenance` records which workflow of which repository built the
+# tarball, so a consumer can check that what they installed came from this
 # file rather than from somebody's machine.
+#
+# The first version could not go this way: a trusted publisher is configured
+# on a package that exists, and a bypass-2FA token cannot create one since
+# 2026-08. 0.1.0 was published once by a person with 2FA, from the tagged
+# commit after a green gate — a visible act, and the only one of its kind.
 #
 # This workflow is this repository's and does not travel: package.json's
 # `files` excludes it, and a generated project has nothing to publish.
@@ -39,6 +45,10 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
+      # Trusted publishing needs npm 11.5.1 or later, and the npm that ships
+      # with the pinned node is older.
+      - run: npm install -g npm@latest && npm --version
+
       - name: The tag must name the version package.json says
         run: |
           set -euo pipefail
@@ -62,9 +72,3 @@ jobs:
       - run: ./verify.sh
 
       - run: npm publish --provenance --access public
-        env:
-          # An automation token for the @anhile scope, stored as a repository
-          # secret. npm's trusted publishing can replace it once the package
-          # exists: configure this workflow as the trusted publisher on
-          # npmjs.com and drop the token.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
