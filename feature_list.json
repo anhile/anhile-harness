@@ -40,7 +40,7 @@
     "steps": [
       "pnpm exec jest --config jest.config.cjs scripts/__tests__/harness-boundary.spec.ts — \"core names nothing about this product\" passes for every core script, and the word list is proved live against the manifest"
     ],
-    "passes": false,
+    "passes": true,
     "spec": "specs/2026-09-harness-guarantees.md"
   },
   {
