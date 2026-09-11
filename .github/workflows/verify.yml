@@ -91,9 +91,20 @@ jobs:
 
           for commit in $commits; do
             echo "--- $(git log -1 --format='%h %s' "$commit")"
-            node scripts/check-feature-list.mjs --at "$commit" --base "${commit}^"
-            node scripts/verify-log.mjs check --at "$commit" --base "${commit}^"
-            node scripts/check-migrations.mjs --at "$commit" --base "${commit}^"
+            # A merge commit is compared with the branch it merged, not with
+            # the main it landed on. Its own commits were each walked above;
+            # against the first parent, seven legal commits collapse into "an
+            # entry born passing", and main went red on the first merge that
+            # closed anything, 2026-09-11. Against the second parent a clean
+            # merge is an empty diff, and a conflict resolution shows as
+            # exactly the edit it made.
+            parent="${commit}^"
+            if git rev-parse --verify --quiet "${commit}^2" >/dev/null; then
+              parent="${commit}^2"
+            fi
+            node scripts/check-feature-list.mjs --at "$commit" --base "$parent"
+            node scripts/verify-log.mjs check --at "$commit" --base "$parent"
+            node scripts/check-migrations.mjs --at "$commit" --base "$parent"
           done
 
   verify:
