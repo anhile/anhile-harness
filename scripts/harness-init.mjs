@@ -220,6 +220,11 @@ const PACKAGE_JSON = (name, answers, devDependencies) => ({
   name,
   private: true,
   type: 'module',
+  // What pnpm/action-setup reads in the copied CI workflow; without it the
+  // `verify` job fails before the checkout is even installed, with "No pnpm
+  // version is specified". Taken from this repository's package.json, so a
+  // new project runs the pnpm the harness was gated with.
+  packageManager: JSON.parse(read('package.json')).packageManager,
   scripts: {
     lint: 'eslint .',
     typecheck: 'tsc -b --force tsconfig.build.json',

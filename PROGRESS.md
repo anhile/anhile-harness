@@ -67,3 +67,43 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   Pushed nothing to `main`: the seed commit has no attested run and the
   pre-push hook refuses it, correctly. `git push --no-verify origin main` is a
   person's overrule, once, for the commit that predates the workflow.
+
+## 2026-09-11 — Phase 1: CI and the gate stop belonging to link-shortener
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6, and `node scripts/check-verify.mjs` 3/3
+- **Evidence**: the `verify-log.jsonl` lines for this session's runs, including
+  the `fail` line the witness writes on purpose
+- **Contract changes**: none
+- **Notes**:
+
+  Two protected files carried the workflow and the gate of the product the
+  harness was written in. A session may not edit either, so both were
+  rewritten under `.generated/scratch/` and applied by a person:
+
+  - **`.github/workflows/verify.yml`** loses Playwright, Stryker, the Stytch
+    secrets, `.env.example` and the `mutation` job, none of which this
+    repository or a generated project has. Three jobs stay: `attest`,
+    `verify`, `witness`. The file travels into every new project unchanged,
+    and the header now says so, which is the rule for what may go in it.
+  - **`verify.sh`** keeps its shape — the generator copies everything above
+    the step list byte for byte, and a generated AGENTS.md promises the e2e
+    functions are "already in verify.sh" — but no longer names a database
+    user, a container or a port. All of it comes from `harness.config.json`,
+    the way the generated `docker-compose.yml` names the same things after the
+    project. The header says nine steps are possible and the block says which
+    run; the paragraph about mutation testing is gone with the job.
+
+  The witness found a defect of its own: `check-verify.mjs` carried the nine
+  step names as a literal, so on this six-step gate it demanded evidence for
+  three steps that were never there and reported fifteen failures on a green
+  run. It reads the `run_step` lines from `verify.sh` now, and refuses a gate
+  with no `02-typecheck`, since that is the step its deliberate error targets.
+
+  `.github/workflows/generate.yml` is new and does not travel: five variants
+  of `init --yes`, each installed and gated on every push, plus
+  `npm pack --dry-run`. That is the README's first sentence, checked. It
+  needed `packageManager` in `package.json` — `pnpm/action-setup@v4` fails
+  without one — so the generator writes it into every new project too, taken
+  from this repository's.
