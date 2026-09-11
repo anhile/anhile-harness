@@ -61,6 +61,9 @@ describe('a generated project, on its first run', () => {
     expect(recorded.result).toBe('pass');
     expect(recorded.tree).toMatch(/^sha256:[0-9a-f]{64}$/u);
     expect(recorded.evidence).toBe(`.generated/runs/${newestRun(dir)}`);
+    // The commit the run was based on: none yet. The first run is made before
+    // the first commit, and the record says so rather than inventing one.
+    expect(recorded.head).toBeNull();
     expect(Object.keys(recorded.steps as object)).toEqual(['01-eslint', '02-typecheck', '03-unit', '06-feature-list', '07-verify-log', '08-coverage']);
   });
 

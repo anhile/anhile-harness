@@ -52,6 +52,7 @@
       "scripts/__tests__/permissions.spec.ts",
       "scripts/__tests__/pr-ready.spec.ts",
       "scripts/__tests__/progress.spec.ts",
+      "scripts/__tests__/review-brief.spec.ts",
       "scripts/__tests__/review-comments.spec.ts",
       "scripts/__tests__/session-hooks.spec.ts",
       "scripts/__tests__/verify-log.spec.ts",

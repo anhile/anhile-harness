@@ -474,8 +474,10 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   rule against backdating had gone with the order rule; nothing pinned the
   prefix the tree hash leaves out; and "red runs included" was proved only
   by the witness in CI. Now: `verify-log.mjs migrate` with two cases, and
-  this repository's own migration compared line by line — 51 records, 51
-  identical files, 0 problems; a run may not be dated before the moment its
+  this repository's own migration re-run with the shipped command against
+  the 51 lines restored from `main` — `verify-log: 51 run(s) in
+  verify-log.jsonl, 0 file(s) written, the file removed`, every file already
+  there and identical; a run may not be dated before the moment its
   name says it started; the gate refuses all three shapes; the hash leaves
   out `verify-log/` and nothing else; the generated project's gate is run a
   second time with a deliberately broken file and records the red run.

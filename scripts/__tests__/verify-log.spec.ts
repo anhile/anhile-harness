@@ -156,6 +156,8 @@ describe('the record in this repository', () => {
   });
 
   it('is not swept up by .gitignore', () => {
+    // Asked of a real run file rather than of the directory: an ignore rule
+    // matching the files is the one that would lose the record.
     const files = readdirSync(path.join(REPO, LOG)).filter((f) => f.endsWith('.json'));
     expect(files.length).toBeGreaterThan(0);
     let ignored = true;
@@ -165,6 +167,47 @@ describe('the record in this repository', () => {
       ignored = false;
     }
     expect(ignored).toBe(false);
+  });
+});
+
+describe('append: what a run records', () => {
+  // The writer had no case of its own until the second audit of #7 asked
+  // where the commit a run was based on is asserted. Here: a receipt and an
+  // evidence folder as verify.sh leaves them, then the shipped command.
+  it('records the verdict from the receipt, the steps from the folder, and the commit it was based on', () => {
+    const evidence = path.join(repo, '.generated', 'runs', '20260830T120000Z');
+    mkdirSync(evidence, { recursive: true });
+    writeFileSync(path.join(evidence, 'steps.jsonl'), '{"step":"01-eslint","exit":0,"seconds":2}\n{"step":"02-typecheck","exit":1,"seconds":3}\n');
+    writeFileSync(path.join(repo, '.generated', 'receipt.json'), JSON.stringify({ status: 'fail', treeHash: 'sha256:from-the-receipt' }));
+    const out = execFileSync('node', [path.join(repo, 'scripts', 'verify-log.mjs'), 'append', '--evidence', evidence], { cwd: repo, encoding: 'utf8' });
+    expect(out.trim()).toBe('fail sha256:from-the-receipt');
+    const recorded = JSON.parse(readFileSync(path.join(repo, LOG, '20260830T120000Z.json'), 'utf8')) as Record<string, unknown>;
+    expect(recorded.result).toBe('fail');
+    expect(recorded.tree).toBe('sha256:from-the-receipt');
+    expect(recorded.head).toBe(git('rev-parse', 'HEAD').trim());
+    expect(recorded.branch).toBe('main');
+    expect(recorded.evidence).toBe('.generated/runs/20260830T120000Z');
+    expect(recorded.steps).toEqual({ '01-eslint': { exit: 0, seconds: 2 }, '02-typecheck': { exit: 1, seconds: 3 } });
+    expect(Date.parse(String(recorded.at))).toBeGreaterThanOrEqual(Date.parse('2026-08-30T12:00:00Z'));
+  });
+
+  it('refuses to record a run twice, since the first record stands', () => {
+    const evidence = path.join(repo, '.generated', 'runs', '20260830T100000Z');
+    mkdirSync(evidence, { recursive: true });
+    expect(() =>
+      execFileSync('node', [path.join(repo, 'scripts', 'verify-log.mjs'), 'append', '--evidence', evidence], { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }),
+    ).toThrow(/already recorded/u);
+  });
+});
+
+describe('the walk CI makes, one commit against its parent', () => {
+  it('refuses a stray file at a commit, not only in the working tree', () => {
+    writeFileSync(path.join(repo, LOG, 'notes.json'), '{}\n');
+    git('add', '-A');
+    git('commit', '-qm', 'a stray file');
+    expect(() =>
+      execFileSync('node', [path.join(repo, 'scripts', 'verify-log.mjs'), 'check', '--at', 'HEAD', '--base', 'HEAD^'], { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }),
+    ).toThrow(/verify-log\/notes\.json is not a run/u);
   });
 });
 

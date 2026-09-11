@@ -164,7 +164,11 @@ function flag(args, name, fallback = '') {
 
 /** @param {string[]} args */
 function append(args) {
-  const evidence = path.relative(root, path.resolve(flag(args, 'evidence')));
+  // realpath on both sides: `root` is one, and a folder reached through a
+  // symlinked parent (/var on macOS is /private/var) would otherwise be
+  // recorded as a climb out of the repository.
+  const given = path.resolve(flag(args, 'evidence'));
+  const evidence = path.relative(root, existsSync(given) ? realpathSync(given) : given);
   const id = path.basename(evidence);
   if (!RUN_FILE.test(`${id}.json`)) {
     process.stderr.write(`verify-log: the evidence folder "${evidence}" is not named as a run id (<yyyymmdd>T<hhmmss>Z)\n`);
