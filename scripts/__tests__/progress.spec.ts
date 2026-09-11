@@ -119,7 +119,7 @@ describe('rotate', () => {
     const everything = `${archives}\n${readFileSync(path.join(dir, 'PROGRESS.md'), 'utf8')}`;
     for (const e of all) expect(everything).toContain(e.trim());
     // And nothing was duplicated: each heading appears exactly once across the files.
-    for (const e of all) expect(everything.split(e.split('\n')[0]).length - 1).toBe(1);
+    for (const e of all) expect(everything.split(e.split('\n')[0] ?? e).length - 1).toBe(1);
   });
 
   it('appends to an archive that already exists rather than replacing it', () => {

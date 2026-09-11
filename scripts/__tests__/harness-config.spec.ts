@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -179,40 +179,19 @@ describe('the literals are gone from the scripts', () => {
     expect(read(file)).toContain("from './harness-config.mjs'");
   });
 
-  it('the literals it looks for were really there, where there is history to ask', () => {
-    // Without this the cases above would pass for a script that never had the
-    // literal, which is how an assertion quietly stops meaning anything.
+  it('the stripper would let the literals through, so the cases above can fail', () => {
+    // Without this the cases above would pass for a stripper that removed
+    // everything, which is how an assertion quietly stops meaning anything.
     //
-    // Asked of the whole history rather than of `origin/main`, which is where
-    // this was pointed first and which stopped working the moment the
-    // conversion merged: the literal is gone from the tip, that being the
-    // point. `git log -S` finds the commits where a string appeared or
-    // disappeared, and one is enough.
-    //
-    // And the clone may have none. CI's `verify` job checks out at depth 1
-    // while `attest` asks for the full history, so this passed on a laptop and
-    // failed on a runner — for three merges before anybody looked, because the
-    // failure was in a meta-check nobody reads the name of. A test that reads
-    // git history has to say what it did when there was none.
-    const shallow =
-      execFileSync('git', ['rev-parse', '--is-shallow-repository'], {
-        cwd: REPO,
-        encoding: 'utf8',
-      }).trim() === 'true';
-
-    if (shallow) {
-      // Not silence: assert the reason, so a clone that grows history later
-      // starts checking the real thing again rather than staying quiet.
-      expect(shallow).toBe(true);
-      return;
-    }
-
-    const touched = execFileSync(
-      'git',
-      ['log', '-S', "'apps/api/src/controller/'", '--oneline', '--', 'scripts/pr-review-brief.mjs'],
-      { cwd: REPO, encoding: 'utf8' },
-    ).trim();
-    expect(touched.split('\n').filter(Boolean).length).toBeGreaterThan(0);
+    // In link-shortener this asked git history: `git log -S` for the literal
+    // in the commit that removed it. This repository was seeded after the
+    // conversion, as one commit (HANDOVER.md), so its history has no such
+    // commit to find and never will. What can be proved here is the half that
+    // does not depend on where the code came from: a literal in code survives
+    // the stripper, and the same literal in a comment does not.
+    const literal = "const DIR = 'migrations'";
+    expect(withoutComments(`${literal};\nexport {};\n`)).toContain(literal);
+    expect(withoutComments(`// ${literal}\n/* ${literal} */\n * ${literal}\n`)).not.toContain(literal);
   });
 });
 
@@ -221,18 +200,34 @@ describe('the configuration describes this repository', () => {
     const floors = Object.keys(JSON.parse(read('coverage-floor.json')).areas as object);
     for (const source of (config as unknown as { coverage: { sources: string[] } }).coverage.sources) {
       // `packages` covers `packages/contracts/src`, so the match is by prefix.
-      expect(floors.some((f) => f.replace('./', '').startsWith(source.split('/')[0]))).toBe(true);
+      expect(floors.some((f) => f.replace('./', '').startsWith(source.split('/')[0] ?? source))).toBe(true);
     }
   });
 
-  it('its probe path is inside a directory the typecheck covers', () => {
+  it('its probe path is inside a project the typecheck covers', () => {
+    // check-verify.mjs writes a deliberate type error there and expects step
+    // 02 to go red. A path outside every project reference is a probe the
+    // compiler never sees, and a witness run that passes for the wrong reason.
     const probe = (config as unknown as { verifyProbe: { path: string } }).verifyProbe.path;
-    expect(probe.startsWith('apps/')).toBe(true);
+    const refs = (JSON.parse(read('tsconfig.build.json')) as { references: { path: string }[] }).references.map(
+      (r) => r.path.replace(/^\.\//u, ''),
+    );
+    expect(refs.length).toBeGreaterThan(0);
+    expect(refs.some((r) => probe.startsWith(`${r}/`))).toBe(true);
     expect(probe.endsWith('.ts')).toBe(true);
   });
 
-  it('its migrations directory is the one that exists', () => {
-    const dir = (config as unknown as { migrations: { directory: string } }).migrations.directory;
-    expect(read(path.join(dir, 'README.md')).length).toBeGreaterThan(0);
+  it('its migrations directory is the one that exists, when there is a database', () => {
+    const { migrations, database } = config as unknown as {
+      migrations: { directory: string };
+      database: { required: boolean };
+    };
+    if (!database.required) {
+      // No database, no migrations: the generator writes neither, and a
+      // directory here would be one nothing applies.
+      expect(existsSync(path.join(REPO, migrations.directory))).toBe(false);
+      return;
+    }
+    expect(read(path.join(migrations.directory, 'README.md')).length).toBeGreaterThan(0);
   });
 });

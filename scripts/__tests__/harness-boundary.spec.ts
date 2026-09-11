@@ -53,8 +53,11 @@ const onDisk = {
 
 describe('every file is classified, in exactly one tier', () => {
   it('there is something to classify, so this does not pass by finding nothing', () => {
+    // The floors are this repository's: twenty-five scripts and seventeen
+    // suites came across from link-shortener, and a count under these means
+    // a directory was not read rather than that something was deleted.
     expect(onDisk.scripts.length).toBeGreaterThan(15);
-    expect(onDisk.suites.length).toBeGreaterThan(20);
+    expect(onDisk.suites.length).toBeGreaterThan(10);
   });
 
   it.each([...onDisk.scripts, ...onDisk.suites])('%s belongs to exactly one tier', (file) => {
@@ -157,10 +160,13 @@ describe('core names nothing about this product', () => {
 
   it('the list catches what it is for, in code rather than in a comment', () => {
     // Without this the cases above could pass by stripping everything that
-    // would have matched. coverage-floor.json's areas are product paths in a
-    // file nothing strips, so the word list is proved live against it.
-    const areas = read('coverage-floor.json');
-    expect(PRODUCT_WORDS.some((w) => areas.includes(w))).toBe(true);
+    // would have matched. In link-shortener the proof was coverage-floor.json,
+    // whose areas were product paths; here the floor names `./packages/` and
+    // nothing else. The manifest's `product` tier says in prose what that
+    // product was, in a JSON string nothing strips, so the word list is proved
+    // live against it.
+    const prose = read('harness.manifest.json');
+    expect(PRODUCT_WORDS.some((w) => prose.includes(w))).toBe(true);
   });
 
   it('the stripper removes comments and nothing else', () => {
@@ -177,7 +183,9 @@ describe('configured says what has to move, not merely that something does', () 
   ];
 
   it('there are entries to check', () => {
-    expect(entries.length).toBeGreaterThan(10);
+    // Seven scripts read harness.config.json; the suites that did in
+    // link-shortener did not travel. Under this and a directory was not read.
+    expect(entries.length).toBeGreaterThan(5);
   });
 
   it.each(entries)('%s names what it carries', (_file, reasons) => {
@@ -229,7 +237,7 @@ describe('dependencies: what the copied scripts need from npm', () => {
 
   const importsOf = (file: string): string[] =>
     [...read(file).matchAll(/^import[^']*'([^']+)'/gmu)]
-      .map((m) => m[1])
+      .flatMap((m) => (m[1] === undefined ? [] : [m[1]]))
       .filter((name) => !name.startsWith('node:') && !name.startsWith('.'));
 
   const copied = [...manifest.core.scripts, ...Object.keys(manifest.configured.scripts)];
@@ -270,16 +278,18 @@ describe('dependencies: what the copied scripts need from npm', () => {
     expect(importsOf('scripts/harness-init.mjs')).toEqual([]);
   });
 
-  it('names only packages package.json can give a version for', () => {
-    // Versions live in package.json and nowhere else. The first generator
-    // hardcoded js-yaml ^4 while this repository had ^5, so a new project
-    // would have got a different major of the library the script was written
-    // against.
+  it('names only packages package.json or harness.versions.json can give a version for', () => {
+    // Versions live in package.json, or — for what this repository does not
+    // itself use — in harness.versions.json, and nowhere else. The first
+    // generator hardcoded js-yaml ^4 while this repository had ^5, so a new
+    // project would have got a different major of the library the script was
+    // written against. harness-package.spec.ts holds the two files apart.
     const mine = JSON.parse(read('package.json')) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
     };
-    const available = { ...mine.dependencies, ...mine.devDependencies };
+    const recorded = JSON.parse(read('harness.versions.json')) as { versions: Record<string, string> };
+    const available = { ...mine.dependencies, ...mine.devDependencies, ...recorded.versions };
     const named = [
       ...manifest.dependencies.toolchain.packages,
       ...Object.entries(declared).filter(([f]) => f !== '//').flatMap(([, p]) => p as string[]),

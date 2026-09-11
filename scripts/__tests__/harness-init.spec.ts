@@ -432,17 +432,19 @@ describe('the applications it scaffolds', () => {
     expect(without.devDependencies['@nestjs/core']).toBeDefined();
   });
 
-  it('takes the app versions from where this repository keeps them', () => {
-    // React is in apps/web/package.json and nowhere else. A resolver reading
-    // only the root would have had to carry its own version, which is the
-    // drift the manifest records packages rather than versions to avoid.
-    const mine = JSON.parse(
-      readFileSync(path.join(REPO, 'apps', 'web', 'package.json'), 'utf8'),
-    ) as { dependencies: Record<string, string> };
+  it('takes the app versions from harness.versions.json, where this repository keeps them', () => {
+    // In link-shortener React's version was in apps/web/package.json and
+    // nowhere else. This repository is the harness alone and has no page, so
+    // the versions the templates were written against are recorded once, in
+    // harness.versions.json, and a generated project gets exactly those.
+    const mine = JSON.parse(readFileSync(path.join(REPO, 'harness.versions.json'), 'utf8')) as {
+      versions: Record<string, string>;
+    };
     const generated = JSON.parse(read(scaffold(['--web']), 'package.json')) as {
       devDependencies: Record<string, string>;
     };
-    expect(generated.devDependencies['react']).toBe(mine.dependencies['react']);
+    expect(mine.versions['react']).toBeDefined();
+    expect(generated.devDependencies['react']).toBe(mine.versions['react']);
   });
 
   it('routes every path through the function by query parameter, not by depth', () => {

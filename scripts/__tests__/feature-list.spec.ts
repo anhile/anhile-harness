@@ -81,6 +81,18 @@ function check(...args: string[]): Verdict {
   }
 }
 
+/**
+ * The entry at a position, or a failure that names it. Under
+ * noUncheckedIndexedAccess `list[2]` is `Entry | undefined`, and the fixture
+ * has exactly three entries: a case that reaches for a fourth is wrong about
+ * the fixture, and should say so rather than assign to undefined.
+ */
+function at(list: Entry[], i: number): Entry {
+  const found = list[i];
+  if (found === undefined) throw new Error(`the fixture has no entry ${i}`);
+  return found;
+}
+
 /** Three committed entries: two closed, one still open. */
 const committed = (): Entry[] => [entry(0, true), entry(1, true), entry(2, false)];
 
@@ -114,14 +126,14 @@ describe('the two permitted changes', () => {
 
   it('accepts one entry flipped false to true', () => {
     const list = committed();
-    list[2].passes = true;
+    at(list, 2).passes = true;
     write(list);
     expect(check().rejected).toBe(false);
   });
 
   it('accepts appending several while flipping one', () => {
     const list = committed();
-    list[2].passes = true;
+    at(list, 2).passes = true;
     write([...list, entry(3), entry(4)]);
     expect(check().rejected).toBe(false);
   });
@@ -130,7 +142,7 @@ describe('the two permitted changes', () => {
 describe('moving the goalposts', () => {
   it('refuses a reworded description, and names the field', () => {
     const list = committed();
-    list[1].description = 'something easier';
+    at(list, 1).description = 'something easier';
     write(list);
 
     const verdict = check();
@@ -140,7 +152,7 @@ describe('moving the goalposts', () => {
 
   it('refuses an edited step, and shows which step went', () => {
     const list = committed();
-    list[1].steps = [list[1].steps[0]];
+    at(list, 1).steps = at(list, 1).steps.slice(0, 1);
     write(list);
 
     const verdict = check();
@@ -158,7 +170,7 @@ describe('moving the goalposts', () => {
 
   it('refuses passes going back to false', () => {
     const list = committed();
-    list[0].passes = false;
+    at(list, 0).passes = false;
     write(list);
 
     const verdict = check();
@@ -194,8 +206,8 @@ describe('one feature per commit', () => {
     git('add', '-A');
     git('commit', '-qm', 'two still open');
 
-    list[1].passes = true;
-    list[2].passes = true;
+    at(list, 1).passes = true;
+    at(list, 2).passes = true;
     write(list);
 
     const verdict = check();
@@ -209,14 +221,14 @@ describe('one feature per commit', () => {
     git('add', '-A');
     git('commit', '-qm', 'two still open');
 
-    list[1].passes = true;
+    at(list, 1).passes = true;
     write(list);
     expect(check().rejected).toBe(false);
 
     git('add', '-A');
     git('commit', '-qm', 'close the first');
 
-    list[2].passes = true;
+    at(list, 2).passes = true;
     write(list);
     expect(check().rejected).toBe(false);
   });
@@ -225,7 +237,7 @@ describe('one feature per commit', () => {
 describe('the baselines', () => {
   it('reads the file at a commit with --at, and its parent with --base', () => {
     const list = committed();
-    list[2].passes = true;
+    at(list, 2).passes = true;
     write(list);
     git('add', '-A');
     git('commit', '-qm', 'close the third');
@@ -246,7 +258,7 @@ describe('retracting a closed feature', () => {
   function withRetracted(): Entry[] {
     writeSpec();
     const list = committed();
-    list[1].retracted = retraction();
+    at(list, 1).retracted = retraction();
     write(list);
     git('add', '-A');
     git('commit', '-qm', 'retract the second');
@@ -256,7 +268,7 @@ describe('retracting a closed feature', () => {
   it('accepts a well-formed retraction', () => {
     writeSpec();
     const list = committed();
-    list[1].retracted = retraction();
+    at(list, 1).retracted = retraction();
     write(list);
 
     const verdict = check();
@@ -267,7 +279,7 @@ describe('retracting a closed feature', () => {
   it('accepts one that names a successor', () => {
     writeSpec();
     const list = [...committed(), entry(3)];
-    list[1].retracted = retraction({ supersededBy: 3 });
+    at(list, 1).retracted = retraction({ supersededBy: 3 });
     write(list);
     expect(check().rejected).toBe(false);
   });
@@ -282,7 +294,7 @@ describe('retracting a closed feature', () => {
     const list = committed();
     const r = { ...retraction(), ...over } as Record<string, unknown>;
     for (const [k, v] of Object.entries(over)) if (v === undefined) delete r[k];
-    list[1].retracted = r as unknown as Retraction;
+    at(list, 1).retracted = r as unknown as Retraction;
     write(list);
 
     const verdict = check();
@@ -292,7 +304,7 @@ describe('retracting a closed feature', () => {
 
   it('refuses one whose contract does not exist', () => {
     const list = committed();
-    list[1].retracted = retraction({ spec: 'specs/never-written.md' });
+    at(list, 1).retracted = retraction({ spec: 'specs/never-written.md' });
     write(list);
 
     const verdict = check();
@@ -303,7 +315,7 @@ describe('retracting a closed feature', () => {
   it.each([[-1], [999], ['3']])('refuses a supersededBy of %p', (target) => {
     writeSpec();
     const list = committed();
-    list[1].retracted = retraction({ supersededBy: target as number });
+    at(list, 1).retracted = retraction({ supersededBy: target as number });
     write(list);
 
     const verdict = check();
@@ -314,7 +326,7 @@ describe('retracting a closed feature', () => {
   it('refuses one that points at itself', () => {
     writeSpec();
     const list = committed();
-    list[1].retracted = retraction({ supersededBy: 1 });
+    at(list, 1).retracted = retraction({ supersededBy: 1 });
     write(list);
 
     const verdict = check();
@@ -326,8 +338,8 @@ describe('retracting a closed feature', () => {
     // A chain of withdrawals carries nothing to the reader at the end of it.
     writeSpec();
     const list = committed();
-    list[0].retracted = retraction();
-    list[1].retracted = retraction({ supersededBy: 0 });
+    at(list, 0).retracted = retraction();
+    at(list, 1).retracted = retraction({ supersededBy: 0 });
     write(list);
 
     const verdict = check();
@@ -337,7 +349,7 @@ describe('retracting a closed feature', () => {
 
   it('refuses an edited retraction', () => {
     const list = withRetracted();
-    list[1].retracted = retraction({ reason: 'actually it was fine all along' });
+    at(list, 1).retracted = retraction({ reason: 'actually it was fine all along' });
     write(list);
 
     const verdict = check();
@@ -347,7 +359,7 @@ describe('retracting a closed feature', () => {
 
   it('refuses a removed retraction', () => {
     const list = withRetracted();
-    delete list[1].retracted;
+    delete at(list, 1).retracted;
     write(list);
 
     const verdict = check();
@@ -361,13 +373,13 @@ describe('retracting a closed feature', () => {
   ])('refuses passes moving %s on a retracted entry', (_label, from, to) => {
     writeSpec();
     const list = committed();
-    list[1].passes = from;
-    list[1].retracted = retraction();
+    at(list, 1).passes = from;
+    at(list, 1).retracted = retraction();
     write(list);
     git('add', '-A');
     git('commit', '-qm', 'retract the second');
 
-    list[1].passes = to;
+    at(list, 1).passes = to;
     write(list);
 
     const verdict = check();
@@ -381,8 +393,8 @@ describe('retracting a closed feature', () => {
     // a reviewer reads is the contract that withdrew it.
     writeSpec();
     const list = committed();
-    list[0].retracted = retraction();
-    list[1].retracted = retraction();
+    at(list, 0).retracted = retraction();
+    at(list, 1).retracted = retraction();
     write(list);
 
     const verdict = check();
@@ -394,8 +406,8 @@ describe('retracting a closed feature', () => {
     writeSpec();
     writeFileSync(path.join(repo, 'specs', 'other.md'), '# a second contract\n');
     const list = committed();
-    list[0].retracted = retraction();
-    list[1].retracted = retraction({ spec: 'specs/other.md' });
+    at(list, 0).retracted = retraction();
+    at(list, 1).retracted = retraction({ spec: 'specs/other.md' });
     write(list);
 
     const verdict = check();
@@ -406,8 +418,8 @@ describe('retracting a closed feature', () => {
   it('refuses a retraction sharing a commit with a feature being closed', () => {
     writeSpec();
     const list = committed();
-    list[1].retracted = retraction();
-    list[2].passes = true;
+    at(list, 1).retracted = retraction();
+    at(list, 2).passes = true;
     write(list);
 
     const verdict = check();
@@ -418,14 +430,14 @@ describe('retracting a closed feature', () => {
   it('accepts them one commit at a time', () => {
     writeSpec();
     const list = committed();
-    list[1].retracted = retraction();
+    at(list, 1).retracted = retraction();
     write(list);
     expect(check().rejected).toBe(false);
 
     git('add', '-A');
     git('commit', '-qm', 'retract the second');
 
-    list[2].passes = true;
+    at(list, 2).passes = true;
     write(list);
     expect(check().rejected).toBe(false);
   });
@@ -493,7 +505,7 @@ describe('identity: an id that is its position, and the contract that introduced
 
   it('refuses an entry without an id', () => {
     const list = committed();
-    delete list[2].id;
+    delete at(list, 2).id;
     write(list);
     const verdict = check();
     expect(verdict.rejected).toBe(true);
@@ -509,7 +521,7 @@ describe('identity: an id that is its position, and the contract that introduced
 
   it('refuses an id changed after the fact, even to a free number', () => {
     const list = committed();
-    list[2].id = 9;
+    at(list, 2).id = 9;
     write(list);
     const verdict = check();
     expect(verdict.rejected).toBe(true);
@@ -543,7 +555,7 @@ describe('identity: an id that is its position, and the contract that introduced
     mkdirSync(path.join(repo, 'specs'), { recursive: true });
     writeFileSync(path.join(repo, 'specs/2026-09-other.md'), '# another\n');
     const list = committed();
-    list[1].spec = 'specs/2026-09-other.md';
+    at(list, 1).spec = 'specs/2026-09-other.md';
     write(list);
     const verdict = check();
     expect(verdict.rejected).toBe(true);
@@ -552,7 +564,7 @@ describe('identity: an id that is its position, and the contract that introduced
 
   it('refuses a recorded contract going back to null', () => {
     const list = committed();
-    list[1].spec = null;
+    at(list, 1).spec = null;
     write(list);
     const verdict = check();
     expect(verdict.rejected).toBe(true);
@@ -566,7 +578,7 @@ describe('identity: an id that is its position, and the contract that introduced
     git('commit', '-qm', 'one entry predates contracts');
     expect(check().rejected).toBe(false);
 
-    list[0].spec = SPEC;
+    at(list, 0).spec = SPEC;
     write(list);
     const recorded = check();
     expect(recorded.rejected).toBe(false);

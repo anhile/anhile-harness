@@ -1,0 +1,36 @@
+{
+  "//": [
+    "Versions for the packages the generator writes into a new project and this",
+    "repository does not itself use: the NestJS API, the React page, and pg for a",
+    "project with a database. In link-shortener these came from apps/*/package.json,",
+    "because the product happened to contain one of everything. This repository",
+    "is the harness alone, so they are recorded here, once, at the versions the",
+    "templates in scripts/harness-templates.mjs were written against.",
+    "",
+    "Only what no package.json here can give a version for. A name that is also",
+    "in package.json is refused, by the resolver and by harness-package.spec.ts:",
+    "two copies of a version drift, which is why harness.manifest.json records",
+    "packages and never versions. Bump a version here only after generating a",
+    "project with it and watching that project's gate go green."
+  ],
+  "versions": {
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "@nestjs/testing": "^11.1.6",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.0",
+    "jest-environment-jsdom": "^30.0.5",
+    "pg": "^8.13.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "ts-node": "^10.9.2",
+    "vite": "^7.1.3"
+  }
+}
