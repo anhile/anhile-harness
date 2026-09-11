@@ -72,10 +72,10 @@ it to confirm that the implementation is correct.
 
 ## Step 2b - the attack surface, when it moved
 
-If the diff touches any of `apps/api/src/controller/`, `apps/api/src/repo/`,
-`apps/api/src/service/session.service.ts`, `migrations/`, `packages/contracts/`,
-`api/`, `vercel.json` or `apps/api/src/main.ts`, delegate to the
-`security-check` subagent with the same diff. Pass nothing else. Its report
+If the diff touches any path listed under `attackSurface.paths` in
+`harness.config.json` — the generator seeds it with the controllers, the
+migrations and the routing files a project has, and a project extends it —
+delegate to the `security-check` subagent with the same diff. Pass nothing else. Its report
 opens with a verdict line — `no findings`, or a count by severity — and that
 line is what goes into the receipt. If the diff touches none of those paths,
 record `not run: surface unchanged`.

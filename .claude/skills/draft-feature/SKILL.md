@@ -92,20 +92,20 @@ format: a header table of Status / Owner / Supersedes / Depends on / Last
 updated, tables rather than prose for anything enumerable, criteria numbered
 `AC-1`. Match them.
 
-**3. The constitution.** `CLAUDE.md`, `docs/ARCHITECTURE.md`,
-`docs/INVARIANTS.md`, `docs/DOMAIN_RULES.md`. The spec will be judged against
+**3. The constitution.** `AGENTS.md`, `docs/INVARIANTS.md`,
+`docs/DOMAIN_RULES.md`, and `docs/ARCHITECTURE.md` where the project has one. The spec will be judged against
 these at intake gate 5. Reading them afterwards means rewriting.
 
 **4. The code the feature touches.** Actually open it.
 
 This is where the constraints that make a spec worth reading come from, and none
 of them is written in any document. Two from the session that produced this
-skill: `packages/ui/src/Hero.tsx` says in a comment that the call to action is
-inert on purpose and that `onClick` is absent rather than a no-op — which told the
-spec it was superseding an existing criterion rather than adding one. And
-`vercel.json` routes every seven-character path to the API as a short code, which
-constrains every route name the product will ever add. A spec written from the
-idea alone would have carried neither, and would have been wrong in a way nobody
+skill: a page component said in a comment that its call to action was inert on
+purpose and that the handler was absent rather than a no-op — which told the
+spec it was superseding an existing criterion rather than adding one. And the
+routing file sent every path of one shape to a single handler, which
+constrained every route name the product would ever add. A spec written from
+the idea alone would have carried neither, and would have been wrong in a way nobody
 caught until implementation.
 
 **5. What already exists.** Search the database for the same feature before
@@ -164,11 +164,11 @@ nothing — but a proposal is never quietly promoted into the body of the spec. 
 criterion depends on the answer, the criterion says so.
 
 The questions worth the most are where two rules the project already holds
-collide. In the accounts spec it was this: a short code must resolve forever
-(`I1`), so deleting an account cannot delete its links — which makes account
-deletion a product decision about a public promise rather than an implementation
-detail. That question came from reading `docs/INVARIANTS.md` against the idea,
-which is what pass 3 is for.
+collide. In one spec it was this: a public identifier had to resolve forever,
+by invariant, so deleting an account could not delete what it owned — which
+made account deletion a product decision about a public promise rather than an
+implementation detail. That question came from reading `docs/INVARIANTS.md`
+against the idea, which is what pass 3 is for.
 
 ## Traps in this repository
 
@@ -177,16 +177,14 @@ specs touch two or three of these.
 
 | Check | Where |
 |---|---|
-| Seven-character paths belong to short codes | `vercel.json`, `R2` |
-| A code's target is write-once, the code immutable | `I1`, `I2` |
-| The redirect never waits for anything | `I9`, `R5` |
-| Statistics follow the link's ownership | `R6` |
-| `click_events` carries nothing personal | `migrations/002_create_click_events.sql`, `R5` |
 | A contracts change needs explicit human sign-off | `I4` |
-| A migration needs human confirmation to apply | `I8` |
-| `feature_list.json` is append-only | `I15` |
-| `packages/ui` stays product-ignorant | `docs/ARCHITECTURE.md` |
-| Layers import forward only, in both stacks | `I5`, `I6`, `eslint.config.mjs` |
+| A migration needs human confirmation to apply, and an applied one is never edited | `I8` |
+| A commit needs a green gate over exactly its tree | `I11` |
+| `feature_list.json` is append-only; a guarantee is withdrawn in the open | `I15` |
+| A step nothing can pass yet is deferred, not shipped | `AGENTS.md`, the deferred steps |
+| The layer rules, once the project has written them | `eslint.config.mjs` |
+
+The project's own rules go above these, in `docs/DOMAIN_RULES.md`, by number.
 
 ## Superseding an existing spec
 
@@ -247,5 +245,5 @@ the check that would have caught it to this file. When a spec passes intake and
 then falls apart in implementation, the miss is usually pass 4 — the code was not
 read — and the fix is a line in the traps table.
 
-This file came out of one such session on 2026-09-02: a spec for accounts on
-Stytch, drafted by hand with none of the above written down.
+This file came out of one such session on 2026-09-02: a spec for accounts on a
+third-party sign-in service, drafted by hand with none of the above written down.

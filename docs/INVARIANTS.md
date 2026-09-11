@@ -1,6 +1,8 @@
 # Invariants
 
-Properties of this repository that must not change. Every entry names a
+Properties of a project that adopts this harness, and of the harness itself,
+that must not change. This file travels: the generator copies it into every
+new project, and a project appends its own invariants below the harness's. Every entry names a
 concrete check — if you cannot state how a violation would be detected, it does
 not belong on this list.
 
@@ -38,9 +40,10 @@ records it as `contracts.package` in `harness.config.json`, `null` when there
 is none — treats every export in it as a contract. Adding an optional field is
 still a contract change. An agent proposes; a human decides.
 
-This repository has no such package. The invariant is here because
-`scripts/progress.mjs` asks for the sign-off by number in the journal template
-it writes, and a number a script prints has to resolve to a sentence.
+A project without such a package has `null` there and nothing to sign off.
+The invariant is here regardless, because `scripts/progress.mjs` asks for the
+sign-off by number in the journal template it writes, and a number a script
+prints has to resolve to a sentence.
 
 **How it is checked**
 - Any diff touching the configured package requires the human's sign-off to be
@@ -203,6 +206,14 @@ forgets what it used to promise cannot be audited against what it promised.
   diff, the contract and the evidence.
 - **Review only:** that the auditor's READY was earned. The gate checks that an
   audit of this tree said READY; it cannot read the report.
+
+## Yours to add
+
+A project's own invariants go below this line, numbered from I16, each with a
+"How it is checked" that names a mechanism. An entry with no check is a
+preference; the table at the top is the index and every entry is in it. The
+spec-auditor reads this file and cites by number, so a number that moves is a
+citation that lies.
 
 ## Numbers not used here
 

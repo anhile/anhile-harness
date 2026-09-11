@@ -146,3 +146,53 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
 
   Still ahead: the first publish needs the secret set by a person, and a tag
   `v0.1.0` pushed after #1, #2 and this merge.
+
+## 2026-09-11 — Phase 3: what travels stops describing link-shortener
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the `verify-log.jsonl` line for this run
+- **Contract changes**: none
+- **Notes**:
+
+  Everything the generator copies into a new project was read for the product
+  it was written in, and what was found is fixed at the source rather than in
+  the copy.
+
+  **Scripts.** `check-feature-list.mjs` carried two commit shas of another
+  repository as exemptions from one-closure-per-commit; they are
+  `featureList.exemptCommits` in `harness.config.json` now, optional,
+  validated as full shas when present, empty in a new project. The script
+  moved from `core` to `configured` in the manifest, and the throwaway
+  repository its suite builds gets the loader and a configuration.
+  `check-environment.mjs` demanded a Docker daemon of every project and told
+  every reader about a vendor's credentials; it asks for Docker only when
+  `database.required`, reports `.env` without counting it, and has a suite of
+  its own, `environment.spec.ts`, driven through `--from`.
+
+  **Skills and templates.** `setup-repo` said nine steps, `init.sh`,
+  `.env.example` and Stytch; `task-intake` and `draft-feature` cited
+  `docs/ARCHITECTURE.md`, `I1..I15` and `R1..R8` as if every project had
+  them; the spec template's example rows were short codes and QR data URLs;
+  the auditor's watch-list named `links.url` and `click_events`; the pull
+  request template pointed at a document nobody has. Each now names what a
+  generated project actually has — the configured attack surface, the
+  deferred steps by number, the harness's own invariants as examples — and
+  nothing else.
+
+  **Documents.** `docs/INVARIANTS.md` is general enough to travel and does,
+  as a copy, with a "Yours to add" line for a project's own from I16; the
+  spec-auditor and the refusals that print I8, I11, I12 and I15 have a file to
+  point at in every project. `docs/DOMAIN_RULES.md` is written for this
+  repository — R1 to R7, what the harness promises a project that adopts it —
+  and the generator writes a project a template with the shape and no rules,
+  since a rule it wrote would be about a product it has never seen.
+  `CONTRIBUTING.md` travels too, because the pull request template points at
+  it. Three cases in `harness-init.spec.ts` hold the generator to all of it.
+
+  **Left with a person.** `verify-receipt.mjs` prints git's "ambiguous
+  argument 'HEAD'" on every run before a project's first commit; the two-line
+  fix is protected and waits in `.generated/scratch/`. `.claude/settings.json`
+  still allows `playwright test` and `docker compose down`; harmless, and
+  protected.

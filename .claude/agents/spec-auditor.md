@@ -49,17 +49,18 @@ than a real browser are **no mechanism**.
 ### 2. Invariant violations
 
 Check the diff against every entry in `docs/INVARIANTS.md`. Cite the invariant
-by ID (`I1`..`I15`) and quote the line of the diff that violates it. An
+by ID (`I<n>`) and quote the line of the diff that violates it. An
 invariant you cannot tie to a specific line in the diff is not a violation —
 do not report suspicions as findings.
 
 Pay particular attention to the invariants whose enforcement is review-only
 rather than automated, because `verify.sh` passing says nothing about them:
 
-- **I1** — any write to `links.url` after insert
-- **I7** — any `delete from click_events` or `update click_events` outside a
-  migration
+- **I4** — any change under the configured contracts package with no sign-off
+  in the `PROGRESS.md` entry
 - **I8** — any edit to a migration file that already exists
+- **I12** — anything that would rewrite a line of `verify-log.jsonl` rather
+  than append one
 - **I15** — a `passes` flipped to `true` whose entry the tests in the diff and
   the evidence do not prove; the guard checks the shape of the edit, never that
   it was earned

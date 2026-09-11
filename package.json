@@ -43,6 +43,8 @@
     "!.github/workflows/generate.yml",
     "!.github/workflows/release.yml",
     "verify.sh",
+    "CONTRIBUTING.md",
+    "docs/INVARIANTS.md",
     "harness.manifest.json",
     "harness.versions.json",
     "README.md",

@@ -85,16 +85,19 @@ no verification mechanism is not an acceptance criterion, it is a wish.
 
 | Criterion | Verification mechanism | Pass condition | Evidence output |
 |---|---|---|---|
-| AC1 | Jest unit — `apps/api/src/service/*.spec.ts` | 1000 generated codes all match `SHORT_CODE_PATTERN`, no duplicates | `.generated/runs/<ts>/03-unit.log` |
-| AC2 | Jest API e2e — supertest `POST /links` | 201; body matches `CreateLinkResponse`; `qrDataUrl` starts with `data:image/png;base64,` | `.generated/runs/<ts>/04-api-e2e.log` |
-| AC3 | Jest API e2e — insert a link with a past `expires_at`, then `GET /{code}` | 410 with `errorCode: CODE_EXPIRED`; no click event written | `.generated/runs/<ts>/04-api-e2e.log` |
-| AC4 | Jest API e2e — post `javascript:alert(1)` | 400 with `errorCode: INVALID_URL`; `select count(*) from links` unchanged | `.generated/runs/<ts>/04-api-e2e.log` |
-| AC5 | Playwright — pick "90 days" in the UI, submit, read the returned expiry | Rendered expiry is 90 days after today | `.generated/runs/<ts>/05-browser-e2e.log`, `playwright-report/` |
+| AC1 | Jest unit — `packages/core/src/<module>.spec.ts` | <e.g. 1000 generated values all match `PATTERN`, no duplicates> | `.generated/runs/<ts>/03-unit.log` |
+| AC2 | Jest API e2e — supertest `POST /<resource>` | <e.g. 201; body matches the response type> | `.generated/runs/<ts>/04-api-e2e.log` |
+| AC3 | Jest API e2e — the refusing path | <e.g. 400 with `errorCode: INVALID_INPUT`; row count unchanged> | `.generated/runs/<ts>/04-api-e2e.log` |
+| AC4 | A real browser — the action a user would take | <e.g. the rendered value is what was submitted> | `.generated/runs/<ts>/05-browser-e2e.log` |
+
+Steps 04 and 05 exist only once the project has added them (`AGENTS.md` says
+which are deferred). A criterion whose mechanism is a deferred step is not
+verifiable yet; say so in the open questions rather than in the table.
 
 Rules for this table:
 
-- UI criteria are verified by Playwright, in a browser, through the actions a
-  user would take. `curl` and unit tests do not verify a UI criterion.
+- UI criteria are verified in a real browser, through the actions a user
+  would take. `curl` and unit tests do not verify a UI criterion.
 - "Pass condition" is a concrete, observable assertion. "Works correctly" is not
   a pass condition.
 - "Evidence output" names the file under `.generated/runs/<timestamp>/` where a
@@ -108,9 +111,10 @@ This contract is the only place that rule lives: CLAUDE.md carried a copy of it
 until 2026-09-01, and a rule stated in two places is a rule that will eventually
 be stated two ways.
 
-- `apps/api/src/<layer>/<file>`
-- `apps/web/src/<layer>/<file>`
-- `packages/contracts/src/index.ts` — *requires explicit human sign-off (I4)*
+- `packages/core/src/<file>`
+- `apps/api/src/<layer>/<file>` — where the project has an API
+- `apps/web/src/<file>` — where the project has a page
+- the contracts package, if `harness.config.json` names one — *requires explicit human sign-off (I4)*
 - `migrations/<NNN>_<name>.sql` — *requires explicit human confirmation to apply (I8)*
 - tests: `...`
 
@@ -121,8 +125,8 @@ each is preserved. Reference by ID.
 
 | Invariant | Relevance | How this task preserves it |
 |---|---|---|
-| I1 | <e.g. writes the `links` row> | <e.g. `url` is written once at insert; no update path added> |
-| I3 | <e.g. adds a route> | <e.g. route paths taken from `ROUTES`; signatures unchanged> |
+| I8 | <e.g. adds a migration> | <e.g. a new file; no committed `.sql` edited> |
+| I15 | <e.g. closes entry #n> | <e.g. one entry flipped, its tests in the diff; nothing reworded> |
 
 Also list the `docs/DOMAIN_RULES.md` rules this spec depends on, and confirm none
 is contradicted.

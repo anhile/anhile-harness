@@ -25,5 +25,8 @@
   },
   "contracts": {
     "package": null
+  },
+  "featureList": {
+    "exemptCommits": []
   }
 }

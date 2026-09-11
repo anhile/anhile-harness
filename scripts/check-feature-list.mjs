@@ -51,6 +51,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { loadConfig } from './harness-config.mjs';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -68,24 +69,20 @@ const atIndex = args.indexOf('--at');
 const at = atIndex === -1 ? null : args[atIndex + 1];
 
 /**
- * Commits that closed more than one feature, made before the one-per-commit rule
- * existed. Both are the UI work of 2026-08-30, batched at a human's request.
+ * Commits that closed more than one feature, made before the one-per-commit
+ * rule existed in the project that adopts this guard. Listed in
+ * harness.config.json under `featureList.exemptCommits` rather than silently
+ * tolerated, and the list is closed by the rule below: CI walks history commit
+ * by commit, so without an exemption an old commit re-entering a range would
+ * turn red for breaking a rule that did not exist when it was made -- the
+ * wrong kind of red.
  *
- * Listed rather than silently tolerated, and the list is closed: the rule below
- * is what stops another being added. CI walks history commit by commit, so
- * without this an old commit re-entering a range would turn red for breaking a
- * rule that did not exist when it was made -- the wrong kind of red.
- *
- * These two shas name commits in `anhile/link-shortener`, which is where this
- * code was written. The move to `anhile/anhile-links` on 2026-09-01 dropped the
- * history, so nothing here will ever match them again and the exemption is
- * inert. Kept rather than deleted: an empty exemption list would read as "this
- * never happened", and it did.
+ * This used to be two literal shas from the repository the guard was written
+ * in, and a copied guard carried another project's history into every new
+ * one. A project starts with an empty list and adds a sha only for a commit
+ * that is already on its main branch.
  */
-const PRE_RULE_COMMITS = new Set([
-  'cf94f9786e11cf56a9d337ff696a1706e0d9bfb9',
-  'c60a2a0772f9c3ac2ad9cbe46785ad124c6020c8',
-]);
+const PRE_RULE_COMMITS = new Set(loadConfig().featureList?.exemptCommits ?? []);
 
 const problems = [];
 const notes = [];
