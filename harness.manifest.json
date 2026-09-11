@@ -153,7 +153,7 @@
       ]
     },
     "onlyWith": {
-      "//": "Named so the generator can leave them out. `pg` in a project with no database is a dependency nothing imports.",
+      "//": "Named so the generator can leave them out — the dependency and the script itself. `pg` in a project with no database is a dependency nothing imports, and migrate.mjs, which imports it, would be a script the typecheck cannot pass.",
       "database": [
         "scripts/migrate.mjs"
       ]

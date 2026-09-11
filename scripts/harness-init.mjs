@@ -166,14 +166,27 @@ export function renderVerify(source, steps) {
  * write; those belong beside the harness, in the repository that maintains it.
  * What a new project gets is the mechanisms, and `scripts/__tests__/` empty and
  * waiting for guards of its own.
+ * A script the manifest lists under `dependencies.onlyWith` is left out with
+ * its dependency: `migrate.mjs` imports `pg`, and in a project with no
+ * database the import has nothing to resolve to. That was harmless while the
+ * scripts went unchecked and became a red step 02 the day they carried
+ * `// @ts-check` — the generate job caught it on the three variants without a
+ * database, and the two with one passed.
  * @param {Manifest} manifest
+ * @param {Partial<Answers>} [answers]
  */
-export function copiedFiles(manifest) {
+export function copiedFiles(manifest, answers = {}) {
+  const picked = /** @type {Record<string, unknown>} */ (answers);
+  const leftOut = new Set(
+    Object.entries(manifest.dependencies.onlyWith)
+      .filter(([answer]) => answer !== '//' && picked[answer] !== true)
+      .flatMap(([, scripts]) => (Array.isArray(scripts) ? scripts : [])),
+  );
   return [
     ...manifest.core.scripts,
     ...Object.keys(manifest.configured.scripts),
     ...manifest.elsewhere.core.filter((f) => f !== 'verify.sh'),
-  ];
+  ].filter((f) => !leftOut.has(f));
 }
 
 /**
@@ -632,7 +645,7 @@ export function plan(answers) {
     steps: chosenSteps(),
     deferred: deferredSteps(answers),
     dependencies: dependenciesFor(manifest, answers),
-    copied: copiedFiles(manifest),
+    copied: copiedFiles(manifest, answers),
     generated: [
       ...Object.keys(SEEDS),
       'verify.sh',

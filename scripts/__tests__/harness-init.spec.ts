@@ -178,6 +178,15 @@ describe('the files it copies', () => {
     expect(plan().copied.filter((f) => f.includes('__tests__'))).toEqual([]);
   });
 
+  it('leaves migrate.mjs out of a project with no database, since it imports pg', () => {
+    // Found by the generate job the day the scripts carried // @ts-check: a
+    // project without pg could not typecheck a script that imports it, and
+    // the three variants without a database went red at step 02.
+    expect(plan().copied).not.toContain('scripts/migrate.mjs');
+    expect(plan(['--database']).copied).toContain('scripts/migrate.mjs');
+    expect(existsSync(path.join(scaffold(), 'scripts', 'migrate.mjs'))).toBe(false);
+  });
+
   it('every file it claims to copy exists here', () => {
     expect(plan().copied.filter((f) => !existsSync(path.join(REPO, f)))).toEqual([]);
   });

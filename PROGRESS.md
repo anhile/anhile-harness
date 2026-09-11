@@ -255,3 +255,9 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
 
   `notion` is declared in `.mcp.json` now: `/task-intake` reads Notion rows,
   and this repository was generated with `context7` alone.
+
+  **Found by the generate job an hour later:** the three variants without a
+  database went red at step 02, because `migrate.mjs` imports `pg` and was
+  copied into projects that do not install it. Harmless while the scripts
+  went unchecked. A script the manifest lists under `onlyWith` now leaves
+  with its dependency, and `harness-init.spec.ts` holds that.
