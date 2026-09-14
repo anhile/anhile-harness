@@ -53,6 +53,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from './harness-config.mjs';
+import { closureProblems } from './audit-log.mjs';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -392,6 +393,18 @@ if (baseline === null) {
         `(${flipped.join(', ')}). One feature per commit: flip one, run ./verify.sh, ` +
         'commit, then flip the next.',
     );
+  }
+
+  // A committed closure carries its audit. The gate asked the receipt before
+  // the commit; here, walking a commit that is already made, the question is
+  // asked of the commit itself: does its own audit-log/ hold a READY audit of
+  // its own tree under the entry's contract. Only with --at, because before
+  // the commit the flip is in the working tree and the audit is written after
+  // the run that step 06 is part of. No exemption: the list above is for
+  // commits that closed several entries at once, and CI walks only pushed
+  // ranges, so a commit from before the log never meets this question.
+  if (at && flipped.length > 0) {
+    for (const problem of closureProblems(base ?? 'HEAD', at)) fail(problem);
   }
 
   if (retracted.length > 0) {

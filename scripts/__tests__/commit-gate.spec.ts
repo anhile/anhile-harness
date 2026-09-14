@@ -19,6 +19,7 @@ const REPO = path.resolve(__dirname, '..', '..');
 const SCRIPTS = [
   'verify-receipt.mjs',
   'audit-receipt.mjs',
+  'audit-log.mjs',
   'check-commit-gate.mjs',
   'check-protected-files.mjs',
   'verify-log.mjs',
@@ -257,6 +258,37 @@ describe('the durable record cannot be edited around the gate', () => {
     expect(verdict.reason).toContain('rewritten, not appended');
   });
 
+  it('refuses a commit when a recorded audit has been rewritten', () => {
+    // audit-log/ is outside the tree hash for the same reason verify-log/ is,
+    // and gets the same guard in the gate, since the hash cannot see it.
+    mkdirSync(path.join(repo, 'audit-log'));
+    const audit = path.join(repo, 'audit-log', '20260914T080000.000Z.json');
+    writeFileSync(audit, `${JSON.stringify({ spec: 'specs/x.md', verdict: 'NOT_READY', at: '2026-09-14T08:00:00.000Z', treeHash: 'sha256:aaa' })}\n`);
+    git('add', '-A');
+    git('commit', '-qm', 'an audit on record');
+    writeFileSync(audit, `${JSON.stringify({ spec: 'specs/x.md', verdict: 'READY', at: '2026-09-14T08:00:00.000Z', treeHash: 'sha256:aaa' })}\n`);
+    git('add', '-A');
+    writeReceipt('pass');
+    const verdict = runGate(bash('git commit -m "a better verdict"'));
+    expect(verdict.blocked).toBe(true);
+    expect(verdict.reason).toContain('audit-log/ has been rewritten');
+    expect(verdict.reason).toContain('20260914T080000.000Z.json was rewritten');
+  });
+
+  it('refuses a commit when a recorded audit has been removed', () => {
+    mkdirSync(path.join(repo, 'audit-log'));
+    const audit = path.join(repo, 'audit-log', '20260914T080000.000Z.json');
+    writeFileSync(audit, `${JSON.stringify({ spec: 'specs/x.md', verdict: 'NOT_READY', at: '2026-09-14T08:00:00.000Z', treeHash: 'sha256:aaa' })}\n`);
+    git('add', '-A');
+    git('commit', '-qm', 'an audit on record');
+    rmSync(audit);
+    git('add', '-A');
+    writeReceipt('pass');
+    const verdict = runGate(bash('git commit -m "never happened"'));
+    expect(verdict.blocked).toBe(true);
+    expect(verdict.reason).toContain('20260914T080000.000Z.json was removed');
+  });
+
   it('refuses a commit when something that is not a run sits under verify-log/', () => {
     writeReceipt('pass');
     writeFileSync(path.join(repo, 'verify-log', 'notes.json'), '{}\n');
@@ -489,6 +521,11 @@ describe('a closing commit needs the audit receipt', () => {
     stageClose();
     writeReceipt('pass');
     node('audit-receipt.mjs', 'write', '--spec', SPEC, '--verdict', 'READY');
+    // The audit is now also a file under audit-log/, and a closing commit
+    // carries it: staged, like everything else, or the gate says the commit
+    // would not contain the tree that was verified.
+    expect(runGate(bash('git commit -m "close"')).reason).toContain('audit-log/');
+    git('add', '-A');
     expect(runGate(bash('git commit -m "close"')).blocked).toBe(false);
   });
 

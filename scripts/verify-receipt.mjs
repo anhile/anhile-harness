@@ -44,7 +44,10 @@ export const RECEIPT_FILE = '.generated/receipt.json';
  * ignored either -- which is why the commit gate runs the log's own append-only
  * guard instead of relying on this hash to notice tampering.
  */
-export const UNHASHED = ['verify-log/'];
+// audit-log/ for the same reason: an audit is written after the run it
+// judges, about that run's tree, and hashing it would move the tree the
+// audit names. The commit gate runs its guard too.
+export const UNHASHED = ['verify-log/', 'audit-log/'];
 
 function listPaths() {
   const out = execFileSync(

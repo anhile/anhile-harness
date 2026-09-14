@@ -833,7 +833,7 @@ const agentsSeed = (answers, steps, deferred) =>
     '| `./verify.sh` step 06 | an entry born passing, or two closed in one commit |',
     '| the commit gate | a commit whose tree no green run covers |',
     '| protected-file guard | a session edit to `verify.sh`, the CI workflow, or `.claude/settings.json` |',
-    '| append-only guards | a run under `verify-log/` edited or removed, or a rewritten line in `feature_list.json` |',
+    '| append-only guards | a run under `verify-log/` or an audit under `audit-log/` edited or removed, or a rewritten line in `feature_list.json` |',
     '',
     'Write a patch under `.generated/scratch/` for a protected file and ask a person',
     'to apply it.',

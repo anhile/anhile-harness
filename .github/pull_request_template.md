@@ -13,7 +13,7 @@ CONTRIBUTING.md is the path this follows.
 ## Entries
 
 - Opened: #<id> … (`passes: false`, `spec` naming the contract above)
-- Closed: #<id> — one per commit; each closing commit carries an audit receipt saying READY
+- Closed: #<id> — one per commit; each closing commit carries its READY audit under `audit-log/`
 - Retracted: #<id> under the contract above, or none
 
 ## Evidence

@@ -50,8 +50,9 @@ Each of these is a fact somewhere in the repository, never a recollection:
   commit subjects
 - **the verify run** — the newest file under `verify-log/` on this branch:
   its `at`, `result`, and `tree`
-- **the audit verdict** — `node scripts/audit-receipt.mjs show`, if a commit
-  in the range closes an entry; otherwise "not a closing change"
+- **the audit verdict** — the newest file under `audit-log/` on this branch
+  (`node scripts/audit-log.mjs tail 1`), if a commit in the range closes an
+  entry; otherwise "not a closing change"
 - **the journal entry** — the `## <date> — <title>` heading this branch added
   to `PROGRESS.md`
 - **UI** — whether any file under `apps/web` or an `e2e` directory changed,

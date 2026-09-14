@@ -118,6 +118,12 @@ Write what was concluded, about this tree, so the commit gate can read it:
 node scripts/audit-receipt.mjs write --spec $1 --verdict <READY|NOT_READY|CANNOT_VERIFY> --security "<the security-check verdict line, or: not run: surface unchanged>"
 ```
 
+It writes two things: the receipt at `.generated/audit.json`, which the commit
+gate reads, and a file under `audit-log/`, which is tracked and append-only
+and goes into the closing commit with everything else (`git add -A`). CI asks
+of every commit that flips an entry whether it carries a READY audit of its
+own tree; the log file is how it does.
+
 The verdict is the line above, and nothing softer: READY only for READY FOR
 HUMAN REVIEW. A closing commit — one that flips an entry's `passes` — goes
 through the gate only on a READY receipt about the exact tree `./verify.sh`

@@ -21,7 +21,7 @@ a person.
 | Step | Refuses |
 |---|---|
 | 06 `feature-list` | any change to `feature_list.json` other than appending an entry with `passes: false`, flipping one entry `false → true`, retracting entries under one contract, or recording a `spec` where there was none; two closures in one commit; a retraction edited, undone, or sharing a commit with a closure |
-| 07 `verify-log` | a recorded run under `verify-log/` edited or removed |
+| 07 `verify-log` | a recorded run under `verify-log/` edited or removed; the commit gate asks the same of the audits under `audit-log/` |
 | 08 `coverage` | a lowered floor, or a source file nothing counted |
 
 The reasons are in [docs/INVARIANTS.md](docs/INVARIANTS.md), by number.

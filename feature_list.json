@@ -91,5 +91,19 @@
     ],
     "passes": true,
     "spec": "specs/2026-09-verify-log-files.md"
+  },
+  {
+    "id": 8,
+    "category": "harness",
+    "description": "Every audit verdict is kept under audit-log/, one tracked file per audit, never edited or removed; a commit that closes an entry carries a READY audit of its own tree under that entry's contract, and CI refuses one that does not",
+    "steps": [
+      "run /verify-task <spec> on a tree; a file named after the moment appears under audit-log/ with the verdict, the contract and the tree hash, whatever the verdict was",
+      "edit or remove a file under audit-log/, or put a file there that is not an audit; the commit gate refuses the commit and step 07's neighbour, audit-log.mjs check, names the file",
+      "commit a flip of passes to true without the audit file, then run check-feature-list.mjs --at <that commit> --base <its parent>; it refuses, naming the entry and the missing audit",
+      "the same with the READY audit of that tree in the commit; it passes; with a NOT_READY audit, or an audit of another tree or another contract, it refuses",
+      "audit-log.mjs tree HEAD equals verify-receipt.mjs hash on a clean checkout, so the recomputation CI relies on is the one the receipt made"
+    ],
+    "passes": true,
+    "spec": "specs/2026-09-audit-log.md"
   }
 ]

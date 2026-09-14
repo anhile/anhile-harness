@@ -582,3 +582,60 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   version, `verify`, `generate`, the node range and the licence. The two
   sentences the package suite pins are still there.
 
+## 2026-09-14 — The record of audits is kept
+
+- **Feature**: #8 appended — "Every audit verdict is kept under audit-log/, one tracked file per audit, never edited or removed; a commit that closes an entry carries a READY audit of its own tree under that entry's contract, and CI refuses one that does not"; closed in the next commit
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the runs recorded under `verify-log/` for these trees; the first file under `audit-log/`, carried by the closing commit
+- **Contract changes**: none
+- **Notes**:
+
+  The last debt from the review of 0.1.0 with a small shape. The receipt
+  `/verify-task` writes is git-ignored and overwritten by the next audit, so
+  the moment a closing commit landed, nothing on record said an auditor had
+  looked; CI, which recomputes every other claim from a clean clone, had
+  nothing to recompute this one from.
+
+  `audit-log/` is a second record beside `verify-log/`, with the same
+  properties checked the same way: one tracked file per audit, named after
+  the moment to the millisecond, NOT READY and CANNOT VERIFY included,
+  nothing edited, removed or misnamed, and the directory outside the tree
+  hash for the same reason — an audit is written after the run it judges,
+  about that run's tree. `audit-receipt.mjs write` appends it beside the
+  receipt; the commit gate runs the log's guard beside verify-log's.
+
+  What the log makes possible is the part that is new: `check-feature-list
+  --at <commit>`, which CI already runs per pushed commit, now asks a commit
+  that flips an entry to passing whether the commit itself carries a READY
+  audit of its own tree under that entry's contract. The tree hash is
+  recomputed from the commit — `git ls-tree`, the receipt's digest per path,
+  the receipt's fold, both records left out — and `audit-log.spec.ts` holds
+  that recomputation to `verify-receipt.mjs hash` on a commit with a plain
+  file, an executable and a symlink. So I15's rule that a closure is audited
+  is, for the first time, a claim a machine other than the author's can
+  contradict.
+
+  The first audit of #8 said NOT READY, and each item is a case now: `tree`'s
+  skip list was pinned only by comparison with a hasher that shares it, so a
+  commit of records alone now has to hash as its parent and a commit of one
+  more file not; the closure check carried the multi-closure exemption
+  without a case, so it carries none; an entry with no contract closed on
+  any READY audit without a case saying so, so the contract says it and a
+  case shows it; two audits in one millisecond left a receipt behind a
+  refused append, so the log is written first and a refused append leaves
+  no receipt; step 5 of the entry was shown in a fixture only, so a case
+  asks `tree HEAD` of this repository and finds it among the recorded runs;
+  and the entry's wording had step 07 asking the audits, which it did not,
+  so it does. The three protected patches are review's to confirm; the
+  evidence folder cannot hold them.
+
+  Three protected files changed by patch under `.generated/scratch/audit-log/`,
+  applied by a person, twice: the prefix the hash leaves out, the append
+  beside the receipt and then before it, the gate's second guard and then
+  its order. Fixtures in four suites gained the module
+  the patched scripts import, and their closing commits now write the audit
+  before committing, the way `/verify-task` does; `ci-workflow.spec.ts`'s
+  walk of a branch that closes three entries is the one that would have gone
+  red on main otherwise.
+

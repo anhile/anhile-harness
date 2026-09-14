@@ -1,0 +1,9 @@
+{
+  "spec": "specs/2026-09-audit-log.md",
+  "verdict": "READY",
+  "security": "not run: surface unchanged",
+  "at": "2026-09-14T21:37:38.133Z",
+  "treeHash": "sha256:ccfb5eb8b818a54255306deb33cd1dfd90d19b76078e802ccd011e4458ac2544",
+  "verifyEvidence": ".generated/runs/20260914T213342Z",
+  "commit": "5cbfc7e7797bc42340a218303bfda005398c2338"
+}

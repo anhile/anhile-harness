@@ -60,10 +60,14 @@ describe('the guard, on the shape that went red', () => {
     repo = mkdtempSync(path.join(tmpdir(), 'attest-merge-'));
     mkdirSync(path.join(repo, 'scripts'));
     mkdirSync(path.join(repo, 'specs'));
-    for (const f of ['check-feature-list.mjs', 'harness-config.mjs']) {
+    // The guard asks a committed closure for its audit, so the fixture needs
+    // the receipt's writer and what it imports, and a closing commit here
+    // does what /verify-task does: writes the audit, then commits it.
+    for (const f of ['check-feature-list.mjs', 'harness-config.mjs', 'audit-log.mjs', 'audit-receipt.mjs', 'verify-receipt.mjs']) {
       copyFileSync(path.join(REPO, 'scripts', f), path.join(repo, 'scripts', f));
     }
     copyFileSync(path.join(REPO, 'harness.config.json'), path.join(repo, 'harness.config.json'));
+    writeFileSync(path.join(repo, '.gitignore'), '.generated/\n');
     writeFileSync(path.join(repo, 'specs', 'c.md'), '# the contract\n');
     const write = (entries: object[]) =>
       writeFileSync(path.join(repo, 'feature_list.json'), `${JSON.stringify(entries, null, 2)}\n`);
@@ -88,6 +92,7 @@ describe('the guard, on the shape that went red', () => {
     for (const id of [0, 1, 2]) {
       entries[id]!.passes = true;
       write(entries);
+      execFileSync('node', [path.join(repo, 'scripts', 'audit-receipt.mjs'), 'write', '--spec', 'specs/c.md', '--verdict', 'READY'], { cwd: repo, stdio: 'ignore' });
       git('add', '-A');
       git('commit', '-qm', `close #${id}`);
     }
