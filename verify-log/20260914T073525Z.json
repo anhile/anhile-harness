@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-14T07:35:46.683Z",
+  "result": "pass",
+  "tree": "sha256:4e991e286859bfe42c1974969523c60dca48db27e2edcf11bada1b9574a65e5a",
+  "head": "04532fe900c631d93c01d9453a9ef9a0709044da",
+  "branch": "release/bin-path",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260914T073525Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 18
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

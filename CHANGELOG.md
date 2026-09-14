@@ -24,6 +24,12 @@ minor, a fix to a copied script is a patch.
   file removed. The guard refuses a run dated before the moment its name
   says it started.
 
+### Fixed
+
+- `bin` names `bin/harness.mjs` without a leading `./`. npm 11.19 removes
+  the prefixed form at publish time as invalid, and the package would have
+  reached the registry with no `anhile-harness` command.
+
 ## [0.1.1] — 2026-09-12
 
 The first session of a generated project under Claude Code found what the

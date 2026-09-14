@@ -511,3 +511,35 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   on node 22.9 and up and is past the 11.5.1 that trusted publishing needs.
   The tag has to move to the commit that carries this, since the workflow
   runs from the tagged tree.
+
+## 2026-09-14 — v0.1.2 reached the registry and was refused twice, for two reasons
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the run recorded under `verify-log/` for this tree; release
+  run 34817679717 for the two refusals
+- **Contract changes**: none
+- **Notes**:
+
+  The npm pin held and the publish step ran. Two things in its log.
+
+  1. `npm warn publish "bin[anhile-harness]" script name bin/harness.mjs was
+     invalid and removed`. The cause is the leading `./` in package.json's
+     `bin`, which `npm pack` accepts and `npm publish` under 11.19.1 strips
+     at normalisation, as a warning, so the tarball would have carried no
+     command. Reproduced with `publish --dry-run` on a copy of the real
+     package.json: the prefix alone flips it. Fixed here, with a case in
+     `harness-package.spec.ts` that pins the shape and says why.
+  2. `403 Forbidden - PUT .../anhile-harness - OIDC permission denied for
+     this action`, after the provenance statement was signed and logged.
+     The token exchange worked, so the trusted publisher entry matches the
+     workflow; what it does not allow is the action. A trusted publisher
+     created after 2026-09-03 permits only `npm stage publish` by default,
+     and this workflow runs `npm publish`. Nothing in the repository can
+     change that: it is a checkbox, "Allowed actions", on the package's
+     access page at npmjs.com. The note now sits above the publish step so
+     the next person reads it before the runner does.
+
+  The tag moves once more, to the commit that carries the `bin` fix.
+

@@ -230,6 +230,17 @@ describe('the package as npm will see it', () => {
     expect(pkg.type).toBe('module');
   });
 
+  it('names the bin without a leading ./, which npm 11 strips as invalid at publish time', () => {
+    // `npm pack` accepted `./bin/harness.mjs`; `npm publish` under 11.19.1
+    // did not: "bin[anhile-harness] script name bin/harness.mjs was invalid
+    // and removed", a warning, and the tarball would have shipped without
+    // its command. The tag v0.1.2 found it on the runner. Only the publish
+    // path normalises this way, so a dry-run pack proves nothing here.
+    for (const entry of Object.values(pkg.bin)) {
+      expect(entry.startsWith('./')).toBe(false);
+    }
+  });
+
   it('makes pg optional, since a project without a database never imports it', () => {
     expect(pkg.peerDependencies.pg).toBeDefined();
     expect(pkg.peerDependenciesMeta.pg?.optional).toBe(true);
