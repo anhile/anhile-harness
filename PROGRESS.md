@@ -543,3 +543,42 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
 
   The tag moves once more, to the commit that carries the `bin` fix.
 
+## 2026-09-14 — The templates are files, and the README says what it takes to run
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the run recorded under `verify-log/` for this tree
+- **Contract changes**: none
+- **Notes**:
+
+  Two debts from the review of 0.1.0.
+
+  **Templates as string arrays.** Twelve of the nineteen entries in
+  `harness-templates.mjs` were arrays of quoted lines: the serverless
+  handler, its four tests, the controller, the entry points, the page. No
+  editor highlighted them, `eslint .` never saw them, and a changed line
+  showed in a diff as a changed string with its quotes escaped. They are
+  files under `templates/<variant>/<path in the project>` now, written out
+  by running the old module once with `__PROJECT_NAME__` as the name, and
+  the module reads them back with the name put in. Compared on the way:
+  all nineteen outputs identical to `main`'s for the same name. The seven
+  JSON entries stay built, because their reasons live in comments beside
+  the settings and a file would have to carry them as `//` keys.
+  `harness-templates.spec.ts` holds the directory and the module to each
+  other — no orphan file, no entry without a file, the token in exactly the
+  four files that show the name and in no written project — and
+  `harness-package.spec.ts` holds the tarball to the directory, since a
+  consumer's generator now reads from disk and refuses a missing file by
+  path. `eslint .` reads the templates now and passes on them.
+
+  **The README.** It said what the harness is and not what it needs. A
+  prerequisites table — Node 22, pnpm 10, git, bash, Docker only with a
+  database, `gh` only for three skills, Claude Code optional — and the
+  environment check that reports them; the non-interactive form of `init`
+  with every flag; the six steps and what each refuses, with the three
+  deferred ones and why; the skills, the two agents and what the hooks
+  stop; Windows named as unsupported outside WSL. Badges for the npm
+  version, `verify`, `generate`, the node range and the licence. The two
+  sentences the package suite pins are still there.
+

@@ -6,7 +6,10 @@
  *
  * Kept out of `harness-init.mjs` because that file is the generator's logic and
  * this one is its output. Mixing them put the decisions among four hundred
- * string literals, where nobody would find them.
+ * string literals, where nobody would find them. The source files themselves
+ * are under `templates/`, one directory per variant, at the path they take in
+ * the project; this module says which travel and builds the JSON ones, whose
+ * comments are worth more as code than as a file with `//` keys.
  *
  * Two rules held while writing these.
  *
@@ -21,6 +24,42 @@
  * saving twenty minutes of typing is not worth maintaining; one that starts a
  * project past four known failures is.
  */
+
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
+
+/**
+ * Where the source files live: `templates/<variant>/<path in the project>`.
+ * Real files, with their own extension, so an editor highlights them, eslint
+ * reads them and a diff shows a changed line rather than a changed string.
+ * Until 0.1.3 each was an array of quoted lines in this module, which was
+ * the one form no tool could read.
+ */
+export const TEMPLATES = path.join(root, 'templates');
+
+/** The one token a template carries: the project's name, as the person typed it. */
+export const NAME_TOKEN = '__PROJECT_NAME__';
+
+/**
+ * A template read from disk, with the project's name put in. Refuses a file
+ * that is not there, by path, because the alternative is a project written
+ * with a hole in it and a gate that finds the hole later.
+ * @param {'api' | 'web'} variant
+ * @param {string} rel
+ * @returns {(name: string) => string}
+ */
+export function fromFile(variant, rel) {
+  return (name) => {
+    const file = path.join(TEMPLATES, variant, rel);
+    if (!existsSync(file)) {
+      throw new Error(`template missing: ${path.relative(root, file)} — this package is incomplete`);
+    }
+    return readFileSync(file, 'utf8').replaceAll(NAME_TOKEN, name);
+  };
+}
 
 /**
  * A NestJS API deployed as a single serverless function.
@@ -81,248 +120,19 @@ export const API = {
       2,
     ) + '\n',
 
-  'apps/api/src/config/serverless.ts': () =>
-    [
-      "import type { IncomingMessage, ServerResponse } from 'node:http';",
-      '',
-      '/**',
-      " * The serverless entry point's logic, minus the framework.",
-      ' *',
-      ' * It lives here rather than in `api/index.ts` so that it can be tested.',
-      ' * That file cannot be: the platform compiles it, it imports the API\'s build',
-      ' * output, and Jest reaches neither.',
-      ' *',
-      ' * Three behaviours, and the first is why this exists as a unit rather than',
-      ' * as four lines in the entry point.',
-      ' *',
-      ' * **A failed boot is forgotten.** `started ??= boot()` remembers the',
-      ' * rejected promise: one second of an unreachable database at the wrong',
-      ' * moment, and every later request to that instance fails with the same',
-      ' * stale error until the platform recycles it.',
-      ' *',
-      ' * **A successful boot is kept.** One instance serves many invocations, and',
-      " * rebuilding the framework per request puts its whole start-up on every",
-      ' * request\'s hot path.',
-      ' *',
-      ' * **Only the attempt that failed is cleared.** Two concurrent requests can',
-      ' * await the same rejected promise, and the second must not throw away a',
-      ' * fresh boot the first already started.',
-      ' */',
-      'export type RequestListener = (req: IncomingMessage, res: ServerResponse) => void;',
-      '',
-      'export function createServerlessHandler(',
-      '  boot: () => Promise<RequestListener>,',
-      '): (req: IncomingMessage, res: ServerResponse) => Promise<void> {',
-      '  let started: Promise<RequestListener> | null = null;',
-      '',
-      '  return async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {',
-      '    const attempt = (started ??= boot());',
-      '',
-      '    let app: RequestListener;',
-      '    try {',
-      '      app = await attempt;',
-      '    } catch {',
-      '      if (started === attempt) started = null;',
-      '      res.statusCode = 503;',
-      "      res.setHeader('content-type', 'application/json; charset=utf-8');",
-      "      res.end(JSON.stringify({ status: 'unavailable' }));",
-      '      return;',
-      '    }',
-      '',
-      '    // The one transformation, and the reason it is needed is in vercel.json:',
-      '    // the intended path travels in a query parameter because catch-all',
-      '    // routing matched exactly one segment however it was declared. A request',
-      '    // that arrives without `__p` is passed through untouched.',
-      "    const url = new URL(req.url ?? '/', 'http://localhost');",
-      "    const target = url.searchParams.get('__p');",
-      '    if (target !== null) {',
-      "      // The caller's own query survives: the platform appends it to the",
-      '      // destination, so it sits alongside __p and has to be handed back',
-      '      // without it.',
-      "      url.searchParams.delete('__p');",
-      '      const query = url.searchParams.toString();',
-      "      req.url = query === '' ? target : `${target}?${query}`;",
-      '    }',
-      '',
-      '    app(req, res);',
-      '  };',
-      '}',
-      '',
-    ].join('\n'),
+  'apps/api/src/config/serverless.ts': fromFile('api', 'apps/api/src/config/serverless.ts'),
 
-  'apps/api/src/config/serverless.spec.ts': () =>
-    [
-      "import type { IncomingMessage, ServerResponse } from 'node:http';",
-      "import { createServerlessHandler, type RequestListener } from './serverless';",
-      '',
-      'const request = (url: string): IncomingMessage => ({ url }) as IncomingMessage;',
-      '',
-      'function response(): ServerResponse & { body: string } {',
-      "  const res = { statusCode: 200, body: '', setHeader: () => undefined, end(b: string) { res.body = b; } };",
-      '  return res as unknown as ServerResponse & { body: string };',
-      '}',
-      '',
-      "describe('the serverless handler', () => {",
-      "  it('restores the path the platform moved into __p', async () => {",
-      '    const seen: string[] = [];',
-      '    const app: RequestListener = (req) => {',
-      "      seen.push(req.url ?? '');",
-      '    };',
-      '    const handler = createServerlessHandler(async () => app);',
-      '',
-      "    await handler(request('/api?__p=/links/abc/stats'), response());",
-      '',
-      "    expect(seen).toEqual(['/links/abc/stats']);",
-      '  });',
-      '',
-      "  it(\"keeps the caller's own query and drops only __p\", async () => {",
-      '    const seen: string[] = [];',
-      '    const handler = createServerlessHandler(async () => (req) => {',
-      "      seen.push(req.url ?? '');",
-      '    });',
-      '',
-      "    await handler(request('/api?__p=/links&page=2'), response());",
-      '',
-      "    expect(seen).toEqual(['/links?page=2']);",
-      '  });',
-      '',
-      "  it('boots once and reuses it, so start-up is not on every request', async () => {",
-      '    let boots = 0;',
-      '    const handler = createServerlessHandler(async () => {',
-      '      boots += 1;',
-      '      return () => undefined;',
-      '    });',
-      '',
-      "    await handler(request('/api?__p=/a'), response());",
-      "    await handler(request('/api?__p=/b'), response());",
-      '',
-      '    expect(boots).toBe(1);',
-      '  });',
-      '',
-      "  it('forgets a failed boot rather than serving its error forever', async () => {",
-      '    let boots = 0;',
-      '    const handler = createServerlessHandler(async () => {',
-      '      boots += 1;',
-      "      if (boots === 1) throw new Error('database unreachable');",
-      '      return () => undefined;',
-      '    });',
-      '',
-      '    const first = response();',
-      "    await handler(request('/api?__p=/a'), first);",
-      '    expect(first.statusCode).toBe(503);',
-      '',
-      '    // The instance is still warm. Without the clear, this request would be',
-      '    // answered by the remembered rejection instead of a fresh boot.',
-      '    const second = response();',
-      "    await handler(request('/api?__p=/a'), second);",
-      '    expect(second.statusCode).toBe(200);',
-      '    expect(boots).toBe(2);',
-      '  });',
-      '});',
-      '',
-    ].join('\n'),
+  'apps/api/src/config/serverless.spec.ts': fromFile('api', 'apps/api/src/config/serverless.spec.ts'),
 
-  'apps/api/src/controller/health.controller.ts': () =>
-    [
-      "import { Controller, Get } from '@nestjs/common';",
-      '',
-      '/**',
-      ' * Layer: controller. The first route, and a real one — something has to',
-      ' * answer before a deployment can be called up.',
-      ' */',
-      "@Controller('health')",
-      'export class HealthController {',
-      '  @Get()',
-      "  check(): { status: 'ok' } {",
-      "    return { status: 'ok' };",
-      '  }',
-      '}',
-      '',
-    ].join('\n'),
+  'apps/api/src/controller/health.controller.ts': fromFile('api', 'apps/api/src/controller/health.controller.ts'),
 
-  'apps/api/src/controller/health.controller.spec.ts': () =>
-    [
-      "import { HealthController } from './health.controller';",
-      '',
-      "describe('HealthController', () => {",
-      "  it('answers ok', () => {",
-      "    expect(new HealthController().check()).toEqual({ status: 'ok' });",
-      '  });',
-      '',
-      "  it('answers a shape a caller can branch on, not a bare string', () => {",
-      "    // A client reading 'ok' cannot tell a healthy service from one that",
-      '    // echoes whatever it is asked. The key is what makes it checkable.',
-      "    expect(Object.keys(new HealthController().check())).toEqual(['status']);",
-      '  });',
-      '});',
-      '',
-    ].join('\n'),
+  'apps/api/src/controller/health.controller.spec.ts': fromFile('api', 'apps/api/src/controller/health.controller.spec.ts'),
 
-  'apps/api/src/app.module.ts': () =>
-    [
-      "import { Module } from '@nestjs/common';",
-      "import { HealthController } from './controller/health.controller';",
-      '',
-      '@Module({ controllers: [HealthController] })',
-      'export class AppModule {}',
-      '',
-    ].join('\n'),
+  'apps/api/src/app.module.ts': fromFile('api', 'apps/api/src/app.module.ts'),
 
-  'apps/api/src/main.ts': (name) =>
-    [
-      "import 'reflect-metadata';",
-      "import { NestFactory } from '@nestjs/core';",
-      "import { AppModule } from './app.module';",
-      '',
-      '/**',
-      ' * The long-lived process, for local development only. What runs in',
-      ' * production is `api/index.ts`, which boots the same module.',
-      ' */',
-      'async function bootstrap(): Promise<void> {',
-      '  const app = await NestFactory.create(AppModule);',
-      '  const port = Number(process.env.API_PORT ?? 3100);',
-      '  await app.listen(port);',
-      `  console.log('${name} api on http://localhost:' + String(port));`,
-      '}',
-      '',
-      'void bootstrap();',
-      '',
-    ].join('\n'),
+  'apps/api/src/main.ts': fromFile('api', 'apps/api/src/main.ts'),
 
-  'api/index.ts': () =>
-    [
-      "import 'reflect-metadata';",
-      "import type { IncomingMessage, ServerResponse } from 'node:http';",
-      "import { NestFactory } from '@nestjs/core';",
-      "import { AppModule } from '../apps/api/dist/app.module';",
-      "import { createServerlessHandler } from '../apps/api/dist/config/serverless';",
-      '',
-      '/**',
-      ' * The whole API, as one function. Every route reaches the application',
-      ' * through here, and the application\'s own paths do not change.',
-      ' *',
-      ' * It imports the API\'s BUILD OUTPUT, not its source, and that is load',
-      ' * bearing. Nest is built on legacy decorators, which need',
-      ' * `experimentalDecorators`; the API\'s own tsconfig sets it and the',
-      ' * repository root\'s does not, and the platform compiles this file against',
-      ' * the root. Handed the source, it emits standard ES decorators, whose call',
-      ' * signature differs — every controller then dies at import on a deployment',
-      ' * that built perfectly. So the API is compiled by its own tsc first, and',
-      ' * the platform never sees a decorator.',
-      ' *',
-      ' * `tsconfig.functions.json` exists so that this file is typechecked at all:',
-      ' * it is in none of the workspace projects, and a build referencing it after',
-      ' * `apps/api` is the only thing that catches a drift between the two.',
-      ' */',
-      'async function boot(): Promise<(req: IncomingMessage, res: ServerResponse) => void> {',
-      "  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });",
-      '  await app.init();',
-      '  return app.getHttpAdapter().getInstance() as (req: IncomingMessage, res: ServerResponse) => void;',
-      '}',
-      '',
-      'export default createServerlessHandler(boot);',
-      '',
-    ].join('\n'),
+  'api/index.ts': fromFile('api', 'api/index.ts'),
 
   'tsconfig.functions.json': () =>
     JSON.stringify(
@@ -418,96 +228,15 @@ export const WEB = {
 
   'apps/web/jest.setup.ts': () => "import '@testing-library/jest-dom';\n",
 
-  'apps/web/vite.config.ts': () =>
-    [
-      "import react from '@vitejs/plugin-react';",
-      "import { defineConfig } from 'vite';",
-      '',
-      'export default defineConfig({',
-      '  plugins: [react()],',
-      '  // strictPort, so a port already taken is an error rather than a silent',
-      '  // move to another one that every other tool is still looking for.',
-      '  server: { port: Number(process.env.WEB_PORT ?? 5273), strictPort: true },',
-      '});',
-      '',
-    ].join('\n'),
+  'apps/web/vite.config.ts': fromFile('web', 'apps/web/vite.config.ts'),
 
-  'apps/web/index.html': (name) =>
-    [
-      '<!doctype html>',
-      '<html lang="en">',
-      '  <head>',
-      '    <meta charset="utf-8" />',
-      '    <meta name="viewport" content="width=device-width, initial-scale=1" />',
-      `    <title>${name}</title>`,
-      '  </head>',
-      '  <body>',
-      '    <div id="root"></div>',
-      '    <script type="module" src="/src/main.tsx"></script>',
-      '  </body>',
-      '</html>',
-      '',
-    ].join('\n'),
+  'apps/web/index.html': fromFile('web', 'apps/web/index.html'),
 
-  'apps/web/src/main.tsx': () =>
-    [
-      "import { StrictMode } from 'react';",
-      "import { createRoot } from 'react-dom/client';",
-      "import { Home } from './Home';",
-      '',
-      "const root = document.getElementById('root');",
-      "if (root === null) throw new Error('index.html has no #root to mount on');",
-      '',
-      'createRoot(root).render(',
-      '  <StrictMode>',
-      '    <Home />',
-      '  </StrictMode>,',
-      ');',
-      '',
-    ].join('\n'),
+  'apps/web/src/main.tsx': fromFile('web', 'apps/web/src/main.tsx'),
 
-  'apps/web/src/Home.tsx': (name) =>
-    [
-      "import type { ReactElement } from 'react';",
-      '',
-      '/**',
-      ' * The first page. One heading and one line, so a browser test has something',
-      ' * to assert about and a person has something to look at.',
-      ' *',
-      ' * `ReactElement` rather than `JSX.Element`: React 19 removed the global JSX',
-      ' * namespace, and the old annotation no longer compiles.',
-      ' */',
-      'export function Home(): ReactElement {',
-      '  return (',
-      '    <main>',
-      `      <h1>${name}</h1>`,
-      '      <p>The gate is green and nothing else is built yet.</p>',
-      '    </main>',
-      '  );',
-      '}',
-      '',
-    ].join('\n'),
+  'apps/web/src/Home.tsx': fromFile('web', 'apps/web/src/Home.tsx'),
 
-  'apps/web/src/Home.spec.tsx': (name) =>
-    [
-      "import { render, screen } from '@testing-library/react';",
-      "import { Home } from './Home';",
-      '',
-      "describe('Home', () => {",
-      "  it('shows the project name as the heading', () => {",
-      '    render(<Home />);',
-      `    expect(screen.getByRole('heading', { name: '${name}' })).toBeInTheDocument();`,
-      '  });',
-      '',
-      "  it('says plainly that nothing is built yet, rather than looking finished', () => {",
-      '    // A scaffold that looks like a product invites somebody to believe it is',
-      '    // one, and the first honest thing this page can do is say what it is.',
-      '    render(<Home />);',
-      '    expect(screen.getByText(/nothing else is built yet/u)).toBeInTheDocument();',
-      '  });',
-      '});',
-      '',
-    ].join('\n'),
+  'apps/web/src/Home.spec.tsx': fromFile('web', 'apps/web/src/Home.spec.tsx'),
 };
 
 /**

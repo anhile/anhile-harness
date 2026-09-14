@@ -120,6 +120,20 @@ describe('what the tarball carries', () => {
     expect(extra).toEqual([]);
   });
 
+  it('the templates, every one, since the generator reads them from disk', () => {
+    // Since 0.1.3 the application sources are files under templates/ rather
+    // than strings in harness-templates.mjs. `files` names the directory;
+    // this holds the tarball to what is on disk, so a template added here
+    // cannot be one a consumer's generator refuses as missing.
+    // Tracked or not yet staged, like the rule below: a template being added
+    // shows up here before it is committed.
+    const onDisk = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', 'templates'], { cwd: REPO, encoding: 'utf8' })
+      .split('\n')
+      .filter((f) => f !== '');
+    expect(onDisk.length).toBeGreaterThan(10);
+    expect(onDisk.filter((f) => !paths.includes(f))).toEqual([]);
+  });
+
   it('the bin, the README and the licence', () => {
     for (const file of ['bin/harness.mjs', 'README.md', 'LICENSE', 'package.json']) {
       expect(paths).toContain(file);

@@ -11,6 +11,20 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
+### Changed
+
+- The application sources the generator writes for `--api` and `--web` are
+  files under `templates/`, at the path they take in the project, with
+  `__PROJECT_NAME__` where the name goes. They were arrays of quoted lines
+  in `harness-templates.mjs`. What a project receives is byte-for-byte what
+  it received before; what changed is that the files can now be read, linted
+  and diffed as code. The generator refuses, by path, a template the package
+  does not carry.
+- The README states the prerequisites — Node 22, pnpm 10, git, bash, Docker
+  only with a database, `gh` only for the pull-request skills — and that the
+  gate does not run on Windows outside WSL. Badges for the npm version, the
+  two CI workflows, the node range and the licence.
+
 ## [0.1.2] — 2026-09-14
 
 ### Changed
