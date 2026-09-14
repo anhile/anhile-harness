@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-14T07:21:30.878Z",
+  "result": "pass",
+  "tree": "sha256:1aeb72e91e0554d54ddadbee02829d165da4022fec6b6649c960a8876e8b71c4",
+  "head": "eb2fd65500decdde89d95b38cb14db98f89f2594",
+  "branch": "release/npm-pin",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260914T072109Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 18
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

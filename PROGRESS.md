@@ -495,3 +495,19 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   person from `.generated/scratch/log/`, and the version that carries the
   directory and `verify-log.mjs migrate` to a project on 0.1.x. Nothing else
   changed since #15 merged.
+
+## 2026-09-14 — The release pipeline installs an npm the pinned node can run
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the run recorded under `verify-log/` for this tree
+- **Contract changes**: none
+- **Notes**:
+
+  `v0.1.2` failed before publishing: `npm@12.0.2`, pinned two days ago,
+  requires node `^22.22.2`, and `.nvmrc` pins `22.18.0`. The pin was chosen
+  from `npm view npm version` without reading its engines. `npm@11.19.1` runs
+  on node 22.9 and up and is past the 11.5.1 that trusted publishing needs.
+  The tag has to move to the commit that carries this, since the workflow
+  runs from the tagged tree.
