@@ -11,6 +11,8 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-09-15
+
 ### Added
 
 - `audit-log/`: every verdict `/verify-task` records is kept as a tracked
