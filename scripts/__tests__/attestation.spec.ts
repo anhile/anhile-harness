@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const REPO = path.resolve(__dirname, '..', '..');
-const SCRIPTS = ['verify-receipt.mjs', 'verify-log.mjs', 'check-attestation.mjs'];
+const SCRIPTS = ['verify-receipt.mjs', 'verify-log.mjs', 'audit-log.mjs', 'check-attestation.mjs'];
 
 let repo: string;
 

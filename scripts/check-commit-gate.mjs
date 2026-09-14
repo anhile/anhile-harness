@@ -296,6 +296,28 @@ and that is the failure this gate exists to stop. Splitting the change into a
 smaller commit does not help — the gate is about the tree, not the diff.`);
   }
 
+  // audit-log/ is outside the tree hash for the same reason verify-log/ is
+  // (below), and gets the same treatment: its own guard, here, before the
+  // hash is trusted. First, because verify-log's guard asks the audits too
+  // as step 07 and would otherwise name an edited audit under the wrong
+  // heading.
+  try {
+    execFileSync('node', [path.join(root, 'scripts', 'audit-log.mjs'), 'check'], {
+      cwd: root,
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+  } catch (error) {
+    const detail = String(/** @type {{ stderr?: unknown }} */ (error ?? {}).stderr ?? '').trim();
+    block(`BLOCKED: commit gate (docs/INVARIANTS.md I15)
+
+audit-log/ has been rewritten, not appended to: a recorded audit was edited or
+removed. The record of what the auditor concluded is not a thing a session edits.
+
+${detail}
+
+Restore it with: git checkout -- audit-log/`);
+  }
+
   // verify-log/ is deliberately outside the tree hash -- verify.sh records
   // to it at the end of every run, so hashing it would make each run invalidate
   // its own receipt. That leaves a window the hash cannot see, so the gate runs
@@ -318,24 +340,6 @@ ${detail}
 Restore it with: git checkout -- verify-log/`);
   }
 
-  // audit-log/ is outside the tree hash for the same reason, and gets the
-  // same treatment: its own guard, here, before the hash is trusted.
-  try {
-    execFileSync('node', [path.join(root, 'scripts', 'audit-log.mjs'), 'check'], {
-      cwd: root,
-      stdio: ['ignore', 'ignore', 'pipe'],
-    });
-  } catch (error) {
-    const detail = String(/** @type {{ stderr?: unknown }} */ (error ?? {}).stderr ?? '').trim();
-    block(`BLOCKED: commit gate (docs/INVARIANTS.md I15)
-
-audit-log/ has been rewritten, not appended to: a recorded audit was edited or
-removed. The record of what the auditor concluded is not a thing a session edits.
-
-${detail}
-
-Restore it with: git checkout -- audit-log/`);
-  }
 
   const current = treeFiles();
   const currentHash = hashFiles(current);

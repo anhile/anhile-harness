@@ -228,9 +228,10 @@ forgets what it used to promise cannot be audited against what it promised.
   diff, the contract and the evidence.
 - `scripts/audit-log.mjs`: every verdict the receipt records is also appended
   to `audit-log/`, one tracked file per audit, NOT READY and CANNOT VERIFY
-  included. The directory is outside the tree hash, as `verify-log/` is, and
-  the commit gate runs its guard before every commit: no audit edited,
-  removed or misnamed. CI asks of each committed closure that the commit
+  included. The directory is outside the tree hash, as `verify-log/` is;
+  the commit gate runs its guard before every commit, and step 07 asks the
+  same of it through `verify-log.mjs check`: no audit edited, removed or
+  misnamed. CI asks of each committed closure that the commit
   carry the READY audit of its own tree (I13). Until 2026-09-14 the receipt
   was git-ignored and overwritten by the next audit, so once a closing
   commit had landed nothing on record said an auditor ever looked.

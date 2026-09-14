@@ -86,6 +86,30 @@ describe('append: what the log keeps', () => {
     }
   });
 
+  it('never a second file under one name: the log does not overwrite', () => {
+    // Two audits in one millisecond would share a name. The second is
+    // refused rather than written over the first, and the writer appends
+    // before it leaves a receipt, so a refusal leaves nothing behind.
+    const twice = [
+      "import { appendAudit } from './scripts/audit-log.mjs';",
+      "const a = { spec: 'specs/x.md', verdict: 'READY', security: null, at: '2026-09-14T08:00:00.123Z', treeHash: 'sha256:aaa', verifyEvidence: null, commit: null };",
+      'appendAudit(a);',
+      'appendAudit({ ...a, verdict: "NOT_READY" });',
+    ].join('\n');
+    const { status, out } = run('audit-log.mjs', 'tail');
+    expect(status).toBe(0);
+    expect(out).toBe('');
+    let message = '';
+    try {
+      execFileSync('node', ['--input-type=module', '-e', twice], { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (error) {
+      message = (error as { stderr: string }).stderr;
+    }
+    expect(message).toContain('audit-log/20260914T080000.123Z.json exists; an audit is never overwritten');
+    const kept = JSON.parse(readFileSync(path.join(repo, 'audit-log', '20260914T080000.123Z.json'), 'utf8'));
+    expect(kept.verdict).toBe('READY');
+  });
+
   it('tells the story in order with tail', () => {
     node('audit-receipt.mjs', 'write', '--spec', SPEC, '--verdict', 'NOT_READY');
     node('audit-receipt.mjs', 'write', '--spec', SPEC, '--verdict', 'READY');
@@ -182,6 +206,38 @@ describe('the tree of a commit hashes as the receipt hashed it', () => {
   });
 });
 
+describe('what the tree of a commit leaves out', () => {
+  it('is the two records and nothing else, pinned on tree itself', () => {
+    // The case above compares `tree` with the receipt's hasher, and a path
+    // both skip would cancel out. This asks `tree` alone: a commit that adds
+    // only records hashes as its parent did; a commit that adds anything
+    // else does not.
+    const before = node('audit-log.mjs', 'tree', 'HEAD').trim();
+    mkdirSync(path.join(repo, 'verify-log'));
+    writeFileSync(path.join(repo, 'verify-log', '20260914T080000Z.json'), '{}\n');
+    record('20260914T080000.000Z.json', `${JSON.stringify(audit())}\n`);
+    git('add', '-A');
+    git('commit', '-qm', 'records only');
+    expect(node('audit-log.mjs', 'tree', 'HEAD').trim()).toBe(before);
+    writeFileSync(path.join(repo, 'verify-log-notes.txt'), 'not a record\n');
+    git('add', '-A');
+    git('commit', '-qm', 'one more file');
+    expect(node('audit-log.mjs', 'tree', 'HEAD').trim()).not.toBe(before);
+  });
+
+  it('this repository\'s own HEAD is a tree some recorded run covers', () => {
+    // The same arithmetic against the real record, not a fixture: HEAD here
+    // was committed through the gate, so a run under verify-log/ names its
+    // tree, and `tree HEAD` has to find it.
+    const tree = execFileSync('node', [path.join(REPO, 'scripts', 'audit-log.mjs'), 'tree', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim();
+    const recorded = readdirSync(path.join(REPO, 'verify-log'))
+      .filter((n) => n.endsWith('.json'))
+      .map((n) => JSON.parse(readFileSync(path.join(REPO, 'verify-log', n), 'utf8')).tree as string);
+    expect(tree).toMatch(/^sha256:[0-9a-f]{64}$/u);
+    expect(recorded).toContain(tree);
+  });
+});
+
 describe('a committed closure carries its audit', () => {
   /** Flip the entry, optionally audit, commit — what /verify-task and a commit do. */
   function close(verdict: string | null, spec = SPEC): void {
@@ -233,6 +289,22 @@ describe('a committed closure carries its audit', () => {
     const { status, out } = walk();
     expect(status).toBe(1);
     expect(out).toContain('carries no audit of its own tree');
+  });
+
+  it('closes an entry that records no contract on a READY audit of the tree under any', () => {
+    // A list from before contracts has entries with `spec: null`; there is
+    // no contract to hold the audit to, and the gate's receipt rule reads it
+    // the same way. The audit of the tree still has to be there and READY.
+    const noSpec = (passes: boolean) =>
+      `${JSON.stringify([{ id: 0, category: 'x', description: 'from before', steps: ['s'], passes, spec: null }], null, 2)}\n`;
+    writeFileSync(path.join(repo, 'feature_list.json'), noSpec(false));
+    git('add', '-A');
+    git('commit', '-qm', 'an entry with no contract');
+    writeFileSync(path.join(repo, 'feature_list.json'), noSpec(true));
+    node('audit-receipt.mjs', 'write', '--spec', OTHER, '--verdict', 'READY');
+    git('add', '-A');
+    git('commit', '-qm', 'close');
+    expect(walk().status).toBe(0);
   });
 
   it('asks nothing of a commit that closes nothing, and nothing before the commit', () => {

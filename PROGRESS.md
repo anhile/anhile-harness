@@ -616,9 +616,24 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   is, for the first time, a claim a machine other than the author's can
   contradict.
 
+  The first audit of #8 said NOT READY, and each item is a case now: `tree`'s
+  skip list was pinned only by comparison with a hasher that shares it, so a
+  commit of records alone now has to hash as its parent and a commit of one
+  more file not; the closure check carried the multi-closure exemption
+  without a case, so it carries none; an entry with no contract closed on
+  any READY audit without a case saying so, so the contract says it and a
+  case shows it; two audits in one millisecond left a receipt behind a
+  refused append, so the log is written first and a refused append leaves
+  no receipt; step 5 of the entry was shown in a fixture only, so a case
+  asks `tree HEAD` of this repository and finds it among the recorded runs;
+  and the entry's wording had step 07 asking the audits, which it did not,
+  so it does. The three protected patches are review's to confirm; the
+  evidence folder cannot hold them.
+
   Three protected files changed by patch under `.generated/scratch/audit-log/`,
-  applied by a person: the prefix the hash leaves out, the append beside the
-  receipt, the gate's second guard. Fixtures in four suites gained the module
+  applied by a person, twice: the prefix the hash leaves out, the append
+  beside the receipt and then before it, the gate's second guard and then
+  its order. Fixtures in four suites gained the module
   the patched scripts import, and their closing commits now write the audit
   before committing, the way `/verify-task` does; `ci-workflow.spec.ts`'s
   walk of a branch that closes three entries is the one that would have gone

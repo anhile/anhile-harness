@@ -45,6 +45,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync,
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readReceipt } from './verify-receipt.mjs';
+import { AUDIT_DIR, logProblems as auditProblems, filesAt as auditsAt, currentFiles as currentAudits } from './audit-log.mjs';
 
 /**
  * One recorded run, as the receipt described it.
@@ -280,6 +281,12 @@ function check(args) {
   const appended = [...current.keys()].filter((n) => !baseline.has(n)).length;
   console.log(`check-verify-log: ${current.size} run(s) recorded, baseline ${base}`);
   if (appended > 0) console.log(`  note: ${appended} run(s) recorded since ${base}`);
+
+  // The audits are the second record, kept beside this one for the same
+  // reasons and outside the hash for the same reason, so step 07 asks the
+  // same questions of them; the commit gate asks them again on its own.
+  for (const problem of auditProblems({ base, at })) problems.push(problem);
+  console.log(`check-audit-log: ${(at ? auditsAt(at) : currentAudits()).size} audit(s) recorded under ${AUDIT_DIR}/, baseline ${base}`);
 
   if (problems.length) {
     console.error('check-verify-log: REJECTED');

@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const REPO = path.resolve(__dirname, '..', '..');
-const SCRIPTS = ['verify-receipt.mjs', 'verify-log.mjs'];
+const SCRIPTS = ['verify-receipt.mjs', 'verify-log.mjs', 'audit-log.mjs'];
 const LOG = 'verify-log';
 
 let repo: string;
@@ -147,6 +147,25 @@ describe('what the record refuses', () => {
     const verdict = check();
     expect(verdict.rejected).toBe(true);
     expect(verdict.reason).toContain('verify-log/notes.json is not a run');
+  });
+});
+
+describe('step 07 asks the same of the audits', () => {
+  it('refuses a rewritten audit by name, since the second record is outside the hash too', () => {
+    // audit-log/ sits beside verify-log/ and outside the tree hash for the
+    // same reason; the guard that runs as step 07 asks both records the
+    // same questions, so a rewritten verdict is red in CI's verify job and
+    // not only in the commit gate.
+    mkdirSync(path.join(repo, 'audit-log'));
+    const audit = path.join(repo, 'audit-log', '20260914T080000.000Z.json');
+    writeFileSync(audit, `${JSON.stringify({ spec: 'specs/x.md', verdict: 'NOT_READY', at: '2026-09-14T08:00:00.000Z', treeHash: 'sha256:aaa' })}\n`);
+    git('add', '-A');
+    git('commit', '-qm', 'an audit on record');
+    expect(check().rejected).toBe(false);
+    writeFileSync(audit, `${JSON.stringify({ spec: 'specs/x.md', verdict: 'READY', at: '2026-09-14T08:00:00.000Z', treeHash: 'sha256:aaa' })}\n`);
+    const verdict = check();
+    expect(verdict.rejected).toBe(true);
+    expect(verdict.reason).toContain('audit 20260914T080000.000Z.json was rewritten');
   });
 });
 

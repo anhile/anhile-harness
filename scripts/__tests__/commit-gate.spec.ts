@@ -286,7 +286,7 @@ describe('the durable record cannot be edited around the gate', () => {
     writeReceipt('pass');
     const verdict = runGate(bash('git commit -m "never happened"'));
     expect(verdict.blocked).toBe(true);
-    expect(verdict.reason).toContain('was removed');
+    expect(verdict.reason).toContain('20260914T080000.000Z.json was removed');
   });
 
   it('refuses a commit when something that is not a run sits under verify-log/', () => {

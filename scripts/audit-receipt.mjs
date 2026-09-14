@@ -168,12 +168,15 @@ function write(args) {
     verifyEvidence: verify?.evidence ?? null,
     commit: (git('rev-parse', 'HEAD') ?? '').trim() || null,
   };
+  // The log first, then the receipt. The receipt is for the next commit; the
+  // log is for everyone after it, and every verdict goes in, so the closing
+  // commit carries the audit that let it through and CI can ask for it
+  // (audit-log.mjs closures). Log first because the append can be refused —
+  // a name already taken, a directory that cannot be written — and a receipt
+  // left behind by a write that then failed is a receipt nothing recorded.
+  const logged = appendAudit(receipt);
   mkdirSync(path.join(root, path.dirname(AUDIT_FILE)), { recursive: true });
   writeFileSync(path.join(root, AUDIT_FILE), `${JSON.stringify(receipt, null, 2)}\n`);
-  // The receipt is for the next commit; the log is for everyone after it.
-  // Every verdict goes in, so the closing commit carries the audit that let
-  // it through and CI can ask for it (audit-log.mjs closures).
-  const logged = appendAudit(receipt);
   process.stdout.write(`${verdict} ${receipt.treeHash} ${spec}\n${logged}\n`);
 }
 

@@ -9,7 +9,7 @@
  * commit-gate.spec.ts.
  */
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -98,6 +98,15 @@ describe('write', () => {
     expect(second.treeHash).toBe(node('verify-receipt.mjs', 'hash').trim());
     // The receipt and the log agree about the last audit.
     expect(second).toEqual(JSON.parse(readFileSync(path.join(repo, '.generated', 'audit.json'), 'utf8')));
+  });
+
+  it('leaves no receipt when the log refuses the append', () => {
+    // The log is written first. A receipt left behind by a write that then
+    // failed would let the gate through on an audit nothing recorded.
+    writeFileSync(path.join(repo, 'audit-log'), 'not a directory\n');
+    const { status } = run('write', '--spec', SPEC, '--verdict', 'READY');
+    expect(status).not.toBe(0);
+    expect(existsSync(path.join(repo, '.generated', 'audit.json'))).toBe(false);
   });
 
   it('refuses a verdict that is not one of the three', () => {

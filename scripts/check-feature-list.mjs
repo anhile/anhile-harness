@@ -400,8 +400,10 @@ if (baseline === null) {
   // asked of the commit itself: does its own audit-log/ hold a READY audit of
   // its own tree under the entry's contract. Only with --at, because before
   // the commit the flip is in the working tree and the audit is written after
-  // the run that step 06 is part of. Exempt commits predate the rule.
-  if (at && flipped.length > 0 && !PRE_RULE_COMMITS.has(resolveCommit(at))) {
+  // the run that step 06 is part of. No exemption: the list above is for
+  // commits that closed several entries at once, and CI walks only pushed
+  // ranges, so a commit from before the log never meets this question.
+  if (at && flipped.length > 0) {
     for (const problem of closureProblems(base ?? 'HEAD', at)) fail(problem);
   }
 
