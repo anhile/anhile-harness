@@ -1,6 +1,6 @@
 {
   "name": "anhile-harness",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A gate that refuses a commit whose claims are not earned, and a generator that puts it in a new project.",
   "license": "MIT",
   "author": "Anhile",
