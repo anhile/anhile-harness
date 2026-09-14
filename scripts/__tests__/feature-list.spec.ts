@@ -108,6 +108,13 @@ beforeEach(() => {
   // configuration exempts nothing, which is what these cases assume.
   copyFileSync(path.join(REPO, 'scripts', 'harness-config.mjs'), path.join(repo, 'scripts', 'harness-config.mjs'));
   copyFileSync(path.join(REPO, 'harness.config.json'), path.join(repo, 'harness.config.json'));
+  // With --at the guard asks a committed closure for its audit, through
+  // audit-log.mjs and the receipt's hash; the writer is what a closing
+  // commit in these cases runs first.
+  for (const f of ['audit-log.mjs', 'audit-receipt.mjs', 'verify-receipt.mjs']) {
+    copyFileSync(path.join(REPO, 'scripts', f), path.join(repo, 'scripts', f));
+  }
+  writeFileSync(path.join(repo, '.gitignore'), '.generated/\n');
   writeSpec();
   write(committed());
   git('init', '-q');
@@ -244,6 +251,9 @@ describe('the baselines', () => {
     const list = committed();
     at(list, 2).passes = true;
     write(list);
+    // A committed closure carries its audit (audit-log.spec.ts has the
+    // refusals); this one is closed the way /verify-task closes it.
+    execFileSync('node', [path.join(repo, 'scripts', 'audit-receipt.mjs'), 'write', '--spec', String(at(list, 2).spec), '--verdict', 'READY'], { cwd: repo, stdio: 'ignore' });
     git('add', '-A');
     git('commit', '-qm', 'close the third');
 

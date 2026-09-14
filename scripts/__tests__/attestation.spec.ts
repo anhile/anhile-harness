@@ -74,12 +74,17 @@ beforeEach(() => {
 afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
 describe('what the tree hash leaves out', () => {
-  it('is verify-log/ and nothing else', () => {
-    // The record must sit outside the hash, or recording a run would change
-    // the tree the run is about. Since 2026-09-12 that is a directory prefix
-    // rather than one file name; this pins that nothing wider slipped in.
+  it('is verify-log/ and audit-log/, and nothing else', () => {
+    // The records must sit outside the hash, or recording a run would change
+    // the tree the run is about, and recording an audit the tree the audit
+    // names. Since 2026-09-12 that is a directory prefix rather than one
+    // file name, and since 2026-09-14 two of them; this pins that nothing
+    // wider slipped in.
     const before = currentTree();
     recordRun({ tree: 'sha256:whatever' });
+    expect(currentTree()).toBe(before);
+    mkdirSync(path.join(repo, 'audit-log'), { recursive: true });
+    writeFileSync(path.join(repo, 'audit-log', '20260914T080000.000Z.json'), '{}\n');
     expect(currentTree()).toBe(before);
     writeFileSync(path.join(repo, 'verify-log-notes.txt'), 'not the record\n');
     expect(currentTree()).not.toBe(before);

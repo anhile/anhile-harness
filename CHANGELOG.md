@@ -11,6 +11,18 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
+### Added
+
+- `audit-log/`: every verdict `/verify-task` records is kept as a tracked
+  file, one per audit, named after the moment, NOT READY included. The
+  commit gate refuses an audit edited or removed, as it refuses a run; CI,
+  walking each pushed commit, refuses a commit that flips an entry to
+  passing unless the commit itself carries a READY audit of its own tree
+  under that entry's contract. `audit-log.mjs check | closures | tail |
+  tree`. The receipt at `.generated/audit.json` is unchanged; the log is
+  what survives it. The tree hash leaves out `audit-log/` as it leaves out
+  `verify-log/`.
+
 ### Changed
 
 - The application sources the generator writes for `--api` and `--web` are

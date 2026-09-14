@@ -16,6 +16,11 @@
  * receipt names, the contract the flipped entry's `spec` names, and a verdict
  * of READY. Any other commit is untouched.
  *
+ * Every verdict is also appended to `audit-log/`, one file per audit, which
+ * is tracked and append-only (audit-log.mjs): the receipt is overwritten by
+ * the next audit, and without the log nothing on record said an auditor
+ * ever looked once the closing commit had landed.
+ *
  * Forgeable, like the verify receipt: a session can run `write` itself. The
  * defence is the same — that is a deliberate act on a named file, in a
  * session whose transcript shows no audit ran — and the gate raises the cost
@@ -31,6 +36,7 @@ import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readReceipt, root, treeHash } from './verify-receipt.mjs';
+import { appendAudit } from './audit-log.mjs';
 
 export const AUDIT_FILE = '.generated/audit.json';
 export const VERDICTS = ['READY', 'NOT_READY', 'CANNOT_VERIFY'];
@@ -164,7 +170,11 @@ function write(args) {
   };
   mkdirSync(path.join(root, path.dirname(AUDIT_FILE)), { recursive: true });
   writeFileSync(path.join(root, AUDIT_FILE), `${JSON.stringify(receipt, null, 2)}\n`);
-  process.stdout.write(`${verdict} ${receipt.treeHash} ${spec}\n`);
+  // The receipt is for the next commit; the log is for everyone after it.
+  // Every verdict goes in, so the closing commit carries the audit that let
+  // it through and CI can ask for it (audit-log.mjs closures).
+  const logged = appendAudit(receipt);
+  process.stdout.write(`${verdict} ${receipt.treeHash} ${spec}\n${logged}\n`);
 }
 
 function check() {

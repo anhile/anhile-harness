@@ -18,6 +18,7 @@
       "commit gate hashes them and the witness job runs them in place."
     ],
     "scripts": [
+      "scripts/audit-log.mjs",
       "scripts/audit-receipt.mjs",
       "scripts/check-attestation.mjs",
       "scripts/check-commit-gate.mjs",
@@ -37,6 +38,7 @@
     ],
     "suites": [
       "scripts/__tests__/attestation.spec.ts",
+      "scripts/__tests__/audit-log.spec.ts",
       "scripts/__tests__/audit-receipt.spec.ts",
       "scripts/__tests__/check-main.spec.ts",
       "scripts/__tests__/ci-workflow.spec.ts",

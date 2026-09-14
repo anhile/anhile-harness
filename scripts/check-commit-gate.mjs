@@ -318,6 +318,25 @@ ${detail}
 Restore it with: git checkout -- verify-log/`);
   }
 
+  // audit-log/ is outside the tree hash for the same reason, and gets the
+  // same treatment: its own guard, here, before the hash is trusted.
+  try {
+    execFileSync('node', [path.join(root, 'scripts', 'audit-log.mjs'), 'check'], {
+      cwd: root,
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+  } catch (error) {
+    const detail = String(/** @type {{ stderr?: unknown }} */ (error ?? {}).stderr ?? '').trim();
+    block(`BLOCKED: commit gate (docs/INVARIANTS.md I15)
+
+audit-log/ has been rewritten, not appended to: a recorded audit was edited or
+removed. The record of what the auditor concluded is not a thing a session edits.
+
+${detail}
+
+Restore it with: git checkout -- audit-log/`);
+  }
+
   const current = treeFiles();
   const currentHash = hashFiles(current);
   if (currentHash !== receipt.treeHash) {

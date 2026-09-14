@@ -29,9 +29,9 @@ checks.
 | I8 | Applied migrations are immutable, and none is applied unprompted | `check-migrations.mjs`, step 09 where a project has one; `migrate.mjs` prompts, and `--yes` only for `*_test` | `harness-config.spec.ts` |
 | I11 | A commit is only made from a tree `verify.sh` has passed | the commit gate, a `PreToolUse` hook; protected files by shape and by hash | `commit-gate.spec.ts`, `permissions.spec.ts` |
 | I12 | What verification concluded is recorded, durably and append-only | `verify-log.mjs check`, step 07, and again in the commit gate | `verify-log.spec.ts` |
-| I13 | A commit's claim to be verified is checkable off the author's machine | CI `attest` from a clean clone; `pre-push` | `attestation.spec.ts` |
+| I13 | A commit's claim to be verified is checkable off the author's machine | CI `attest` from a clean clone; `pre-push`; a committed closure's audit, from `audit-log/` | `attestation.spec.ts`, `audit-log.spec.ts` |
 | I14 | Coverage never falls, and no source file escapes being counted | `check-coverage.mjs`, step 08, against `coverage-floor.json` | `harness-config.spec.ts` |
-| I15 | `feature_list.json` is append-only, and a guarantee is withdrawn in the open | `check-feature-list.mjs`, step 06; the audit receipt before a closing commit | `feature-list.spec.ts`, `audit-receipt.spec.ts` |
+| I15 | `feature_list.json` is append-only, and a guarantee is withdrawn in the open | `check-feature-list.mjs`, step 06; the audit receipt before a closing commit; the audit kept under `audit-log/` after it | `feature-list.spec.ts`, `audit-receipt.spec.ts`, `audit-log.spec.ts` |
 
 ## I4 — A project's shared contracts package changes only by explicit human decision
 
@@ -163,7 +163,13 @@ passing run about exactly that tree.
 - `.githooks/pre-push` asks the same question of each commit being pushed, in
   a detached worktree of exactly that commit. `git push --no-verify` is the
   overrule, and it is visible.
-- `scripts/__tests__/attestation.spec.ts` fires at the script.
+- `scripts/check-feature-list.mjs --at <commit>`, as CI walks each pushed
+  commit: a commit that flips an entry to passing must itself carry, under
+  `audit-log/`, an audit of its own tree under that entry's contract saying
+  READY. The tree hash is recomputed from the commit (`audit-log.mjs tree`),
+  the way `attest` recomputes it from the checkout.
+- `scripts/__tests__/attestation.spec.ts` and `audit-log.spec.ts` fire at
+  the scripts.
 
 ## I14 — Coverage never falls, and no source file escapes being counted
 
@@ -220,6 +226,14 @@ forgets what it used to promise cannot be audited against what it promised.
   `true`: `.generated/audit.json` must name this tree, this entry's `spec` and
   the verdict READY, written by `/verify-task` after the spec-auditor read the
   diff, the contract and the evidence.
+- `scripts/audit-log.mjs`: every verdict the receipt records is also appended
+  to `audit-log/`, one tracked file per audit, NOT READY and CANNOT VERIFY
+  included. The directory is outside the tree hash, as `verify-log/` is, and
+  the commit gate runs its guard before every commit: no audit edited,
+  removed or misnamed. CI asks of each committed closure that the commit
+  carry the READY audit of its own tree (I13). Until 2026-09-14 the receipt
+  was git-ignored and overwritten by the next audit, so once a closing
+  commit had landed nothing on record said an auditor ever looked.
 - **Review only:** that the auditor's READY was earned. The gate checks that an
   audit of this tree said READY; it cannot read the report.
 

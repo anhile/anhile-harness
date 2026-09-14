@@ -9,12 +9,12 @@
  * commit-gate.spec.ts.
  */
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 const REPO = path.resolve(__dirname, '..', '..');
-const SCRIPTS = ['verify-receipt.mjs', 'audit-receipt.mjs'];
+const SCRIPTS = ['verify-receipt.mjs', 'audit-receipt.mjs', 'audit-log.mjs'];
 const SPEC = 'specs/2026-09-thing.md';
 const OTHER = 'specs/2026-09-other.md';
 
@@ -78,6 +78,26 @@ describe('write', () => {
     expect(audit.security).toBe('no findings');
     expect(audit.treeHash).toBe(node('verify-receipt.mjs', 'hash').trim());
     expect(out).toContain('READY');
+  });
+
+  it('appends the verdict to audit-log/, whatever it is', () => {
+    // The receipt is overwritten by the next audit and git-ignored; once a
+    // closing commit landed, nothing said an auditor ever looked. The log
+    // keeps every verdict, NOT_READY included — a log of READYs only is a
+    // highlight reel — named after the moment, with the receipt's fields.
+    run('write', '--spec', SPEC, '--verdict', 'NOT_READY');
+    run('write', '--spec', OTHER, '--verdict', 'READY', '--security', 'no findings');
+    const names = readdirSync(path.join(repo, 'audit-log')).sort();
+    expect(names).toHaveLength(2);
+    for (const name of names) expect(name).toMatch(/^\d{8}T\d{6}\.\d{3}Z\.json$/u);
+    const [first, second] = names.map((n) => JSON.parse(readFileSync(path.join(repo, 'audit-log', n), 'utf8')));
+    expect(first.verdict).toBe('NOT_READY');
+    expect(first.spec).toBe(SPEC);
+    expect(second.verdict).toBe('READY');
+    expect(second.security).toBe('no findings');
+    expect(second.treeHash).toBe(node('verify-receipt.mjs', 'hash').trim());
+    // The receipt and the log agree about the last audit.
+    expect(second).toEqual(JSON.parse(readFileSync(path.join(repo, '.generated', 'audit.json'), 'utf8')));
   });
 
   it('refuses a verdict that is not one of the three', () => {
