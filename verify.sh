@@ -8,7 +8,7 @@
 #   4. jest API e2e           (supertest against a booted app + test DB)
 #   5. playwright browser e2e (real browser against the real stack)
 #   6. feature-list guard     (feature_list.json is append-only)
-#   7. verify-log guard       (verify-log.jsonl is append-only)
+#   7. verify-log guard       (a recorded run under verify-log/ is never edited or removed)
 #   8. coverage guard         (the floors were not lowered, no file is unseen)
 #   9. migrations guard       (a committed migration is never edited)
 #

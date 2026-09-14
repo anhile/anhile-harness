@@ -481,3 +481,17 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   name says it started; the gate refuses all three shapes; the hash leaves
   out `verify-log/` and nothing else; the generated project's gate is run a
   second time with a deliberately broken file and records the red run.
+
+## 2026-09-14 — 0.1.2: the record as a directory reaches consumers
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the run recorded under `verify-log/` for this tree
+- **Contract changes**: none
+- **Notes**:
+
+  The one line left in `verify.sh` that named the old file, applied by a
+  person from `.generated/scratch/log/`, and the version that carries the
+  directory and `verify-log.mjs migrate` to a project on 0.1.x. Nothing else
+  changed since #15 merged.

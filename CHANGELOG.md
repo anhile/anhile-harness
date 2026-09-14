@@ -11,6 +11,8 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-09-14
+
 ### Changed
 
 - The record of gate runs is a directory, `verify-log/`, with one file per
@@ -101,6 +103,7 @@ would otherwise find a different package than the one on npm.
 - Upgrading a project that adopted an earlier version. A generated project
   keeps the snapshot it was given.
 
-[Unreleased]: https://github.com/anhile/anhile-harness/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/anhile/anhile-harness/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/anhile/anhile-harness/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/anhile/anhile-harness/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/anhile/anhile-harness/releases/tag/v0.1.0
