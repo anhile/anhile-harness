@@ -639,3 +639,19 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   walk of a branch that closes three entries is the one that would have gone
   red on main otherwise.
 
+## 2026-09-15 — 0.1.3: the audits kept, the templates as files, the README with its prerequisites
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the run recorded under `verify-log/` for this tree
+- **Contract changes**: none
+- **Notes**:
+
+  The version that carries `audit-log/` and the closure check to a
+  consumer's CI, the application templates as files under `templates/`,
+  and a README that says what the harness needs before it says what it
+  does. Nothing else changed since #20 merged; the tag goes on the merge
+  commit, and the trusted publisher on npmjs.com has `npm publish` among
+  its allowed actions since 0.1.2.
+
