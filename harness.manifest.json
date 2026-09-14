@@ -48,6 +48,7 @@
       "scripts/__tests__/harness-config.spec.ts",
       "scripts/__tests__/harness-init.spec.ts",
       "scripts/__tests__/harness-package.spec.ts",
+      "scripts/__tests__/harness-templates.spec.ts",
       "scripts/__tests__/inbox.spec.ts",
       "scripts/__tests__/permissions.spec.ts",
       "scripts/__tests__/pr-ready.spec.ts",

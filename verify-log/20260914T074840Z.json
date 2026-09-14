@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-14T07:49:02.857Z",
+  "result": "fail",
+  "tree": "sha256:c1095d1089356bba4ae92f02edc300d5e6b147fd7f1072183a5a5562e6ecde9e",
+  "head": "ed1a5a8a099aae7107133ae3a5d3c52a43080021",
+  "branch": "generator/templates-as-files",
+  "node": "v22.18.0",
+  "evidence": ".generated/runs/20260914T074840Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 2
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "03-unit": {
+      "exit": 1,
+      "seconds": 19
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}
