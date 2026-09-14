@@ -74,4 +74,10 @@ jobs:
 
       - run: ./verify.sh
 
+      # Direct, not staged. On npmjs.com the trusted publisher's "Allowed
+      # actions" must include `npm publish`: an entry made after 2026-09-03
+      # allows only `npm stage publish` by default, and then the token
+      # exchange succeeds, the provenance is signed, and the PUT is refused
+      # with `403 OIDC permission denied for this action`. v0.1.2 stopped
+      # there; the fix is a tick on the package's access page, not here.
       - run: npm publish --provenance --access public
