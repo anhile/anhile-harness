@@ -753,3 +753,32 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   branch ran" where the assertion shows only that the baseline branch was
   taken, is fixed in the contract's text here, in the commit that carries no
   closure.
+
+## 2026-09-16 — closed #10: a spike branch proves nothing and cannot reach main
+
+- **Feature**: closed #10 (`specs/2026-09-spike-branches.md`)
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6, 618 tests; spec-auditor READY on the same tree, after one NOT READY
+- **Evidence**: `verify-log/20260916T114214Z` — the run the closing commit
+  carries; `audit-log/20260916T114546.911Z` — the READY verdict of that tree
+- **Contract changes**: none
+- **Notes**:
+
+  The first of the fast lane the person asked for, after measuring what the
+  rituals cost: about eight gate runs and three commits per feature, with
+  the gate itself at twenty seconds. A branch under `spike/` is now asked
+  for no receipt at commit time and no journal entry at session end, and is
+  refused as a pull request by `check-pr-ready.mjs` and by CI's attest job.
+  `scripts/spike.mjs` is the one definition, shipped in core; I16 in
+  `docs/INVARIANTS.md`, so a project's own invariants start at I17.
+
+  The auditor's first NOT READY caught the thing worth catching: my first
+  patch returned from the gate before the append-only guards, so on a spike
+  a run could have been removed from `verify-log/` or an audit rewritten
+  under `audit-log/`. A spike claims nothing, and rewrites nothing; the
+  receipt checks moved into `checkedReceipt()`, the guards run on every
+  branch, and two cases pin it. Two protected files changed by patches under
+  `.generated/scratch/spike/`, applied by the person with `cp` three times
+  for the gate — the second version for the guards, the third for a JSDoc I
+  had displaced — and once for the workflow; the auditor compared each
+  applied file with its scratch copy and found them identical.
