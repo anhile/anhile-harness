@@ -28,6 +28,7 @@ that leaves you with a red gate has taught its first lesson backwards.
 - [The idea](#the-idea)
 - [Working with Claude Code](#working-with-claude-code)
 - [Configuration](#configuration)
+- [Upgrading](#upgrading)
 - [What this does not do](#what-this-does-not-do)
 - [What the package carries](#what-the-package-carries)
 - [How this repository checks itself](#how-this-repository-checks-itself)
@@ -229,11 +230,26 @@ That last one is refused if it does not read as deliberate — an underscore and
 at least three characters — because it is the whole of what keeps an unattended
 migration off a real database.
 
-## What this does not do
+## Upgrading
 
-**Upgrade a project that already adopted it.** A generated project keeps the
-snapshot it was given. Improvements here do not reach it; `CHANGELOG.md` says
-what changed, and moving a change over is by hand.
+A project init wrote earlier takes this version's harness with
+
+```bash
+npx anhile-harness@latest upgrade
+```
+
+in its root. Without `--yes` it is a plan: which of the harness's files are
+the same, which would change, which are new; the gate, with the project's
+steps kept and their commands from this version; the packages and the
+optional `harness.config.json` keys the project lacks, named with the line
+to run and the value the generator would write. With `--yes` it writes the
+files and the gate and nothing else: `AGENTS.md`, `CLAUDE.md`,
+`feature_list.json`, `PROGRESS.md`, `coverage-floor.json`,
+`docs/DOMAIN_RULES.md`, `harness.config.json`, `package.json` and the
+applications are the project's. Then `./verify.sh`, and commit what it
+passed. The CHANGELOG says what each version changed and why.
+
+## What this does not do
 
 **Guard its own scripts once they are in your project.** The scripts are
 copied, not linked, and the suites that fire at them stay in this package's
@@ -242,8 +258,9 @@ repository. If you edit a copied guard, nothing in your project notices.
 **Run on Windows without WSL.** The gate is a bash script and so is the
 pre-push hook.
 
-The first two are consequences of copying rather than depending, and both are
-the next thing to fix.
+The first is a consequence of copying rather than depending — `upgrade` brings
+the scripts forward, and the suites that fire at them still stay here — and
+it is the next thing to fix.
 
 ## What the package carries
 

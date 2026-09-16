@@ -5,11 +5,13 @@
  *
  *   npx anhile-harness init            # ask, then write a new project
  *   npx anhile-harness init --yes …    # the same without asking
+ *   npx anhile-harness upgrade [--into <dir>] [--yes]   # this version's harness files into a project init wrote
  *   npx anhile-harness files           # what this package carries
  *
- * `init` is the whole of it for now. The other half a package makes possible —
- * upgrading a project that already adopted an older version — does not exist,
- * and saying so here is better than letting somebody discover it.
+ * Until 2026-09-16 `init` was the whole of it and this comment said so; a
+ * project kept the snapshot it was given, and the CHANGELOG carried a list of
+ * files to copy by hand. `upgrade` does the copying: the harness's files from
+ * this version, the project's own files untouched, a plan without --yes.
  */
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
@@ -52,11 +54,15 @@ function usage() {
       '  init --yes [--name <n> --into <dir> --database --api --web --mcp a,b]',
       '        The same without asking, for CI and for scripts.',
       '',
+      '  upgrade [--into <dir>] [--yes]',
+      '        Bring a project init wrote earlier to this version: the scripts,',
+      '        agents, skills, workflow and templates the manifest names, and',
+      '        verify.sh above its step block with the project\'s steps kept. The',
+      '        project\'s own files are not touched; packages and config keys it',
+      '        lacks are named, not written. Without --yes it is a plan.',
+      '',
       '  files',
       '        List what this package carries, which is what a new project gets.',
-      '',
-      'Not yet here: upgrading a project that adopted an earlier version. A',
-      'generated project keeps the snapshot it was given.',
     ].join('\n'),
   );
 }
@@ -95,6 +101,14 @@ async function main() {
     const init = await import(path.join(HARNESS, 'scripts', 'harness-init.mjs'));
     process.argv = [process.argv[0] ?? 'node', path.join(HARNESS, 'scripts', 'harness-init.mjs'), ...rest];
     await init.cli();
+    return;
+  }
+
+  if (command === 'upgrade') {
+    if (!assembled()) process.exit(1);
+    const upgrade = await import(path.join(HARNESS, 'scripts', 'harness-upgrade.mjs'));
+    process.argv = [process.argv[0] ?? 'node', path.join(HARNESS, 'scripts', 'harness-upgrade.mjs'), ...rest];
+    await upgrade.cli();
     return;
   }
 

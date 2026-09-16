@@ -13,6 +13,14 @@ minor, a fix to a copied script is a patch.
 
 ### Added
 
+- `npx anhile-harness upgrade [--into <dir>] [--yes]`: a project init wrote
+  earlier takes this version's harness files — the manifest's scripts,
+  agents, skills, workflow, templates, and `verify.sh` above its step block
+  with the project's steps kept and their commands from this version's
+  table. The project's own files are not touched; packages and optional
+  config keys it lacks are named with the `pnpm add` line and the value the
+  generator would write. Without `--yes` it is a plan. The file lists the
+  entries below and in 0.2.0 carried by hand are what it does.
 - `node scripts/progress.mjs cost [--ref <ref>] [--since <date>] [--json]`:
   what a closure costs, from the record — for each closing commit on the
   first-parent line, the runs under `verify-log/` and the commits since the

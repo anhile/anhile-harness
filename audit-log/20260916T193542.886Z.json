@@ -1,0 +1,9 @@
+{
+  "spec": "specs/2026-09-upgrade.md",
+  "verdict": "READY",
+  "security": "not run: surface unchanged",
+  "at": "2026-09-16T19:35:42.886Z",
+  "treeHash": "sha256:c8179b6a5506cc08d0078cc49cc48c1665e889e676326c561db7086e8052462c",
+  "verifyEvidence": ".generated/runs/20260916T193037Z",
+  "commit": "fb91124a4d2f32c86ff210425137214be7b18682"
+}

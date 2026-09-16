@@ -985,3 +985,46 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   test. Both rounds READY on the criteria; the second closed four narrowness
   findings with full `toEqual`s, a merged branch in the fixture and a
   byte-for-byte round trip of `--json` through `renderCost`.
+
+## 2026-09-16 — closed #16: upgrading a project that adopted an earlier version
+
+- **Feature**: closed #16 (`specs/2026-09-upgrade.md`)
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6, 687 tests; spec-auditor READY after three rounds
+- **Evidence**: `verify-log/20260916T193037Z` — the full run this commit carries;
+  `verify-log/20260916T193032Z` — `./verify.sh --quick` on the same tree;
+  `audit-log/20260916T193542.886Z` — the READY verdict of that tree
+- **Contract changes**: none
+- **Notes**:
+
+  The last of the three fast-lane debts. `npx anhile-harness upgrade` in a
+  project init wrote earlier: this version's harness files — the manifest's
+  scripts, agents, skills, workflow, templates — and `verify.sh` above its
+  step block, the project's steps kept by name and number with their commands
+  from this version's table, so `03 unit` becomes `unit_suites` and a step
+  the table does not know stays as it is. The project's own files are not
+  touched; the packages and optional config keys it lacks are named with the
+  `pnpm add` line and the value the generator would write. Without `--yes`
+  it is a plan. The bin and the README stop saying upgrading is not here.
+
+  Three red runs on the way, each on record. The boundary suite refused the
+  module for spelling `apps/api` and `apps/web` — core scripts name no
+  product directory — so the directories are read from what the generator
+  writes (`directoryOf(API)`, `directoryOf(WEB)`); in that same run a jest
+  worker died with SIGSEGV on `audit-receipt.spec`, no case failing, the
+  second such death today, on a different suite. Then `harness-package.spec`
+  refused the README for no longer saying upgrading is not here, which is
+  what it had pinned; it pins the opposite now. The quick run selected the new
+  suite alone each time and saw none of the three: the boundary suite reads
+  the manifest and the package suite reads the README, and neither imports
+  what changed. The limit I11 names, met on every one of today's closures.
+
+  From the audit, closed in the second and third rounds: the README's list
+  of what this does not do still named upgrading, and after the removal its
+  closing sentence counted two items where one remained; the bin's header
+  lacked `--into`; the `--database --api` answers were unexercised. Left
+  outside the criteria on purpose: a project with no `verify.sh` gets one
+  written but no case reaches that branch; `.mcp.json` is never planned,
+  since a server is declared once by a person; and step 2 of entry #16 says
+  the upgraded project's gate passes, which the suite holds only as the
+  gate's text and mode.
