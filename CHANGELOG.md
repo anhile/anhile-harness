@@ -13,6 +13,11 @@ minor, a fix to a copied script is a patch.
 
 ### Added
 
+- `node scripts/progress.mjs cost [--ref <ref>] [--since <date>] [--json]`:
+  what a closure costs, from the record — for each closing commit on the
+  first-parent line, the runs under `verify-log/` and the commits since the
+  previous closure, the quick and red runs among them, what is pending after
+  the last closure, and the mean and median per closure.
 - `./verify.sh --quick [--base <ref>]`: lint, types, the suites jest finds
   affected since the base (`main` by default) with coverage off, and the
   append-only guards; api-e2e, browser-e2e and coverage are left to the

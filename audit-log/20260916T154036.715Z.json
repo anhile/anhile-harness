@@ -1,0 +1,9 @@
+{
+  "spec": "specs/2026-09-cost.md",
+  "verdict": "READY",
+  "security": "not run: surface unchanged",
+  "at": "2026-09-16T15:40:36.715Z",
+  "treeHash": "sha256:1bf641aafa14a0a29a481c4610fd1821c8d0537277b17de2fea8f5cf72021702",
+  "verifyEvidence": ".generated/runs/20260916T153709Z",
+  "commit": "bd0c8aac8c86059c1bcf43663cc77038c09bb9af"
+}

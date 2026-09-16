@@ -137,6 +137,12 @@ another base), with 04, 05 and 08 left to the full gate. The run is recorded
 as quick. The commit gate takes it for a commit that closes nothing; the
 commit that closes an entry, the audit and CI ask the full gate.
 
+`node scripts/progress.mjs cost` says what a closure costs, from the record:
+for each closing commit on `main`'s first-parent line, the runs recorded and
+the commits made since the previous closure, the quick and red runs among
+them, and the mean and median per closure. `--since <date>` narrows it,
+`--json` gives the rows. It reports; nothing judges the number.
+
 Steps 04 (`api-e2e`), 05 (`browser-e2e`) and 09 (`migrations`) are not
 written into a new project even when you answer yes to the thing they test,
 because nothing the generator wrote can pass them yet. It says so, and your

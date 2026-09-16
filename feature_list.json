@@ -189,5 +189,17 @@
     ],
     "passes": true,
     "spec": "specs/2026-09-quick-gate.md"
+  },
+  {
+    "id": 15,
+    "category": "harness",
+    "description": "progress.mjs cost reports, per closing commit on the first-parent line, the runs recorded and the commits made since the previous closure, the quick and red runs among them, and the totals per closure; --since <date> narrows it, --json gives the rows",
+    "steps": [
+      "node scripts/progress.mjs cost; one line per closing commit with its short hash, date, the ids closed, runs, quick, red, commits; then the pending line and the totals with mean and median per closure",
+      "node scripts/progress.mjs cost --since 2026-09-16; only that day's closures, totals over them",
+      "node scripts/progress.mjs cost --json; the same rows and totals as one object"
+    ],
+    "passes": true,
+    "spec": "specs/2026-09-cost.md"
   }
 ]

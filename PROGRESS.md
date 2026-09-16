@@ -953,3 +953,35 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   Definition of done still says "AC1 to AC6" after AC7 was added in the
   second round, and step 1 of entry #14 says steps 04, 05 and 08 are SKIP,
   which a run here can only show for 08. Neither is edited after the audit.
+
+## 2026-09-16 — closed #15: what a closure costs
+
+- **Feature**: closed #15 (`specs/2026-09-cost.md`)
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6, 677 tests; spec-auditor READY after two rounds
+- **Evidence**: `verify-log/20260916T153709Z` — the full run this commit carries;
+  `verify-log/20260916T153701Z` — `./verify.sh --quick` on the same tree, one suite selected;
+  `audit-log/20260916T154036.715Z` — the READY verdict of that tree
+- **Contract changes**: none
+- **Notes**:
+
+  The second of the three fast-lane debts. `node scripts/progress.mjs cost`
+  cuts the record into spans between closing commits on the first-parent
+  line and counts the runs and the commits in each. On this repository
+  before this commit: nine rows, from 38 runs and 22 commits for the seed
+  that closed #0–#6 at once, through 19 and 10 for #7, down to 3–5 runs and
+  1–2 commits for #12, #13 and #14, the three closed after the fast lane —
+  11.1 runs and 5.7 commits mean per closure over the whole record, 7 and 3
+  median. The number the fast lane was asked for on is now on the machine.
+
+  Time is the cut, not attribution: a run's record says when it started and
+  which commit it was based on, not which entry it was for. A merge counts
+  once, at the merge, and is not itself a commit in the count.
+
+  From the audit: AC5's case ran `cost` on `origin/main`, which CI's
+  checkout does not have; it runs on `HEAD` now, and on a shallow clone that
+  is one closing commit holding every id, a weaker question than the local
+  one, said in the case itself. `--ref` is documented and exercised by no
+  test. Both rounds READY on the criteria; the second closed four narrowness
+  findings with full `toEqual`s, a merged branch in the fixture and a
+  byte-for-byte round trip of `--json` through `renderCost`.

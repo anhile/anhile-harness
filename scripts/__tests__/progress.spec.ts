@@ -310,7 +310,133 @@ describe('rotate', () => {
   });
 });
 
+describe('cost: what a closure costs, from the record', () => {
+  // Since 2026-09-16. A repository with dated commits: one before the list,
+  // one that opens #0, one that closes it, one that closes nothing, one that
+  // opens and closes #1 at once; runs on record between them.
+  const list = (...entries: Array<[number, boolean]>) =>
+    `${JSON.stringify(entries.map(([id, passes]) => ({ id, category: 'x', description: `entry ${id}`, steps: ['s'], passes, spec: 'specs/x.md' })), null, 2)}\n`;
+  const commitAt = (date: string, message: string) => {
+    git('add', '-A');
+    execFileSync('git', ['commit', '-qm', message], {
+      cwd: dir,
+      encoding: 'utf8',
+      env: { ...process.env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date },
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return git('rev-parse', 'HEAD');
+  };
+  const runAt = (id: string, at: string, over: Record<string, unknown> = {}) => {
+    mkdirSync(path.join(dir, 'verify-log'), { recursive: true });
+    writeFileSync(path.join(dir, 'verify-log', `${id}.json`), `${JSON.stringify({ at, result: 'pass', tree: 'sha256:a', steps: {}, ...over })}\n`);
+  };
+  type Row = { commit: string; date: string; ids: number[]; runs: number; quick: number; red: number; commits: number };
+  type Report = { rows: Row[]; pending: { runs: number; quick: number; red: number; commits: number }; totals: Record<string, unknown> };
+  const costJson = (...args: string[]) => JSON.parse(run('cost', '--json', ...args).out) as Report;
+
+  let closeZero = '';
+  let bornOne = '';
+  let mergeTwo = '';
+  beforeEach(() => {
+    git('init', '-q', '-b', 'main');
+    git('config', 'user.email', 't@t');
+    git('config', 'user.name', 't');
+    writeFileSync(path.join(dir, 'README.md'), '# x\n');
+    commitAt('2026-09-10T08:00:00Z', 'before the list');
+    writeFileSync(path.join(dir, 'feature_list.json'), list([0, false]));
+    commitAt('2026-09-10T10:00:00Z', 'open #0');
+    runAt('20260910T090000Z', '2026-09-10T09:00:00.000Z');
+    runAt('20260910T110000Z', '2026-09-10T11:00:00.000Z', { result: 'fail' });
+    runAt('20260910T120000Z', '2026-09-10T12:00:00.000Z', { mode: 'quick', since: 'main' });
+    writeFileSync(path.join(dir, 'feature_list.json'), list([0, true]));
+    closeZero = commitAt('2026-09-10T13:00:00Z', 'close #0');
+    writeFileSync(path.join(dir, 'README.md'), '# x\n\nmore\n');
+    commitAt('2026-09-11T10:00:00Z', 'closes nothing');
+    runAt('20260911T110000Z', '2026-09-11T11:00:00.000Z');
+    writeFileSync(path.join(dir, 'feature_list.json'), list([0, true], [1, true]));
+    bornOne = commitAt('2026-09-11T12:00:00Z', 'born #1');
+    runAt('20260912T090000Z', '2026-09-12T09:00:00.000Z');
+    // A closure on a branch, merged: it counts once, at the merge, with the
+    // merge's date — the first-parent line is main's, and the branch's
+    // commit is one of the commits the span paid for.
+    git('checkout', '-q', '-b', 'work');
+    writeFileSync(path.join(dir, 'feature_list.json'), list([0, true], [1, true], [2, true]));
+    commitAt('2026-09-13T10:00:00Z', 'born #2 on a branch');
+    runAt('20260913T110000Z', '2026-09-13T11:00:00.000Z');
+    git('checkout', '-q', 'main');
+    execFileSync('git', ['merge', '-q', '--no-ff', '-m', 'merge work', 'work'], {
+      cwd: dir,
+      env: { ...process.env, GIT_AUTHOR_DATE: '2026-09-13T12:00:00Z', GIT_COMMITTER_DATE: '2026-09-13T12:00:00Z' },
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    mergeTwo = git('rev-parse', 'HEAD');
+  });
+
+  it('lists the closing commits on the first-parent line, oldest first, with the ids each closed', () => {
+    const { rows } = costJson();
+    expect(rows.map((r) => [r.commit, r.ids])).toEqual([[closeZero, [0]], [bornOne, [1]], [mergeTwo, [2]]]);
+    // The committer date as git prints it (%cI), the whole of it.
+    expect(rows.map((r) => r.date)).toEqual(['2026-09-10T13:00:00Z', '2026-09-11T12:00:00Z', '2026-09-13T12:00:00Z']);
+  });
+
+  it('counts the runs and the commits in each span, the quick and the red among them, and what is pending after the last closure', () => {
+    const { rows, pending, totals } = costJson();
+    expect(rows.map(({ runs, quick, red, commits }) => ({ runs, quick, red, commits }))).toEqual([
+      { runs: 3, quick: 1, red: 1, commits: 3 },
+      { runs: 1, quick: 0, red: 0, commits: 2 },
+      // The branch commit, not the merge: merges are not counted as commits.
+      { runs: 2, quick: 0, red: 0, commits: 1 },
+    ]);
+    expect(pending).toEqual({ runs: 0, quick: 0, red: 0, commits: 0 });
+    expect(totals).toEqual({
+      closures: 3, runs: 6, quick: 1, red: 1, commits: 6,
+      runsPerClosure: { mean: 2, median: 2 },
+      commitsPerClosure: { mean: 2, median: 2 },
+    });
+  });
+
+  it('--since keeps the closures on or after the date and recomputes the totals', () => {
+    const { rows, totals } = costJson('--since', '2026-09-11');
+    expect(rows.map((r) => r.ids)).toEqual([[1], [2]]);
+    expect(totals).toEqual({
+      closures: 2, runs: 3, quick: 0, red: 0, commits: 3,
+      runsPerClosure: { mean: 1.5, median: 1.5 },
+      commitsPerClosure: { mean: 1.5, median: 1.5 },
+    });
+  });
+
+  it('prints a line per closure and the totals, and --json the same as an object', () => {
+    const { out } = run('cost');
+    expect(out).toContain('progress cost: 3 closure(s) on HEAD, 6 run(s) (1 quick, 1 red), 6 commit(s)');
+    expect(out).toMatch(new RegExp(`^  ${closeZero.slice(0, 7)} {2}2026-09-10 #0 +3 +1 +1 +3$`, 'mu'));
+    expect(out).toMatch(new RegExp(`^  ${bornOne.slice(0, 7)} {2}2026-09-11 #1 +1 +0 +0 +2$`, 'mu'));
+    expect(out).toMatch(new RegExp(`^  ${mergeTwo.slice(0, 7)} {2}2026-09-13 #2 +2 +0 +0 +1$`, 'mu'));
+    expect(out).toContain('since the last closure: 0 run(s) (0 quick, 0 red), 0 commit(s)');
+    expect(out).toContain('per closure: runs 2 mean, 2 median; commits 2 mean, 2 median');
+    // The same object, rendered: what --json prints is what the text was made from.
+    const json = path.join(dir, 'cost.json');
+    writeFileSync(json, run('cost', '--json').out);
+    const rendered = execFileSync('node', ['--input-type=module', '-e',
+      `import { renderCost } from '${path.join(dir, 'scripts', 'progress.mjs')}'; import { readFileSync } from 'node:fs'; process.stdout.write(renderCost(JSON.parse(readFileSync('${json}', 'utf8'))) + '\\n')`,
+    ], { cwd: dir, encoding: 'utf8' });
+    expect(rendered).toBe(out);
+    expect(run('cost', '--since', '2027-01-01').out).toContain('no closing commit on HEAD since 2027-01-01');
+  });
+});
+
 describe('this repository', () => {
+  it('cost reports the closures of #10 to #14, each with a run on record', () => {
+    // HEAD, not a remote-tracking ref: CI's checkout has the commit and
+    // nothing named origin/main. A shallow clone shows one closing commit
+    // holding every id, which still answers the question asked here.
+    const report = JSON.parse(execFileSync('node', [path.join(REPO, 'scripts', 'progress.mjs'), 'cost', '--json'], { cwd: REPO, encoding: 'utf8' })) as { rows: Array<{ ids: number[]; runs: number }> };
+    for (const id of [10, 11, 12, 13, 14]) {
+      const row = report.rows.find((r) => r.ids.includes(id));
+      expect(row).toBeDefined();
+      expect(row?.runs ?? 0).toBeGreaterThanOrEqual(1);
+    }
+  });
+
   it('PROGRESS.md is in the template shape, every entry', () => {
     const out = execFileSync('node', [path.join(REPO, 'scripts', 'progress.mjs'), 'check'], { cwd: REPO, encoding: 'utf8' });
     expect(out).toContain("every one in the template's shape");

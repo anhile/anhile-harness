@@ -26,6 +26,12 @@
  *            untouched. Nothing is edited, only moved. session-start.mjs says
  *            when it is due; a person runs it.
  *   status   entries, size, and how many rotate would move.
+ *   cost     what a closure costs, from the record: for each closing commit
+ *            on the first-parent line, the runs recorded and the commits
+ *            made since the previous closure. The fast lane of 2026-09-16
+ *            was asked for on a number counted by hand — about eight runs
+ *            and three commits per closure; this counts it, so the next
+ *            person can see whether it moved. Reports, never judges.
  *
  * The template lives here and session-stop.mjs prints it from here, so the
  * shape a session is asked for and the shape check refuses cannot disagree.
@@ -35,8 +41,9 @@ import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realp
 import path from 'node:path';
 import { loadConfig } from './harness-config.mjs';
 import { fileURLToPath } from 'node:url';
-import { currentFiles as currentRuns, filesAt as runsAt } from './verify-log.mjs';
+import { currentFiles as currentRuns, filesAt as runsAt, readRuns } from './verify-log.mjs';
 import { currentFiles as currentAudits, filesAt as auditsAt } from './audit-log.mjs';
+import { isQuick } from './verify-receipt.mjs';
 
 export const root = realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 export const FILE = 'PROGRESS.md';
@@ -357,10 +364,180 @@ function flag(args, name, fallback = null) {
   return i === -1 ? fallback : (args[i + 1] ?? fallback);
 }
 
+// --- cost -------------------------------------------------------------------
+
+/** @param {string[]} args */
+function gitOut(args) {
+  try {
+    return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Which entries pass at a commit, by id. Empty when the commit has no list,
+ * or one that does not parse: a commit from before the list closes nothing.
+ * @param {string} commit
+ * @returns {Map<number, boolean>}
+ */
+function passingAt(commit) {
+  /** @type {Map<number, boolean>} */
+  const map = new Map();
+  const text = gitOut(['show', `${commit}:feature_list.json`]);
+  if (text === null) return map;
+  try {
+    for (const entry of JSON.parse(text)) {
+      if (entry && typeof entry.id === 'number') map.set(entry.id, entry.passes === true);
+    }
+  } catch {
+    /* not a list yet */
+  }
+  return map;
+}
+
+/** @typedef {{ commit: string, date: string, ids: number[] }} Closing */
+
+/**
+ * The closing commits on the first-parent line of `ref`, oldest first: each
+ * commit whose feature_list.json has an entry passing that its first parent
+ * did not have passing, or did not have at all, with the ids it closed. A
+ * merge is compared with the main it landed on, so a branch's closure counts
+ * once, at the merge; on a branch, the closing commit itself.
+ * @param {string} [ref]
+ * @returns {Closing[]}
+ */
+export function closingCommits(ref = 'HEAD') {
+  const log = gitOut(['log', '--first-parent', '--reverse', '--format=%H%x09%cI', ref]) ?? '';
+  /** @type {Closing[]} */
+  const closings = [];
+  /** @type {Map<number, boolean>} */
+  let previous = new Map();
+  for (const line of log.split('\n').filter(Boolean)) {
+    const [commit = '', date = ''] = line.split('\t');
+    const passing = passingAt(commit);
+    const ids = [...passing.entries()]
+      .filter(([id, passes]) => passes && previous.get(id) !== true)
+      .map(([id]) => id)
+      .sort((a, b) => a - b);
+    if (ids.length > 0) closings.push({ commit, date, ids });
+    previous = passing;
+  }
+  return closings;
+}
+
+/**
+ * @typedef {{ commit: string, date: string, ids: number[], runs: number, quick: number, red: number, commits: number }} CostRow
+ * @typedef {{ runs: number, quick: number, red: number, commits: number }} Span
+ * @typedef {{ mean: number, median: number }} Stat
+ * @typedef {{
+ *   ref: string,
+ *   since: string | null,
+ *   rows: CostRow[],
+ *   pending: Span,
+ *   totals: { closures: number, runs: number, quick: number, red: number, commits: number, runsPerClosure: Stat, commitsPerClosure: Stat },
+ * }} CostReport
+ */
+
+/** @param {number[]} values */
+function stat(values) {
+  if (values.length === 0) return { mean: 0, median: 0 };
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 === 1 ? (sorted[mid] ?? 0) : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  return { mean: Math.round(mean * 10) / 10, median };
+}
+
+/**
+ * What each closure cost: the runs under verify-log/ and the commits (merges
+ * left out) in the span after the previous closure up to and including this
+ * one, cut by time. A run's record says when it started and which commit it
+ * was based on, not which entry it was for, so time is the honest cut; the
+ * runs and commits after the last closure are the pending span.
+ * @param {{ ref?: string, since?: string | null, runs?: ReturnType<typeof readRuns> }} [options]
+ * @returns {CostReport}
+ */
+export function cost({ ref = 'HEAD', since = null, runs = readRuns() } = {}) {
+  const closings = closingCommits(ref);
+  const commitTimes = (gitOut(['log', '--no-merges', '--format=%cI', ref]) ?? '')
+    .split('\n')
+    .filter(Boolean)
+    .map((d) => Date.parse(d));
+  const runTimes = runs
+    .map((r) => ({ t: Date.parse(String(r.at)), quick: isQuick(r), red: r.result !== 'pass' }))
+    .filter((r) => !Number.isNaN(r.t));
+  /** @param {number} from @param {number} to @returns {Span} */
+  const span = (from, to) => {
+    const within = runTimes.filter((r) => r.t > from && r.t <= to);
+    return {
+      runs: within.length,
+      quick: within.filter((r) => r.quick).length,
+      red: within.filter((r) => r.red).length,
+      commits: commitTimes.filter((t) => t > from && t <= to).length,
+    };
+  };
+  /** @type {CostRow[]} */
+  const rows = [];
+  let from = -Infinity;
+  for (const c of closings) {
+    const to = Date.parse(c.date);
+    rows.push({ ...c, ...span(from, to) });
+    from = to;
+  }
+  const pending = span(from, Infinity);
+  const kept = since === null ? rows : rows.filter((r) => Date.parse(r.date) >= Date.parse(since));
+  const sum = (/** @type {keyof Span} */ key) => kept.reduce((a, r) => a + r[key], 0);
+  return {
+    ref,
+    since,
+    rows: kept,
+    pending,
+    totals: {
+      closures: kept.length,
+      runs: sum('runs'),
+      quick: sum('quick'),
+      red: sum('red'),
+      commits: sum('commits'),
+      runsPerClosure: stat(kept.map((r) => r.runs)),
+      commitsPerClosure: stat(kept.map((r) => r.commits)),
+    },
+  };
+}
+
+/** @param {CostReport} report */
+export function renderCost(report) {
+  const { rows, pending, totals } = report;
+  const where = `${report.ref}${report.since ? ` since ${report.since}` : ''}`;
+  if (rows.length === 0) return `progress cost: no closing commit on ${where}`;
+  const lines = [
+    `progress cost: ${totals.closures} closure(s) on ${where}, ${totals.runs} run(s) (${totals.quick} quick, ${totals.red} red), ${totals.commits} commit(s)`,
+    `  ${'commit'.padEnd(8)} ${'date'.padEnd(10)} ${'entries'.padEnd(14)} ${'runs'.padStart(5)} ${'quick'.padStart(5)} ${'red'.padStart(4)} ${'commits'.padStart(7)}`,
+  ];
+  for (const r of rows) {
+    lines.push(
+      `  ${r.commit.slice(0, 7).padEnd(8)} ${r.date.slice(0, 10).padEnd(10)} ${r.ids.map((id) => `#${id}`).join(' ').padEnd(14)} ` +
+        `${String(r.runs).padStart(5)} ${String(r.quick).padStart(5)} ${String(r.red).padStart(4)} ${String(r.commits).padStart(7)}`,
+    );
+  }
+  lines.push(`  since the last closure: ${pending.runs} run(s) (${pending.quick} quick, ${pending.red} red), ${pending.commits} commit(s)`);
+  lines.push(
+    `  per closure: runs ${totals.runsPerClosure.mean} mean, ${totals.runsPerClosure.median} median; ` +
+      `commits ${totals.commitsPerClosure.mean} mean, ${totals.commitsPerClosure.median} median`,
+  );
+  return lines.join('\n');
+}
+
 function main() {
   const [command, ...args] = process.argv.slice(2);
   const keepArg = args.indexOf('--keep');
   const keep = keepArg === -1 ? KEEP : Number(args[keepArg + 1]);
+
+  if (command === 'cost') {
+    const report = cost({ ref: flag(args, 'ref', 'HEAD') ?? 'HEAD', since: flag(args, 'since') });
+    console.log(args.includes('--json') ? JSON.stringify(report, null, 2) : renderCost(report));
+    return;
+  }
 
   if (command === 'check') {
     const at = flag(args, 'at');
@@ -394,7 +571,7 @@ function main() {
     return;
   }
   if (command === 'template') { console.log(template()); return; }
-  console.error('usage: progress.mjs check [--base <ref>] [--at <ref>] | status | rotate [--keep N] | template');
+  console.error('usage: progress.mjs check [--base <ref>] [--at <ref>] | status | rotate [--keep N] | template | cost [--ref <ref>] [--since <date>] [--json]');
   process.exit(2);
 }
 
