@@ -14,9 +14,14 @@ a person.
    establishes the code works; a red gate is fixed, never worked around.
 4. Write the `PROGRESS.md` entry — `node scripts/progress.mjs template` prints
    the shape; Evidence names the `verify-log/<id>` of the run(s) you made, and
-   the `audit-log/<id>` that said READY if an entry closed — and commit. The
-   commit gate refuses a tree no green run covers; the stop hook and CI
-   refuse an entry whose Evidence a reader cannot follow.
+   the `audit-log/<id>` that said READY if an entry closed — and commit. For
+   a small feature that is one commit: the contract, the entry in
+   `feature_list.json` born passing, the change, the run, the READY audit,
+   and the journal entry naming both. The journal is outside the tree hash so
+   the entry can name the audit; in exchange the commit gate reads it. The
+   gate refuses a tree no green run covers, a closure without its audit, and
+   an entry whose Evidence a reader cannot follow; the stop hook and CI ask
+   the same of the journal.
 5. `/open-pr`, then `/review-pr`, then `/address-comments`.
 
 ## A spike
@@ -33,7 +38,7 @@ usual way, and the spike is deleted. `docs/INVARIANTS.md` I16.
 
 | Step | Refuses |
 |---|---|
-| 06 `feature-list` | any change to `feature_list.json` other than appending an entry with `passes: false`, flipping one entry `false → true`, retracting entries under one contract, or recording a `spec` where there was none; two closures in one commit; a retraction edited, undone, or sharing a commit with a closure |
+| 06 `feature-list` | any change to `feature_list.json` other than appending an entry (with `passes: false`, or already `true` as the commit's one closure), flipping one entry `false → true`, retracting entries under one contract, or recording a `spec` where there was none; two closures in one commit; a retraction edited, undone, or sharing a commit with a closure |
 | 07 `verify-log` | a recorded run under `verify-log/` edited or removed; the commit gate asks the same of the audits under `audit-log/` |
 | 08 `coverage` | a lowered floor, or a source file nothing counted |
 

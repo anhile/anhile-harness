@@ -190,11 +190,31 @@ describe('moving the goalposts', () => {
     expect(verdict.out).toContain('went from true back to false');
   });
 
-  it('refuses a new entry born passing', () => {
+  it('accepts a new entry born passing, as the commit\'s one closure (since 2026-09-16)', () => {
+    // Until then a new entry had to start false and flip in a later commit,
+    // which is one of the three commits a small feature used to cost. The
+    // audit is asked of a born-passing entry by the gate and by CI's walk,
+    // not here: step 06 runs before the audit exists.
     write([...committed(), entry(3, true)]);
     const verdict = check();
+    expect(verdict.rejected).toBe(false);
+    expect(verdict.out).toContain("appended already passing (the commit's closure): 3");
+  });
+
+  it('refuses a born-passing entry beside a flip: two closures in one commit', () => {
+    const list = committed();
+    at(list, 2).passes = true;
+    write([...list, entry(3, true)]);
+    const verdict = check();
     expect(verdict.rejected).toBe(true);
-    expect(verdict.out).toContain('must start with "passes": false');
+    expect(verdict.out).toContain('2 entries close at once (2, 3; born passing: 3)');
+  });
+
+  it('refuses two entries born passing together', () => {
+    write([...committed(), entry(3, true), entry(4, true)]);
+    const verdict = check();
+    expect(verdict.rejected).toBe(true);
+    expect(verdict.out).toContain('2 entries close at once (3, 4; born passing: 3, 4)');
   });
 
   it('refuses an entry whose shape is not a claim at all', () => {
@@ -224,7 +244,7 @@ describe('one feature per commit', () => {
 
     const verdict = check();
     expect(verdict.rejected).toBe(true);
-    expect(verdict.out).toContain('flipped to "passes": true at once');
+    expect(verdict.out).toContain('2 entries close at once (1, 2). One feature per commit');
   });
 
   it('accepts them one commit at a time', () => {

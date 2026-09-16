@@ -367,6 +367,26 @@ Restore it with: git checkout -- verify-log/`);
   // spike has none (I16).
   if (!receipt) return;
 
+  // PROGRESS.md is outside the tree hash since 2026-09-16, so that the entry
+  // naming a closure's audit can share the closure's commit. What the hash no
+  // longer covers, the journal's own check covers here: every entry new since
+  // HEAD in the template's shape, its Evidence pointing into the record (I12).
+  try {
+    execFileSync('node', [path.join(root, 'scripts', 'progress.mjs'), 'check', '--base', 'HEAD'], {
+      cwd: root,
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+  } catch (error) {
+    const detail = String(/** @type {{ stderr?: unknown }} */ (error ?? {}).stderr ?? '').trim();
+    block(`BLOCKED: commit gate (docs/INVARIANTS.md I12) — the journal is asked before the commit
+
+${detail}
+
+PROGRESS.md is outside the tree hash so that an entry can name the audit its
+own commit carries; in exchange the gate reads it here, the way CI's walk will.
+Fix the entry and commit again: a journal edit needs no new run.`);
+  }
+
   const current = treeFiles();
   const currentHash = hashFiles(current);
   if (currentHash !== receipt.treeHash) {

@@ -171,10 +171,20 @@ describe('the receipt, because CI recomputes it from a clean clone', () => {
 
   it('refuses when the tree moved after the run', () => {
     const dir = make(readyBranch);
-    writeFileSync(path.join(dir, 'PROGRESS.md'), '# journal\n\n## moved\n');
+    // A source file, not the journal: PROGRESS.md is outside the tree hash
+    // since 2026-09-16, and the case below says so.
+    writeFileSync(path.join(dir, 'moved.ts'), 'export const moved = true;\n');
     git(dir, 'add', '-A');
     git(dir, 'commit', '-qm', 'after the receipt');
     expect(run(dir).refusals.join(' ')).toContain('tree changed after the last green run');
+  });
+
+  it('does not count a journal entry written after the run as the tree moving', () => {
+    const dir = make(readyBranch);
+    writeFileSync(path.join(dir, 'PROGRESS.md'), '# journal\n\n## an entry\n\n## and the one naming the audit, after the run\n');
+    git(dir, 'add', '-A');
+    git(dir, 'commit', '-qm', 'the journal, after the receipt');
+    expect(run(dir).refusals.join(' ')).not.toContain('tree changed');
   });
 });
 

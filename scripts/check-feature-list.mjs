@@ -354,13 +354,19 @@ if (baseline === null) {
     }
   }
 
+  // An entry may be born passing since 2026-09-16: the same commit opens
+  // and closes it, and it is then that commit's one closure — counted below
+  // with the flips, and asked for its audit like one, by the gate before the
+  // commit and by CI's walk after. Until then a closure took three commits
+  // (append, flip, the journal entry naming the audit), which is what made a
+  // small feature cost more ritual than work.
+  /** @type {number[]} */
+  const born = [];
   const added = current.length - baseline.length;
   if (added > 0) {
     notes.push(`${added} entry/entries appended`);
     for (let i = baseline.length; i < current.length; i += 1) {
-      if (current[i].passes !== false) {
-        fail(`entry ${i} is new and must start with "passes": false — ${current[i].description}`);
-      }
+      if (current[i].passes === true) born.push(i);
       if (current[i].retracted !== undefined) {
         fail(`entry ${i} is new and arrives retracted — ${current[i].description}`);
       }
@@ -379,6 +385,10 @@ if (baseline === null) {
   if (flipped.length > 0) {
     notes.push(`passes flipped false -> true for entry/entries: ${flipped.join(', ')}`);
   }
+  if (born.length > 0) {
+    notes.push(`appended already passing (the commit's closure): ${born.join(', ')}`);
+  }
+  const closures = [...flipped, ...born];
 
   // One feature per commit. Not for tidiness: verify.sh gives one verdict for
   // the whole tree, so two features closed together share a single piece of
@@ -387,11 +397,11 @@ if (baseline === null) {
   //
   // The session may implement as many features as it likes; closing them is
   // what serialises. Flip one, run verify.sh, commit, flip the next.
-  if (flipped.length > 1 && !(at && PRE_RULE_COMMITS.has(resolveCommit(at)))) {
+  if (closures.length > 1 && !(at && PRE_RULE_COMMITS.has(resolveCommit(at)))) {
     fail(
-      `${flipped.length} entries were flipped to "passes": true at once ` +
-        `(${flipped.join(', ')}). One feature per commit: flip one, run ./verify.sh, ` +
-        'commit, then flip the next.',
+      `${closures.length} entries close at once ` +
+        `(${closures.join(', ')}${born.length > 0 ? `; born passing: ${born.join(', ')}` : ''}). ` +
+        'One feature per commit: close one, run ./verify.sh, commit, then the next.',
     );
   }
 
@@ -403,7 +413,7 @@ if (baseline === null) {
   // the run that step 06 is part of. No exemption: the list above is for
   // commits that closed several entries at once, and CI walks only pushed
   // ranges, so a commit from before the log never meets this question.
-  if (at && flipped.length > 0) {
+  if (at && closures.length > 0) {
     for (const problem of closureProblems(base ?? 'HEAD', at)) fail(problem);
   }
 
@@ -435,10 +445,10 @@ if (baseline === null) {
   // Withdrawing a guarantee and claiming a new one are opposite moves, and a
   // commit that does both reads as neither. Kept apart so each is reviewed on
   // its own.
-  if (retracted.length > 0 && flipped.length > 0) {
+  if (retracted.length > 0 && closures.length > 0) {
     fail(
       `a commit may not both retract (${retracted.join(', ')}) and close ` +
-        `(${flipped.join(', ')}) a feature. Land them separately.`,
+        `(${closures.join(', ')}) a feature. Land them separately.`,
     );
   }
 }
