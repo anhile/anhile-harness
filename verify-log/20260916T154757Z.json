@@ -1,0 +1,37 @@
+{
+  "at": "2026-09-16T15:48:33.172Z",
+  "result": "fail",
+  "tree": "sha256:083410ecb8504626f185c02f75651741c6ac3a1672ddc98c4aeb436d857f0444",
+  "mode": "full",
+  "since": null,
+  "head": "fb91124a4d2f32c86ff210425137214be7b18682",
+  "branch": "fast-lane/upgrade",
+  "node": "v24.19.0",
+  "evidence": ".generated/runs/20260916T154757Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "03-unit": {
+      "exit": 1,
+      "seconds": 33
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 2
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

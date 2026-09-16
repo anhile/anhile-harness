@@ -315,8 +315,13 @@ describe('the package as npm will see it', () => {
 
   it('the README says what it does not do, which is the part people find out late', () => {
     const readme = read('README.md');
-    expect(readme).toContain('Upgrade a project that already adopted it');
+    expect(readme).toContain('## What this does not do');
     expect(readme).toContain('nothing in your project notices');
+    // Until 2026-09-16 the first thing listed was upgrading a project that
+    // already adopted it; `npx anhile-harness upgrade` does that now, and the
+    // list says so no longer.
+    expect(readme).toContain('## Upgrading');
+    expect(readme).not.toContain('Upgrade a project that already adopted it');
   });
 });
 
