@@ -11,6 +11,23 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
+### Added
+
+- A design base for `--web`: Tailwind 4 with tokens under `@theme` in
+  `apps/web/src/index.css`, a catalog of primitives under
+  `components/ui` (`Button`, `Card`, `Input`, `Label`, each with a test),
+  `cn()`, and `apps/web/DESIGN.md`, the brief. The project's
+  `eslint.config.mjs` carries the catalog rule: under `apps/web/src` and
+  outside `components/ui`, an inline style, an arbitrary class value or a
+  Radix import is refused by step 01. Seven packages join `dependencies.apps.web`.
+  A project generated earlier with `--web` takes it by copying
+  `templates/web/apps/web/` from this tag over its `apps/web/` (`DESIGN.md`,
+  `src/index.css`, `src/lib/cn.ts`, `src/components/ui/`, `vite.config.ts`,
+  and the `import './index.css'` line in `src/main.tsx`), adding the seven
+  packages at the versions in `harness.versions.json`, and pasting the
+  catalog block from a fresh `init --web`'s `eslint.config.mjs` into its
+  own; `Home.tsx` is the project's to keep or replace.
+
 ## [0.2.0] — 2026-09-16
 
 A minor, not a patch, by the rule at the top: what the generated gate refuses

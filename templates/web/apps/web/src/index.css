@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/*
+ * The tokens. Every colour, radius and face a page uses is named here and
+ * nowhere else; DESIGN.md says what each is for. A page that needs a value
+ * this file does not have adds it here, with a name that says its role.
+ */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-bg: oklch(98.5% 0.002 90);
+  --color-fg: oklch(22% 0.012 260);
+  --color-muted: oklch(52% 0.014 260);
+  --color-surface: oklch(100% 0 0);
+  --color-border: oklch(90% 0.006 260);
+  --color-accent: oklch(50% 0.13 255);
+  --color-accent-fg: oklch(99% 0 0);
+  --color-danger: oklch(53% 0.19 25);
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  --shadow-card: 0 1px 2px oklch(0% 0 0 / 0.06), 0 1px 3px oklch(0% 0 0 / 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: oklch(17% 0.01 260);
+    --color-fg: oklch(95% 0.005 90);
+    --color-muted: oklch(68% 0.012 260);
+    --color-surface: oklch(21% 0.01 260);
+    --color-border: oklch(30% 0.01 260);
+    --color-accent: oklch(72% 0.12 255);
+    --color-accent-fg: oklch(15% 0.02 260);
+    --shadow-card: 0 1px 2px oklch(0% 0 0 / 0.4);
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}

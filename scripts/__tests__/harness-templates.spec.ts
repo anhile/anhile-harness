@@ -122,6 +122,7 @@ describe('the one token a template carries', () => {
     const carrying = walk(TEMPLATES).filter((rel) => readFileSync(path.join(TEMPLATES, rel), 'utf8').includes(TOKEN));
     expect(carrying).toEqual([
       'api/apps/api/src/main.ts',
+      'web/apps/web/DESIGN.md',
       'web/apps/web/index.html',
       'web/apps/web/src/Home.spec.tsx',
       'web/apps/web/src/Home.tsx',
@@ -161,5 +162,28 @@ describe('a template that is not there', () => {
       message = (error as { stderr: string }).stderr;
     }
     expect(message).toContain('template missing: templates/api/apps/api/src/not-there.ts');
+  });
+});
+
+describe('what the web template imports', () => {
+  it('is in the manifest under dependencies.apps.web, every bare package, so a project can install it', () => {
+    // A template that imports a package the manifest does not name is a
+    // project that fails at install, and the first place that would say so
+    // is CI. This reads the sources and asks the manifest first.
+    const manifest = JSON.parse(readFileSync(path.join(REPO, 'harness.manifest.json'), 'utf8')) as { dependencies: { apps: { web: string[] } } };
+    const shipped = new Set(manifest.dependencies.apps.web);
+    const sources = walk(TEMPLATES).filter((rel) => rel.startsWith('web/') && /\.(ts|tsx|css)$/u.test(rel));
+    const imported = new Set<string>();
+    for (const rel of sources) {
+      const text = readFileSync(path.join(TEMPLATES, rel), 'utf8');
+      for (const m of text.matchAll(/(?:from\s+|import\s+|@import\s+)['"]([^'"]+)['"]/gu)) {
+        const spec = m[1] ?? '';
+        if (spec.startsWith('.') || spec.startsWith('node:') || spec.startsWith('/')) continue;
+        const parts = spec.split('/');
+        imported.add(spec.startsWith('@') ? `${parts[0]}/${parts[1]}` : parts[0] ?? spec);
+      }
+    }
+    expect(imported.size).toBeGreaterThan(5);
+    expect([...imported].filter((name) => !shipped.has(name)).sort()).toEqual([]);
   });
 });

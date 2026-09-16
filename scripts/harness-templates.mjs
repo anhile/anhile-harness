@@ -237,6 +237,59 @@ export const WEB = {
   'apps/web/src/Home.tsx': fromFile('web', 'apps/web/src/Home.tsx'),
 
   'apps/web/src/Home.spec.tsx': fromFile('web', 'apps/web/src/Home.spec.tsx'),
+
+  // The design base, since 2026-09-16: tokens, a catalog of primitives, and
+  // the brief a page is held to. The lint rule that holds it is
+  // WEB_CATALOG_RULE below, written into the project's eslint.config.mjs.
+  'apps/web/DESIGN.md': fromFile('web', 'apps/web/DESIGN.md'),
+  'apps/web/src/index.css': fromFile('web', 'apps/web/src/index.css'),
+  'apps/web/src/lib/cn.ts': fromFile('web', 'apps/web/src/lib/cn.ts'),
+  'apps/web/src/components/ui/button.tsx': fromFile('web', 'apps/web/src/components/ui/button.tsx'),
+  'apps/web/src/components/ui/card.tsx': fromFile('web', 'apps/web/src/components/ui/card.tsx'),
+  'apps/web/src/components/ui/input.tsx': fromFile('web', 'apps/web/src/components/ui/input.tsx'),
+  'apps/web/src/components/ui/label.tsx': fromFile('web', 'apps/web/src/components/ui/label.tsx'),
+  'apps/web/src/components/ui/ui.spec.tsx': fromFile('web', 'apps/web/src/components/ui/ui.spec.tsx'),
+};
+
+/**
+ * The catalog, as a lint rule (DESIGN.md, "The catalog"). Under apps/web/src
+ * and outside components/ui, a page composes from the primitives and the
+ * tokens: no inline style, no arbitrary Tailwind value, no Radix import.
+ * One object, written into the generated eslint.config.mjs and fired at by
+ * catalog-lint.spec.ts, so the rule a project gets is the rule the suite
+ * holds.
+ */
+export const WEB_CATALOG_RULE = {
+  files: ['apps/web/src/**/*.{ts,tsx}'],
+  ignores: ['apps/web/src/components/ui/**'],
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          {
+            group: ['@radix-ui/*'],
+            message: 'a primitive is written in components/ui, with a test, and named in DESIGN.md; a page composes from the catalog',
+          },
+        ],
+      },
+    ],
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: "JSXAttribute[name.name='style']",
+        message: 'no inline style: a token in index.css, or a class from components/ui (DESIGN.md)',
+      },
+      {
+        selector: 'Literal[value=/\\S-\\[[^\\]]+\\]/]',
+        message: 'no arbitrary value in a class: the scale and the palette are in index.css (DESIGN.md)',
+      },
+      {
+        selector: 'TemplateElement[value.raw=/\\S-\\[[^\\]]+\\]/]',
+        message: 'no arbitrary value in a class: the scale and the palette are in index.css (DESIGN.md)',
+      },
+    ],
+  },
 };
 
 /**

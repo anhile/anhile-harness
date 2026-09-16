@@ -23,7 +23,7 @@ import { createInterface } from 'node:readline/promises';
 import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { API, MCP, WEB, mcpConfig, vercelConfig } from './harness-templates.mjs';
+import { API, MCP, WEB, WEB_CATALOG_RULE, mcpConfig, vercelConfig } from './harness-templates.mjs';
 
 export const root = realpathSync(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
@@ -469,7 +469,7 @@ const SEEDS = {
   'tsconfig.build.json': (_name, answers) =>
     JSON.stringify({ files: [], references: projectRefs(answers, { functions: true }) }, null, 2) + '\n',
 
-  'eslint.config.mjs': () =>
+  'eslint.config.mjs': (_name, answers) =>
     [
       "import tseslint from 'typescript-eslint';",
       '',
@@ -487,6 +487,14 @@ const SEEDS = {
       "      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],",
       '    },',
       '  },',
+      ...(answers.web
+        ? [
+            '  // The catalog (apps/web/DESIGN.md): a page composes from components/ui',
+            '  // and the tokens in index.css. Inline styles, arbitrary class values and',
+            '  // Radix imports are refused everywhere else under apps/web/src.',
+            `  ${JSON.stringify(WEB_CATALOG_RULE, null, 2).split('\n').join('\n  ')},`,
+          ]
+        : []),
       ');',
       '',
     ].join('\n'),
@@ -840,6 +848,9 @@ const agentsSeed = (answers, steps, deferred) =>
     '| protected-file guard | a session edit to `verify.sh`, the CI workflow, or `.claude/settings.json` |',
     '| `spike.mjs`, in the gate, the hooks and CI | nothing on a `spike/*` branch; and a pull request from one |',
     '| append-only guards | a run under `verify-log/` or an audit under `audit-log/` edited or removed, or a rewritten line in `feature_list.json` |',
+    ...(answers.web
+      ? ['| step 01, the catalog | under `apps/web/src`, outside `components/ui`: an inline style, an arbitrary class value, a Radix import — `apps/web/DESIGN.md` is the brief |']
+      : []),
     '',
     'Write a patch under `.generated/scratch/` for a protected file and ask a person',
     'to apply it.',
@@ -856,6 +867,9 @@ const agentsSeed = (answers, steps, deferred) =>
     '- the coverage floor: `node scripts/check-coverage.mjs --raise` after the',
     '  first green run, so it starts where the project starts and not at zero',
     '- the layer rules in `eslint.config.mjs`, and a suite that fires at them',
+    ...(answers.web
+      ? ['- the palette and the type in `apps/web/src/index.css`, before the first screen: `apps/web/DESIGN.md` says what each token is for, and the catalog rule holds a page to them']
+      : []),
     '',
     ...(answers.mcp.length === 0
       ? []
