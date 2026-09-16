@@ -881,3 +881,32 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   case or a paragraph now. The template-imports case found my own mistake
   in the contract: the manifest keeps the list under
   `dependencies.apps.web`, not `product.web`.
+
+## 2026-09-16 — closed #13: a design reviewer, on the walk
+
+- **Feature**: closed #13 (`specs/2026-09-design-review.md`)
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6, 656 tests; spec-auditor READY after two rounds
+- **Evidence**: `verify-log/20260916T141050Z` — the run this commit carries;
+  `audit-log/20260916T141309.921Z` — the READY verdict of that tree
+- **Contract changes**: none
+- **Notes**:
+
+  The second of the design items. The design base (#12) gave the page a
+  brief and a lint rule for the three lines of it a machine can hold; the
+  rest of the brief is judged by looking, and nothing in `/review-pr`
+  looked. Now the review brief says whether the UI changed — `ui.paths` in
+  `harness.config.json`, `apps/web/src/` for a generated page — and
+  whether a walk is under `.generated/ui/` on this machine, and the skill
+  dispatches `design-review`: an agent with read-only tools that holds the
+  screen to `apps/web/DESIGN.md` on the walk's screenshots and snapshots.
+  Its one hard rule is no walk, no review: it does not judge a screen from
+  its code, and a UI change nobody looked at gets NO WALK as the finding
+  rather than a review of an imagined screen.
+
+  Two things from the audit. The criterion said "the fifth reviewer" and the
+  table has it fourth of five; the criterion moved to the artefact, not the
+  test. And one run on the way died with a jest worker's SIGSEGV on the new
+  suite, with no test failing; the rerun on the same tree passed, and the red
+  run stays on record. The new suite is the one that spawns a node process
+  per assertion, which the auditor named as a coincidence worth watching.

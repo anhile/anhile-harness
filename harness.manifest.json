@@ -45,6 +45,7 @@
       "scripts/__tests__/check-main.spec.ts",
       "scripts/__tests__/ci-workflow.spec.ts",
       "scripts/__tests__/commit-gate.spec.ts",
+      "scripts/__tests__/design-review.spec.ts",
       "scripts/__tests__/environment.spec.ts",
       "scripts/__tests__/feature-list.spec.ts",
       "scripts/__tests__/generated-project.spec.ts",
@@ -246,7 +247,8 @@
       "CONTRIBUTING.md",
       "docs/INVARIANTS.md",
       "tsconfig.scripts.json",
-      ".claude/agents/security-check.md"
+      ".claude/agents/security-check.md",
+      ".claude/agents/design-review.md"
     ],
     "seeded": [
       "AGENTS.md",

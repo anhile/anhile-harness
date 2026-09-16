@@ -56,16 +56,17 @@ Two things that are:
 
 ## The reviewers
 
-Four, not five, and each has a question the others do not:
+Five, and each has a question the others do not:
 
 | Reviewer | Question | When |
 |---|---|---|
 | `spec-auditor` | do the entries this claims hold up against their contract and the invariants | any change that opens, closes or retracts an entry |
 | `security-check` | is there a path from attacker-controlled input to a consequence | only when the brief says the attack surface moved |
 | the claim reader | is anything asserted in `PROGRESS.md` or the pull request body larger than the evidence under it | always |
+| `design-review` | does the screen hold to `apps/web/DESIGN.md`, on the walk a session filed under `.generated/ui/<ts>/` | only when the brief says the UI changed; with no walk it reports NO WALK and reviews nothing |
 | `/code-review` | correctness, reuse, simplification | always |
 
-There is no fifth for the sake of a fifth. A reviewer without a question of its
+There is no sixth for the sake of a sixth. A reviewer without a question of its
 own returns the same findings as its neighbour and makes the reader arbitrate
 duplicates.
 
@@ -81,7 +82,10 @@ The auditors' value comes from not knowing what was intended.
    from the brief otherwise.
 3. **Dispatch the reviewers that apply**, per the table. Skip `security-check`
    when the brief says the surface is unchanged, and say that you skipped it
-   and why.
+   and why. Skip `design-review` when the brief says the UI is unchanged;
+   when the UI changed and the brief says there is no walk, dispatch it
+   anyway — its NO WALK is the finding, and the report says the screen was
+   changed and not looked at.
 4. **Filter by Rule 0.** Report how many findings each reviewer produced and
    how many survived. That ratio is worth watching over time.
 5. **Verify what survives.** A finding is a claim; check it against the code

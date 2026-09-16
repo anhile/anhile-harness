@@ -34,5 +34,10 @@
   },
   "intake": {
     "notion": null
+  },
+  "ui": {
+    "paths": [
+      "templates/web/"
+    ]
   }
 }

@@ -162,5 +162,18 @@
     ],
     "passes": true,
     "spec": "specs/2026-09-design-base.md"
+  },
+  {
+    "id": 13,
+    "category": "harness",
+    "description": "The review brief says whether the UI changed and whether a walk is on this machine; review-pr dispatches design-review, an agent that holds a screen to apps/web/DESIGN.md on the walk's screenshots and reports NO WALK when there is none; a --web project points the brief at apps/web/src",
+    "steps": [
+      "node scripts/pr-review-brief.mjs on a branch that changed nothing under ui.paths; the UI line says unchanged; on one that did, it names the prefix and the newest .generated/ui/<ts>/ or says there is none",
+      "read .claude/agents/design-review.md; no walk, no review; a finding names a screenshot, a file and line, a rule, a consequence",
+      "read .claude/skills/review-pr/SKILL.md; one of five reviewers, dispatched when the brief says the UI changed",
+      "generate a --web project; harness.config.json has ui.paths apps/web/src/; without --web it is empty; a malformed ui.paths is refused"
+    ],
+    "passes": true,
+    "spec": "specs/2026-09-design-review.md"
   }
 ]
