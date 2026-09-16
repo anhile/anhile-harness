@@ -818,3 +818,25 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   tree recorded up to `029366a`. The repository case that asks it names that
   commit and asserts the inverse there; from this commit on it asks the
   forward property again.
+
+## 2026-09-16 — 0.2.0: the fast lane, and the journal as a pointer
+
+- **Feature**: none closed; a release
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6 on the release tree
+- **Evidence**: `verify-log/20260916T131941Z` — the run this commit carries
+- **Contract changes**: none
+- **Notes**:
+
+  Three things since 0.1.3, all from one day: the journal's Evidence as a
+  pointer into the record (#9), spike branches that are asked nothing and
+  cannot reach main (#10), and a feature that closes in one commit (#11).
+  A minor by the CHANGELOG's own rule, since what the generated gate refuses
+  changed. The CHANGELOG carries the upgrade path for a project on 0.1.x —
+  a list of files to copy, because there is no upgrade command yet, and
+  that is the next debt worth paying.
+
+  What this session measured before starting: about eight gate runs and
+  three commits per feature, with the gate at twenty seconds. #11 closed in
+  one commit with three runs, one of them for the contract's wording. The
+  metric that says whether the lane is fast is the piece not built yet.
