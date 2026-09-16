@@ -92,12 +92,14 @@ the scope that matched the name belongs to somebody else on npm.
 What is in it?
   1  a database, with migrations
   2  an HTTP API on NestJS, deployed as one serverless function
-  3  a browser UI on React, built by Vite
+  3  a browser UI on React, built by Vite, with a design base: tokens, a catalog of primitives, a brief
 ```
 
 Take the API and you get `apps/api`, `api/index.ts` and a `vercel.json` that
 routes every path through one function; take the page and you get `apps/web`
-with a component and a test. Neither is a placeholder: the API ships with four
+with tokens in `index.css`, a catalog of primitives under `components/ui`, a
+brief in `DESIGN.md` that step 01 holds a page to, and a first page composed
+from them. Neither is a placeholder: the API ships with four
 tests around the serverless handler, and each of the three files that carries a
 scar from this harness's own production failures says which one, in a comment
 beside the line that exists because of it. The sources are real files under

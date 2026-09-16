@@ -840,3 +840,44 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   three commits per feature, with the gate at twenty seconds. #11 closed in
   one commit with three runs, one of them for the contract's wording. The
   metric that says whether the lane is fast is the piece not built yet.
+
+## 2026-09-16 — closed #12: a web project starts from a design base
+
+- **Feature**: closed #12 (`specs/2026-09-design-base.md`)
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6, 643 tests; spec-auditor READY after one NOT READY; a `--web` project generated from this tree passed its own gate 6/6 by hand (10 unit cases, the five new files at 100 % coverage) before the commit, and CI's generate job runs the same after it
+- **Evidence**: `verify-log/20260916T134844Z` — the run this commit carries;
+  `audit-log/20260916T135220.687Z` — the READY verdict of that tree
+- **Contract changes**: none
+- **Notes**:
+
+  The first of the design items the person asked for after 0.2.0. The web
+  template was Vite and React and nothing else, and every screen a session
+  wrote after it started from zero, which is where the generated look comes
+  from. Now it starts from tokens under `@theme`, a catalog of four
+  primitives under `components/ui` with a test each, and a brief in
+  `apps/web/DESIGN.md` that says what each token is for, what is refused
+  on sight, and how a primitive is added. The brief is held by a rule, not
+  by prose: under `apps/web/src` and outside the catalog, step 01 refuses
+  an inline style, an arbitrary class value and a Radix import. The rule is
+  one object, written into the project's `eslint.config.mjs` and fired at
+  by `catalog-lint.spec.ts` with this repository's eslint.
+
+  json-render, which the person had named, is a runtime for generative UI
+  in a product: an LLM emits JSON against a catalog of the app's own
+  components. Not this problem, but the catalog idea is what this entry
+  keeps, enforced by lint at the gate instead of at runtime.
+
+  The generated project's own run, by hand before this commit, is not on
+  this repository's record and cannot be named above — the journal check
+  refused it there, which is the check working: its folder is
+  `scratchpad/webprobe2/probe/.generated/runs/20260916T133901Z` on this
+  machine, RESULT: PASS (6/6 steps), and CI's generate job is where the same
+  run is recorded for a reader.
+
+  The auditor's NOT READY was four unasserted clauses — the message naming
+  DESIGN.md, the negative half of AC1, whether every package the template
+  imports is in the manifest, what an older project copies — and each is a
+  case or a paragraph now. The template-imports case found my own mistake
+  in the contract: the manifest keeps the list under
+  `dependencies.apps.web`, not `product.web`.

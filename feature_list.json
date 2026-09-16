@@ -149,5 +149,18 @@
     ],
     "passes": true,
     "spec": "specs/2026-09-one-commit-closure.md"
+  },
+  {
+    "id": 12,
+    "category": "harness",
+    "description": "A generated web project starts from a design base: tokens in index.css, a catalog of primitives under components/ui, a brief in apps/web/DESIGN.md, and a lint rule that refuses inline styles, arbitrary class values and Radix imports outside the catalog",
+    "steps": [
+      "node scripts/harness-init.mjs --yes --web into a folder; apps/web/DESIGN.md, src/index.css with @theme, src/components/ui/{button,card,input,label}.tsx and ui.spec.tsx are there, Home.tsx composes from the card",
+      "read the project's eslint.config.mjs; the catalog rule is there for --web and absent without it; AGENTS.md names the brief",
+      "lint a page with style={{}}, w-[13px], bg-[#123456] or an @radix-ui import under apps/web/src; each is refused with a message naming DESIGN.md; the same inside components/ui is allowed",
+      "pnpm install and run the generated project's own gate; it is green, the primitives counted by coverage through ui.spec.tsx"
+    ],
+    "passes": true,
+    "spec": "specs/2026-09-design-base.md"
   }
 ]

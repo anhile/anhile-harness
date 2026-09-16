@@ -1,0 +1,9 @@
+{
+  "spec": "specs/2026-09-design-base.md",
+  "verdict": "READY",
+  "security": "not run: surface unchanged",
+  "at": "2026-09-16T13:52:20.687Z",
+  "treeHash": "sha256:8ad491bab5b58eb3bec5a7658a9c1a827837ca251194f6bbe9660c66f86ae1d2",
+  "verifyEvidence": ".generated/runs/20260916T134844Z",
+  "commit": "b4c66864cd1ee30f58c02a1fa3be9aa8de32f9d3"
+}

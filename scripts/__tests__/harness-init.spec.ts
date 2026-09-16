@@ -68,6 +68,36 @@ describe('the journal a project starts with', () => {
   });
 });
 
+describe('the design base a web project starts with', () => {
+  it('writes the catalog rule into eslint.config.mjs, for --web only', () => {
+    const withWeb = read(scaffold(['--web']), 'eslint.config.mjs');
+    expect(withWeb).toContain('apps/web/src/components/ui/**');
+    expect(withWeb).toContain('no-restricted-syntax');
+    expect(withWeb).toContain("JSXAttribute[name.name='style']");
+    expect(withWeb).toContain('@radix-ui/*');
+    const without = read(scaffold(), 'eslint.config.mjs');
+    expect(without).not.toContain('no-restricted-syntax');
+  });
+
+  it('names the brief and the catalog in AGENTS.md, and ships DESIGN.md, the tokens and the primitives', () => {
+    const dir = scaffold(['--web']);
+    const agents = read(dir, 'AGENTS.md');
+    expect(agents).toContain('| step 01, the catalog |');
+    expect(agents).toContain('`apps/web/DESIGN.md`');
+    expect(read(dir, 'apps/web/DESIGN.md')).toContain('## The catalog');
+    expect(read(dir, 'apps/web/src/index.css')).toContain('@theme');
+    for (const n of ['button', 'card', 'input', 'label']) expect(read(dir, `apps/web/src/components/ui/${n}.tsx`)).toContain('export function');
+    expect(read(dir, 'apps/web/src/lib/cn.ts')).toContain('export function cn');
+    expect(read(dir, 'apps/web/src/components/ui/ui.spec.tsx')).toContain("describe('Button'");
+    expect(read(dir, 'apps/web/src/Home.tsx')).toContain("from './components/ui/card'");
+    // And none of it without --web: no apps/web at all, and no row for it.
+    const without = scaffold();
+    expect(existsSync(path.join(without, 'apps', 'web'))).toBe(false);
+    expect(read(without, 'AGENTS.md')).not.toContain('| step 01, the catalog |');
+    expect(read(without, 'AGENTS.md')).not.toContain('DESIGN.md');
+  });
+});
+
 describe('the rules a project starts with', () => {
   it('names the spike rule in AGENTS.md, and starts the project\'s own invariants at I17', () => {
     const agents = read(scaffold(), 'AGENTS.md');

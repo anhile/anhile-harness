@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-16T13:42:47.627Z",
+  "result": "pass",
+  "tree": "sha256:655324524754dc8adcf7bab0cde568e1ac715a688293fd0e2cdddd95dff19d9b",
+  "head": "b4c66864cd1ee30f58c02a1fa3be9aa8de32f9d3",
+  "branch": "design/base",
+  "node": "v24.19.0",
+  "evidence": ".generated/runs/20260916T134216Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 29
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

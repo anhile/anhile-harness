@@ -41,6 +41,7 @@
       "scripts/__tests__/attestation.spec.ts",
       "scripts/__tests__/audit-log.spec.ts",
       "scripts/__tests__/audit-receipt.spec.ts",
+      "scripts/__tests__/catalog-lint.spec.ts",
       "scripts/__tests__/check-main.spec.ts",
       "scripts/__tests__/ci-workflow.spec.ts",
       "scripts/__tests__/commit-gate.spec.ts",
@@ -195,9 +196,16 @@
         "@types/react",
         "@types/react-dom",
         "@vitejs/plugin-react",
+        "@radix-ui/react-slot",
+        "@tailwindcss/vite",
+        "class-variance-authority",
+        "clsx",
         "jest-environment-jsdom",
+        "lucide-react",
         "react",
         "react-dom",
+        "tailwind-merge",
+        "tailwindcss",
         "vite"
       ]
     }
