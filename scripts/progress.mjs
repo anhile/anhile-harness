@@ -31,7 +31,7 @@
  * shape a session is asked for and the shape check refuses cannot disagree.
  */
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from './harness-config.mjs';
 import { fileURLToPath } from 'node:url';
@@ -205,6 +205,59 @@ export function newSince(text, baseText) {
   return parse(text).entries.filter((e) => !known.has(e.heading));
 }
 
+/**
+ * What the base had that the text no longer has as it was: an entry known at
+ * the base whose body changed, or which is gone and not in the archive.
+ * Since 2026-09-16 the journal is outside the tree hash, so this is what
+ * stands between a green run and a quietly reworded past. Rotation moves
+ * entries to docs/history/ unchanged, and a moved entry is found there.
+ * @param {string} text
+ * @param {string} baseText
+ * @param {Map<string, string>} archived the entries under docs/history/, body by heading
+ */
+export function keptSince(text, baseText, archived) {
+  const trim = (/** @type {string} */ s) => s.replace(/\s+$/u, '');
+  const now = new Map(parse(text).entries.map((e) => [e.heading, trim(e.body)]));
+  /** @type {string[]} */
+  const problems = [];
+  for (const entry of parse(baseText).entries) {
+    const body = now.get(entry.heading);
+    const label = `entry (${entry.heading.slice(3, 60)})`;
+    if (body === undefined) {
+      const moved = archived.get(entry.heading);
+      if (moved === undefined) problems.push(`${label} is gone: the journal is append-only, and rotate moves an entry to ${HISTORY_DIR}/, never removes it`);
+      else if (moved !== trim(entry.body)) problems.push(`${label} was moved to ${HISTORY_DIR}/ and edited there: rotate moves an entry as it was`);
+    } else if (body !== trim(entry.body)) {
+      problems.push(`${label} was edited after the base: the journal is append-only, and a correction is a new entry`);
+    }
+  }
+  return problems;
+}
+
+/**
+ * The entries under docs/history/, body by heading, in the working tree or
+ * at a commit.
+ * @param {string | null} [at]
+ * @returns {Map<string, string>}
+ */
+export function archivedEntries(at = null) {
+  /** @type {string[]} */
+  const texts = [];
+  try {
+    if (at) {
+      const names = execFileSync('git', ['ls-tree', '-r', '--name-only', at, `${HISTORY_DIR}/`], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\n').filter(Boolean);
+      for (const name of names) texts.push(execFileSync('git', ['show', `${at}:${name}`], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
+    } else if (existsSync(path.join(root, HISTORY_DIR))) {
+      for (const name of readdirSync(path.join(root, HISTORY_DIR))) {
+        if (name.endsWith('.md')) texts.push(readFileSync(path.join(root, HISTORY_DIR, name), 'utf8'));
+      }
+    }
+  } catch {
+    // No archive at that commit: nothing is archived there.
+  }
+  return new Map(texts.flatMap((t) => parse(t).entries.map((e) => [e.heading, e.body.replace(/\s+$/u, '')])));
+}
+
 /** @param {string} ref */
 function journalAt(ref) {
   try {
@@ -219,15 +272,16 @@ function journalAt(ref) {
  * null means no baseline — a first commit, a repository without one — and
  * then only the shape is asked.
  * @param {string} text
- * @param {{ baseText?: string | null, record?: ReturnType<typeof recordAt> }} [against]
+ * @param {{ baseText?: string | null, record?: ReturnType<typeof recordAt>, archived?: Map<string, string> }} [against]
  */
-export function check(text, { baseText = null, record } = {}) {
+export function check(text, { baseText = null, record, archived = new Map() } = {}) {
   const { entries } = parse(text);
   /** @type {string[]} */
   const problems = [];
   entries.forEach((entry, i) => {
     for (const p of problemsOf(entry, entries[i - 1])) problems.push(`entry ${i + 1} (${entry.heading.slice(3, 60)}): ${p}`);
   });
+  if (baseText !== null) problems.push(...keptSince(text, baseText, archived));
   const fresh = baseText === null ? [] : newSince(text, baseText);
   if (fresh.length > 0) {
     const rec = record ?? recordAt();
@@ -313,10 +367,10 @@ function main() {
     const base = flag(args, 'base', 'HEAD') ?? 'HEAD';
     const text = at ? (journalAt(at) ?? '') : readFileSync(path.join(root, FILE), 'utf8');
     const baseText = journalAt(base);
-    const { entries, fresh, problems } = check(text, { baseText, record: recordAt(at ?? undefined) });
+    const { entries, fresh, problems } = check(text, { baseText, record: recordAt(at ?? undefined), archived: archivedEntries(at) });
     if (problems.length === 0) {
       console.log(`progress: ${entries} entries, every one in the template's shape` +
-        (baseText === null ? `; no baseline at ${base}, evidence not asked` : `; ${fresh} new since ${base}, evidence on record`));
+        (baseText === null ? `; no baseline at ${base}, evidence not asked` : `; ${fresh} new since ${base}, evidence on record, the rest as ${base} had them`));
       return;
     }
     console.error(`progress: ${problems.length} problem(s) in ${FILE}`);

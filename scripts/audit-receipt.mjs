@@ -85,8 +85,13 @@ export function closingEntries() {
   if (!before || !after) return [];
   /** @type {Closing[]} */
   const closing = [];
-  for (let i = 0; i < Math.min(before.length, after.length); i += 1) {
-    if (before[i]?.passes === false && after[i]?.passes === true) {
+  for (let i = 0; i < after.length; i += 1) {
+    // Flipped, or born passing: an entry the index appends with `passes`
+    // already true closes in the same commit that opens it (I15, since
+    // 2026-09-16), and is asked for its audit like any closure.
+    const flipped = i < before.length && before[i]?.passes === false && after[i]?.passes === true;
+    const born = i >= before.length && after[i]?.passes === true;
+    if (flipped || born) {
       closing.push({ id: after[i].id ?? i, spec: after[i].spec ?? null, description: after[i].description ?? '' });
     }
   }

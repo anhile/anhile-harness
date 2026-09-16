@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-16T12:59:05.323Z",
+  "result": "pass",
+  "tree": "sha256:ee1f5e2f27168c3a5e34d3bd0e7aa9c5f79b432cd0f5a0dc726a4401562053b7",
+  "head": "029366a3d8f4ad98461882bdd35c802bf3c80d42",
+  "branch": "fast-lane/one-commit",
+  "node": "v24.19.0",
+  "evidence": ".generated/runs/20260916T125539Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 6
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 4
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 190
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 5
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

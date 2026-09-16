@@ -264,7 +264,8 @@ direction; read it when it exists.
 Two bite most often:
 
 - `feature_list.json` is append-only, enforced by `verify.sh` step 06. A new
-  entry may be appended with `passes: false`, an `id` equal to its position
+  entry may be appended with `passes: false` — or already `true` when the same
+  commit closes it under a READY audit — an `id` equal to its position
   and a `spec` naming the contract this run writes; an existing entry may only
   have its `passes` flipped false -> true. A task that implies editing or removing an
   existing entry is an open question for the human, not something intake

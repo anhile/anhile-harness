@@ -119,6 +119,57 @@ describe('check', () => {
   });
 });
 
+describe('the journal is append-only against the base', () => {
+  // Since 2026-09-16 PROGRESS.md is outside the tree hash, so a green run no
+  // longer says the past was left alone; this does. Rotation is the one move
+  // allowed, and a moved entry is found under docs/history/ as it was.
+  it('refuses an entry known at HEAD whose text changed', () => {
+    committedJournal();
+    write(entry('2026-09-01', 'before the rule', { Evidence: 'the run recorded for this tree, reworded' }));
+    const { status, out } = run('check');
+    expect(status).toBe(1);
+    expect(out).toContain('entry (2026-09-01 — before the rule) was edited after the base: the journal is append-only');
+  });
+
+  it('refuses an entry known at HEAD that is gone', () => {
+    committedJournal();
+    write(entry('2026-09-16', 'something else entirely', { Evidence: 'the run recorded for this tree' }));
+    const { status, out } = run('check');
+    expect(status).toBe(1);
+    expect(out).toContain('entry (2026-09-01 — before the rule) is gone: the journal is append-only');
+  });
+
+  it('accepts the entries rotate moved to docs/history/, unchanged', () => {
+    const many = Array.from({ length: 14 }, (_, i) => entry(`2026-08-${String(i + 1).padStart(2, '0')}`, `day ${i + 1}`, { Evidence: 'the run recorded for this tree' }));
+    write(...many);
+    git('init', '-q', '-b', 'main');
+    git('config', 'user.email', 't@t');
+    git('config', 'user.name', 't');
+    git('add', '-A');
+    git('commit', '-qm', 'fourteen');
+    expect(run('rotate').status).toBe(0);
+    const { status, out } = run('check');
+    expect(status).toBe(0);
+    expect(out).toContain('0 new since HEAD, evidence on record, the rest as HEAD had them');
+  });
+
+  it('refuses an entry rotate moved to docs/history/ and then edited there', () => {
+    const many = Array.from({ length: 14 }, (_, i) => entry(`2026-08-${String(i + 1).padStart(2, '0')}`, `day ${i + 1}`, { Evidence: 'the run recorded for this tree' }));
+    write(...many);
+    git('init', '-q', '-b', 'main');
+    git('config', 'user.email', 't@t');
+    git('config', 'user.name', 't');
+    git('add', '-A');
+    git('commit', '-qm', 'fourteen');
+    expect(run('rotate').status).toBe(0);
+    const archive = path.join(dir, 'docs', 'history', 'PROGRESS-2026-08.md');
+    writeFileSync(archive, readFileSync(archive, 'utf8').replace('the run recorded for this tree', 'a run, somewhere'));
+    const { status, out } = run('check');
+    expect(status).toBe(1);
+    expect(out).toContain('entry (2026-08-01 — day 1) was moved to docs/history/ and edited there');
+  });
+});
+
 describe('the Evidence of a new entry points into the record', () => {
   // Until 2026-09-16 the field was prose — "the run recorded for this tree" —
   // which reads like a pointer and points at nothing. A reader, and CI, can
@@ -265,7 +316,7 @@ describe('this repository', () => {
     expect(out).toContain("every one in the template's shape");
     // And the pointers of whatever this working tree added since HEAD were
     // followed: this is step 03 asking the entry a session is about to commit.
-    expect(out).toMatch(/\d+ new since HEAD, evidence on record/u);
+    expect(out).toMatch(/\d+ new since HEAD, evidence on record, the rest as HEAD had them/u);
   });
 
   it('the stop hook prints the same template', () => {

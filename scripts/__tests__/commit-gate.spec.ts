@@ -11,7 +11,7 @@
  * such switch, on purpose.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -24,6 +24,9 @@ const SCRIPTS = [
   'check-protected-files.mjs',
   'verify-log.mjs',
   'spike.mjs',
+  // progress.mjs since 2026-09-16: the gate reads the journal before a commit.
+  'progress.mjs',
+  'harness-config.mjs',
 ];
 
 let repo: string;
@@ -56,6 +59,10 @@ function runGate(payload: unknown): Verdict {
 }
 
 const bash = (command: string) => ({ tool_name: 'Bash', tool_input: { command } });
+const RUN = '20260830T100000Z';
+const ENTRY = (title: string, feature: string, evidence: string) =>
+  `## 2026-09-16 — ${title}\n\n- **Feature**: ${feature}\n- **Result**: passing\n- **Verified by**: x\n- **Evidence**: ${evidence}\n- **Contract changes**: none\n- **Notes**:\n\n  n.\n`;
+const journal = (...entries: string[]) => writeFileSync(path.join(repo, 'PROGRESS.md'), `# Progress\n\n${ENTRY('before the rule', 'none closed', 'the run recorded for this tree')}\n${entries.join('\n')}`);
 
 function writeReceipt(status: 'pass' | 'fail', failed = ''): void {
   const before = node('verify-receipt.mjs', 'hash').trim();
@@ -85,6 +92,10 @@ beforeEach(() => {
     `${JSON.stringify({ at: '2026-08-30T10:00:00.000Z', result: 'pass', tree: 'sha256:aaa', steps: {} })}\n`,
   );
   writeFileSync(path.join(repo, 'source.ts'), 'export const answer = 42;\n');
+  // The journal the gate reads since 2026-09-16, with one entry from before
+  // the pointer rule, and the config progress.mjs loads.
+  copyFileSync(path.join(REPO, 'harness.config.json'), path.join(repo, 'harness.config.json'));
+  writeFileSync(path.join(repo, 'PROGRESS.md'), `# Progress\n\n${ENTRY('before the rule', 'none closed', 'the run recorded for this tree')}`);
   git('init', '-q');
   git('config', 'user.email', 'test@example.com');
   git('config', 'user.name', 'Test');
@@ -94,6 +105,48 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(repo, { recursive: true, force: true });
+});
+
+describe('the journal is outside the tree hash, and asked before the commit (I12)', () => {
+  // Since 2026-09-16. The entry naming a closure's audit has to share the
+  // closure's commit, and the audit is written after the run; so PROGRESS.md
+  // is outside the hash, and the gate runs progress.mjs check in exchange.
+  it('an edit to PROGRESS.md after the run does not invalidate the receipt', () => {
+    writeReceipt('pass');
+    const before = node('verify-receipt.mjs', 'hash').trim();
+    journal(ENTRY('the work', 'none closed', `verify-log/${RUN}`));
+    expect(node('verify-receipt.mjs', 'hash').trim()).toBe(before);
+    git('add', '-A');
+    expect(runGate(bash('git commit -m "journal"')).blocked).toBe(false);
+  });
+
+  it('refuses an entry new since HEAD whose Evidence points nowhere, naming the entry', () => {
+    writeReceipt('pass');
+    journal(ENTRY('the work', 'none closed', 'the log'));
+    git('add', '-A');
+    const verdict = runGate(bash('git commit -m "journal"'));
+    expect(verdict.blocked).toBe(true);
+    expect(verdict.reason).toContain('the journal is asked before the commit');
+    expect(verdict.reason).toContain('entry 2 (2026-09-16 — the work): Evidence names no run');
+    expect(verdict.reason).toContain('I12');
+  });
+
+  it('refuses a journal entry reworded after the run: what the hash no longer sees, the check does', () => {
+    writeReceipt('pass');
+    writeFileSync(path.join(repo, 'PROGRESS.md'), `# Progress\n\n${ENTRY('before the rule', 'none closed', 'the run recorded for this tree, but nicer')}`);
+    expect(node('verify-receipt.mjs', 'hash').trim()).toBe(readFileSync(path.join(repo, '.generated', 'receipt.json'), 'utf8').match(/"treeHash": "([^"]+)"/u)?.[1]);
+    git('add', '-A');
+    const verdict = runGate(bash('git commit -m "tidy the past"'));
+    expect(verdict.blocked).toBe(true);
+    expect(verdict.reason).toContain('was edited after the base: the journal is append-only');
+  });
+
+  it('asks nothing of a spike\'s journal (I16)', () => {
+    git('checkout', '-qb', 'spike/try-sqlite');
+    journal(ENTRY('trying', 'none closed', 'the log'));
+    git('add', '-A');
+    expect(runGate(bash('git commit -m "trying"')).blocked).toBe(false);
+  });
 });
 
 describe('a spike branch is asked for no receipt (I16)', () => {
@@ -577,6 +630,25 @@ describe('a closing commit needs the audit receipt', () => {
     expect(runGate(bash('git commit -m "close"')).reason).toContain('audit-log/');
     git('add', '-A');
     expect(runGate(bash('git commit -m "close"')).blocked).toBe(false);
+  });
+
+  it('asks the audit of an entry born passing, as of a flip: one commit opens and closes it', () => {
+    commitOpenEntry();
+    const born = { id: 1, category: 'x', description: 'born closed', steps: ['s'], passes: true, spec: SPEC };
+    writeFileSync(path.join(repo, 'feature_list.json'), `${JSON.stringify([...JSON.parse(list(true)), born], null, 2)}\n`);
+    git('add', '-A');
+    writeReceipt('pass');
+    const refused = runGate(bash('git commit -m "born"'));
+    expect(refused.blocked).toBe(true);
+    expect(refused.reason).toContain('a closing commit needs the audit');
+    expect(refused.reason).toContain('#1 — born closed');
+    node('audit-receipt.mjs', 'write', '--spec', SPEC, '--verdict', 'READY');
+    // And the journal entry naming that audit, in the same commit: the
+    // whole of a small feature, opened, closed, audited and journaled at once.
+    const auditId = readdirSync(path.join(repo, 'audit-log')).map((n) => n.replace(/\.json$/u, '')).sort().pop() ?? '';
+    journal(ENTRY('closed #1', 'closed #1', `verify-log/${RUN}; audit-log/${auditId}`));
+    git('add', '-A');
+    expect(runGate(bash('git commit -m "born, audited, journaled"')).blocked).toBe(false);
   });
 
   it('refuses a NOT_READY audit, and one of another contract', () => {

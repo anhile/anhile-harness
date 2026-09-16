@@ -47,7 +47,20 @@ export const RECEIPT_FILE = '.generated/receipt.json';
 // audit-log/ for the same reason: an audit is written after the run it
 // judges, about that run's tree, and hashing it would move the tree the
 // audit names. The commit gate runs its guard too.
-export const UNHASHED = ['verify-log/', 'audit-log/'];
+export const UNHASHED = ['verify-log/', 'audit-log/', 'PROGRESS.md'];
+
+/**
+ * Is a path outside the tree hash? A prefix ending in `/` names a directory,
+ * anything else one exact file. PROGRESS.md since 2026-09-16: the entry that
+ * names a closure's audit has to share the closure's commit, and the audit
+ * is written after the run, so the journal cannot be under the hash the
+ * audit and the receipt agree on. What the hash no longer covers, the
+ * journal's own check covers, in the commit gate and in CI's walk (I12).
+ * @param {string} rel
+ */
+export function unhashed(rel) {
+  return UNHASHED.some((prefix) => (prefix.endsWith('/') ? rel.startsWith(prefix) : rel === prefix));
+}
 
 function listPaths() {
   const out = execFileSync(
@@ -56,7 +69,7 @@ function listPaths() {
     { cwd: root, maxBuffer: 256 * 1024 * 1024 },
   );
   return [...new Set(out.toString('utf8').split('\0').filter(Boolean))]
-    .filter((rel) => !UNHASHED.some((prefix) => rel.startsWith(prefix)))
+    .filter((rel) => !unhashed(rel))
     .sort();
 }
 

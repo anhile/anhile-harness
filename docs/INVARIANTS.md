@@ -108,6 +108,20 @@ only route.
   schema. Settings are read at session start, so the session that installs a
   hook cannot observe it working.
 
+**What the hash covers.** Every tracked path, and every untracked path that
+is not ignored, except `verify-log/`, `audit-log/` and `PROGRESS.md`. The
+two records because each run and each audit writes one, and a hash over
+them would invalidate itself. The journal since 2026-09-16, because the
+entry that names a closure's audit is written after the audit, which is
+written after the run: under the hash, that entry could never be in the tree
+the audit described, and a closed feature cost three commits. What the hash
+leaves out has its own guard in the gate: the append-only checks for the
+records, `progress.mjs check` for the journal (I12) — which asks not only
+that a new entry point into the record, but that every entry the base had
+is still there as it was, rotation to `docs/history/` excepted. The journal
+is append-only the way the records are; the hash used to say so, the check
+says so now.
+
 ## I12 — What verification concluded is recorded, durably and append-only
 
 Every `./verify.sh` run writes one file under `verify-log/`, which is
@@ -151,11 +165,14 @@ closes that window by running this guard itself before allowing a commit.
 - `scripts/check-verify.mjs`, in CI's witness job: a passing run and a
   deliberately broken run each record exactly one file, and the broken one is
   recorded as `fail` naming the step that failed.
-- `scripts/progress.mjs check`, in `session-stop.mjs`, step 03 and CI's
-  walk: every journal entry new since the baseline names a run under
+- `scripts/progress.mjs check`, in `session-stop.mjs`, step 03, the commit
+  gate and CI's walk: every journal entry new since the baseline names a run under
   `verify-log/` by id, and the READY audit under `audit-log/` when it closed
   a feature. The record is what a reader follows; since 2026-09-16 the
   journal's Evidence is a pointer into it rather than a sentence about it.
+  `PROGRESS.md` is outside the tree hash since the same day, so that the
+  entry naming a closure's audit can share the closure's commit; the gate
+  reads the journal in exchange, before every commit that is not a spike's.
 
 ## I13 — A commit's claim to be verified is checkable off the author's machine
 
@@ -170,9 +187,9 @@ passing run about exactly that tree.
   a detached worktree of exactly that commit. `git push --no-verify` is the
   overrule, and it is visible.
 - `scripts/check-feature-list.mjs --at <commit>`, as CI walks each pushed
-  commit: a commit that flips an entry to passing must itself carry, under
-  `audit-log/`, an audit of its own tree under that entry's contract saying
-  READY. The tree hash is recomputed from the commit (`audit-log.mjs tree`),
+  commit: a commit that flips an entry to passing, or appends one already
+  passing, must itself carry, under `audit-log/`, an audit of its own tree
+  under that entry's contract saying READY. The tree hash is recomputed from the commit (`audit-log.mjs tree`),
   the way `attest` recomputes it from the checkout.
 - `scripts/__tests__/attestation.spec.ts` and `audit-log.spec.ts` fire at
   the scripts.
@@ -193,7 +210,9 @@ reported rather than silently absent from the summary.
 ## I15 — `feature_list.json` is append-only, and a guarantee is withdrawn in the open
 
 The list of features and whether each passes is the criteria a project is
-measured against. Four edits are legal: append an entry with `passes: false`,
+measured against. Five edits are legal: append an entry with `passes: false` — or, since
+2026-09-16, already `true` when the commit carries the READY audit of its own
+tree under the entry's `spec`, which makes it that commit's one closure —
 its `id` equal to its position and its `spec` naming the contract that
 introduces it; flip one entry from `false` to `true`; mark one retracted; or
 record a `spec` on an entry whose `spec` was `null`, once. Nothing else — not
@@ -219,7 +238,7 @@ forgets what it used to promise cannot be audited against what it promised.
 
 **How it is checked**
 - `scripts/check-feature-list.mjs`, `verify.sh` step 06: compares the file
-  against its parent commit and rejects every edit outside the four legal
+  against its parent commit and rejects every edit outside the five legal
   shapes, more than one closure per commit, retractions citing two contracts,
   retractions sharing a commit with a closure, edited or undone retractions, a
   missing or mismatched `id`, a new entry without a contract or naming one that
@@ -229,7 +248,7 @@ forgets what it used to promise cannot be audited against what it promised.
 - `scripts/__tests__/feature-list.spec.ts`: adversarial tests for every shape
   above.
 - `scripts/check-commit-gate.mjs`, before any commit that flips an entry to
-  `true`: `.generated/audit.json` must name this tree, this entry's `spec` and
+  `true` or appends one already passing: `.generated/audit.json` must name this tree, this entry's `spec` and
   the verdict READY, written by `/verify-task` after the spec-auditor read the
   diff, the contract and the evidence.
 - `scripts/audit-log.mjs`: every verdict the receipt records is also appended

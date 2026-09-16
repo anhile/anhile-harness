@@ -134,5 +134,20 @@
     ],
     "passes": true,
     "spec": "specs/2026-09-spike-branches.md"
+  },
+  {
+    "id": 11,
+    "category": "harness",
+    "description": "A feature closes in one commit: an entry may be appended already passing as that commit's one closure, asked for its READY audit by the gate and by CI's walk; PROGRESS.md is outside the tree hash, and the gate reads the journal itself before a commit",
+    "steps": [
+      "append an entry with passes: true and run node scripts/check-feature-list.mjs; it passes, noting the entry as the commit's closure; append two, or one beside a flip; it refuses",
+      "stage that entry with a green receipt and no audit; the commit gate refuses naming the entry; write the READY audit; it lets the commit through",
+      "commit it and run check-feature-list.mjs --at HEAD --base HEAD^; without the audit in the commit it refuses, with it it passes",
+      "run ./verify.sh, then edit PROGRESS.md; node scripts/verify-receipt.mjs hash is unchanged and the gate does not ask for a new run",
+      "write an entry whose Evidence says \"the log\" and stage a commit; the gate refuses citing I12 and the entry; name the run; it passes",
+      "do all of it in one commit — contract, entry born passing, change, run, audit, journal entry naming both — and push; CI's walk accepts the commit"
+    ],
+    "passes": true,
+    "spec": "specs/2026-09-one-commit-closure.md"
   }
 ]

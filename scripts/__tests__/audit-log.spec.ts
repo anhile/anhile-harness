@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -207,7 +207,7 @@ describe('the tree of a commit hashes as the receipt hashed it', () => {
 });
 
 describe('what the tree of a commit leaves out', () => {
-  it('is the two records and nothing else, pinned on tree itself', () => {
+  it('is the two records and the journal, and nothing else, pinned on tree itself', () => {
     // The case above compares `tree` with the receipt's hasher, and a path
     // both skip would cancel out. This asks `tree` alone: a commit that adds
     // only records hashes as its parent did; a commit that adds anything
@@ -218,6 +218,13 @@ describe('what the tree of a commit leaves out', () => {
     record('20260914T080000.000Z.json', `${JSON.stringify(audit())}\n`);
     git('add', '-A');
     git('commit', '-qm', 'records only');
+    expect(node('audit-log.mjs', 'tree', 'HEAD').trim()).toBe(before);
+    // PROGRESS.md since 2026-09-16: the entry naming a closure's audit shares
+    // the closure's commit, so the journal is outside the hash the audit and
+    // the receipt agree on. The gate reads the journal itself instead.
+    writeFileSync(path.join(repo, 'PROGRESS.md'), '# Progress\n\n## an entry written after the run\n');
+    git('add', '-A');
+    git('commit', '-qm', 'the journal only');
     expect(node('audit-log.mjs', 'tree', 'HEAD').trim()).toBe(before);
     writeFileSync(path.join(repo, 'verify-log-notes.txt'), 'not a record\n');
     git('add', '-A');
@@ -230,10 +237,23 @@ describe('what the tree of a commit leaves out', () => {
     // was committed through the gate, so a run under verify-log/ names its
     // tree, and `tree HEAD` has to find it.
     const tree = execFileSync('node', [path.join(REPO, 'scripts', 'audit-log.mjs'), 'tree', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim();
+    expect(tree).toMatch(/^sha256:[0-9a-f]{64}$/u);
+    // The journal left the tree hash on 2026-09-16; every run recorded up to
+    // the merge of pull request #24 (commit 029366a) hashed it, so `tree HEAD`
+    // cannot reproduce those. The property holds for every HEAD committed
+    // since — the same shape as PRE_RULE_COMMITS in check-feature-list.mjs: a
+    // rule that names the commits it postdates rather than quietly excusing
+    // them. At such a HEAD the case asserts the opposite, so the exemption is
+    // shown to be needed and not decorative.
+    const LAST_HEAD_WITH_THE_JOURNAL_HASHED = '029366a3d8f4ad98461882bdd35c802bf3c80d42';
+    const predates = spawnSync('git', ['merge-base', '--is-ancestor', 'HEAD', LAST_HEAD_WITH_THE_JOURNAL_HASHED], { cwd: REPO }).status === 0;
     const recorded = readdirSync(path.join(REPO, 'verify-log'))
       .filter((n) => n.endsWith('.json'))
       .map((n) => JSON.parse(readFileSync(path.join(REPO, 'verify-log', n), 'utf8')).tree as string);
-    expect(tree).toMatch(/^sha256:[0-9a-f]{64}$/u);
+    if (predates) {
+      expect(recorded).not.toContain(tree);
+      return;
+    }
     expect(recorded).toContain(tree);
   });
 });
@@ -264,6 +284,26 @@ describe('a committed closure carries its audit', () => {
     expect(status).toBe(0);
     expect(out).toContain('passes flipped false -> true');
     expect(run('audit-log.mjs', 'closures', '--at', 'HEAD', '--base', 'HEAD^').out).toContain('#0 closed at');
+  });
+
+  it('asks the audit of an entry born passing, as of a flip: the same commit opens and closes it', () => {
+    const born = { id: 1, category: 'x', description: 'born closed', steps: ['s'], passes: true, spec: SPEC };
+    const withBorn = () => `${JSON.stringify([...JSON.parse(list(false)), born], null, 2)}\n`;
+    writeFileSync(path.join(repo, 'feature_list.json'), withBorn());
+    git('add', '-A');
+    git('commit', '-qm', 'born, no audit');
+    const refused = walk();
+    expect(refused.status).toBe(1);
+    expect(refused.out).toContain("appended already passing (the commit's closure): 1");
+    expect(refused.out).toContain('entry #1 is closed at');
+    expect(refused.out).toContain('carries no audit of its own tree under audit-log/');
+    git('reset', '-q', '--hard', 'HEAD^');
+    writeFileSync(path.join(repo, 'feature_list.json'), withBorn());
+    node('audit-receipt.mjs', 'write', '--spec', SPEC, '--verdict', 'READY');
+    git('add', '-A');
+    git('commit', '-qm', 'born, audited');
+    expect(walk().status).toBe(0);
+    expect(run('audit-log.mjs', 'closures', '--at', 'HEAD', '--base', 'HEAD^').out).toContain('#1 closed at');
   });
 
   it('refuses a NOT_READY audit, and says what the audit said', () => {

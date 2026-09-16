@@ -140,8 +140,8 @@ Around the steps, the mechanisms:
 
 | | |
 |---|---|
-| a receipt | the hash of the tree the gate passed, checked at commit time; an edit after the run invalidates it |
-| `feature_list.json` | the guarantees, append-only, one closed per commit, each closure audited |
+| a receipt | the hash of the tree the gate passed, checked at commit time; an edit after the run invalidates it, the journal excepted, which the gate reads on its own |
+| `feature_list.json` | the guarantees, append-only, one closed per commit — opened and closed in the same commit when the work is small — each closure audited |
 | `verify-log/` | every run, one file each, red runs included, never edited or removed, recomputable from a clean clone |
 | `audit-log/` | every audit verdict, one file each, NOT READY included; a commit that closes an entry carries the READY audit of its own tree, and CI checks that it does |
 | `spike/*` branches | exploration: no receipt, no journal, no contract, no audit, and no pull request; what survives is rebuilt on a branch of its own |

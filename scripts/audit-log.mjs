@@ -35,7 +35,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFi
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { hashFiles } from './verify-receipt.mjs';
+import { hashFiles, unhashed } from './verify-receipt.mjs';
 
 /**
  * An audit as the receipt records it and this log keeps it.
@@ -227,7 +227,7 @@ export function treeHashAt(ref) {
     const [meta, rel] = line.split('\t');
     if (meta === undefined || rel === undefined) continue;
     const [mode, , blob] = meta.split(' ');
-    if (rel.startsWith(`${AUDIT_DIR}/`) || rel.startsWith('verify-log/')) continue;
+    if (unhashed(rel)) continue;
     const content = execFileSync('git', ['cat-file', 'blob', blob ?? ''], { cwd: root, maxBuffer: 256 * 1024 * 1024 });
     const sha = createHash('sha256').update(content).digest('hex').slice(0, 16);
     if (mode === '120000') files[rel] = `link:${sha}`;
@@ -238,7 +238,8 @@ export function treeHashAt(ref) {
 }
 
 /**
- * Entries whose `passes` is false at `base` and true at `at`, by position.
+ * Entries whose `passes` is false at `base` and true at `at`, by position,
+ * and entries that exist only at `at` with `passes` already true.
  * @param {string} base
  * @param {string} at
  * @returns {{ id: number, spec: string | null, description: string }[]}
@@ -257,8 +258,13 @@ export function closedBetween(base, at) {
   const after = listAt(at);
   /** @type {{ id: number, spec: string | null, description: string }[]} */
   const closed = [];
-  for (let i = 0; i < Math.min(before.length, after.length); i += 1) {
-    if (before[i]?.passes === false && after[i]?.passes === true) {
+  for (let i = 0; i < after.length; i += 1) {
+    // Flipped between the two, or born passing at `at`: since 2026-09-16 an
+    // entry may be appended already closed, and it is then the commit's one
+    // closure, asked for its audit like a flip (I15).
+    const flipped = i < before.length && before[i]?.passes === false && after[i]?.passes === true;
+    const born = i >= before.length && after[i]?.passes === true;
+    if (flipped || born) {
       closed.push({ id: after[i].id ?? i, spec: after[i].spec ?? null, description: after[i].description ?? '' });
     }
   }

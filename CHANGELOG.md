@@ -13,6 +13,11 @@ minor, a fix to a copied script is a patch.
 
 ### Added
 
+- A feature closes in one commit: an entry may be appended already passing
+  as that commit's one closure, asked for its READY audit by the gate and by
+  CI's walk like a flip. `PROGRESS.md` is outside the tree hash so the entry
+  naming the audit can share the closing commit; the gate runs
+  `progress.mjs check` before every commit in exchange.
 - Spike branches (I16): a branch under `spike/` is asked for no receipt at
   commit time and no journal entry at session end, and is refused as a pull
   request by `check-pr-ready.mjs` and by CI's attest job. `scripts/spike.mjs`

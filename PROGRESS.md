@@ -782,3 +782,39 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   for the gate — the second version for the guards, the third for a JSDoc I
   had displaced — and once for the workflow; the auditor compared each
   applied file with its scratch copy and found them identical.
+
+## 2026-09-16 — closed #11: a feature closes in one commit
+
+- **Feature**: closed #11 (`specs/2026-09-one-commit-closure.md`)
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6, 632 tests; spec-auditor READY on the same tree, after one NOT READY and a delta round
+- **Evidence**: `verify-log/20260916T125539Z` — the run this commit carries;
+  `audit-log/20260916T130059.419Z` — the READY verdict of that tree
+- **Contract changes**: none
+- **Notes**:
+
+  The first entry closed in one commit, and the one that made it possible:
+  the contract, the entry appended already passing, the change, the run, the
+  audit, and this entry, together. Two rules had forced three commits. A new
+  entry had to start `false`; now it may be born passing, as the commit's
+  one closure, asked for its audit by the gate and by CI's walk like a flip.
+  And the journal was under the tree hash, while the audit is written after
+  the run and the entry naming the audit after that; now `PROGRESS.md` is
+  outside the hash, and in exchange the gate runs `progress.mjs check`
+  before every commit that is not a spike's.
+
+  What the auditor caught, twice. First, that a journal outside the hash
+  could be reworded or trimmed after a green run with nothing to say so; so
+  `progress.mjs check` against a base now asks that every entry the base
+  had is still there as it was, rotation to `docs/history/` excepted. Then,
+  that the exception looked only at headings, so an entry moved and edited
+  in the archive slipped through; the archived text is compared too. Both
+  are cases now. Three protected files changed by patches under
+  `.generated/scratch/one-commit/`, applied by the person with `cp`; the
+  auditor compared each with its scratch copy and found them identical.
+
+  One thing the record will show as odd: the runs recorded before this
+  commit hashed the journal, so `audit-log.mjs tree` cannot reproduce any
+  tree recorded up to `029366a`. The repository case that asks it names that
+  commit and asserts the inverse there; from this commit on it asks the
+  forward property again.

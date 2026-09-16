@@ -1,0 +1,9 @@
+{
+  "spec": "specs/2026-09-one-commit-closure.md",
+  "verdict": "READY",
+  "security": "not run: surface unchanged",
+  "at": "2026-09-16T13:00:59.419Z",
+  "treeHash": "sha256:ee1f5e2f27168c3a5e34d3bd0e7aa9c5f79b432cd0f5a0dc726a4401562053b7",
+  "verifyEvidence": ".generated/runs/20260916T125539Z",
+  "commit": "029366a3d8f4ad98461882bdd35c802bf3c80d42"
+}

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -72,6 +72,7 @@ describe('the guard, on the shape that went red', () => {
   const RUN = '20260916T100000Z';
   const entry = (title: string, evidence: string) =>
     `## 2026-09-16 — ${title}\n\n- **Feature**: none closed\n- **Result**: passing\n- **Verified by**: x\n- **Evidence**: ${evidence}\n- **Contract changes**: none\n- **Notes**:\n\n  n.\n`;
+  const closing = (title: string, evidence: string) => entry(title, evidence).replace('none closed', 'closed #3');
 
   beforeAll(() => {
     repo = mkdtempSync(path.join(tmpdir(), 'attest-merge-'));
@@ -80,7 +81,7 @@ describe('the guard, on the shape that went red', () => {
     // The guard asks a committed closure for its audit, so the fixture needs
     // the receipt's writer and what it imports, and a closing commit here
     // does what /verify-task does: writes the audit, then commits it.
-    for (const f of ['check-feature-list.mjs', 'harness-config.mjs', 'audit-log.mjs', 'audit-receipt.mjs', 'verify-receipt.mjs', 'progress.mjs', 'verify-log.mjs']) {
+    for (const f of ['check-feature-list.mjs', 'harness-config.mjs', 'audit-log.mjs', 'audit-receipt.mjs', 'verify-receipt.mjs', 'progress.mjs', 'verify-log.mjs', 'check-migrations.mjs']) {
       copyFileSync(path.join(REPO, 'scripts', f), path.join(repo, 'scripts', f));
     }
     copyFileSync(path.join(REPO, 'harness.config.json'), path.join(repo, 'harness.config.json'));
@@ -123,11 +124,30 @@ describe('the guard, on the shape that went red', () => {
       git('add', '-A');
       git('commit', '-qm', `close #${id}`);
     }
-    writeFileSync(path.join(repo, 'PROGRESS.md'), `# Progress\n\n${entry('before the rule', 'the run recorded for this tree')}\n${entry('the work', `verify-log/${RUN}`)}\n${entry('pointing nowhere', 'the log')}`);
+    // One commit that opens, closes, audits and journals #3 — the shape a
+    // small feature takes since 2026-09-16 — walked like the others.
+    entries.push({ id: 3, category: 'x', description: 'born closed', steps: ['s'], passes: true, spec: 'specs/c.md' });
+    write(entries);
+    execFileSync('node', [path.join(repo, 'scripts', 'audit-receipt.mjs'), 'write', '--spec', 'specs/c.md', '--verdict', 'READY'], { cwd: repo, stdio: 'ignore' });
+    const auditId = readdirSync(path.join(repo, 'audit-log')).map((n) => n.replace(/\.json$/u, '')).sort().pop() ?? '';
+    writeFileSync(path.join(repo, 'PROGRESS.md'), `# Progress\n\n${entry('before the rule', 'the run recorded for this tree')}\n${entry('the work', `verify-log/${RUN}`)}\n${closing('closed #3 in one commit', `verify-log/${RUN}; audit-log/${auditId}`)}`);
+    git('add', '-A');
+    git('commit', '-qm', 'open and close #3 in one commit');
+    writeFileSync(path.join(repo, 'PROGRESS.md'), `# Progress\n\n${entry('before the rule', 'the run recorded for this tree')}\n${entry('the work', `verify-log/${RUN}`)}\n${closing('closed #3 in one commit', `verify-log/${RUN}; audit-log/${auditId}`)}\n${entry('pointing nowhere', 'the log')}`);
     git('add', '-A');
     git('commit', '-qm', 'a journal entry pointing nowhere');
     git('checkout', '-q', 'main');
     git('merge', '-q', '--no-ff', '-m', 'merge work', 'work');
+  });
+
+  it('accepts the commit that opened, closed, audited and journaled #3 at once, under every guard of the walk', () => {
+    // The four lines the workflow runs per commit, each on this one.
+    const commit = git('rev-list', '-1', '--grep', 'open and close #3', 'HEAD^2');
+    expect(commit).not.toBe('');
+    expect(guard(commit, `${commit}^`)).toBe(true);
+    expect(walk(['verify-log.mjs', 'check'], commit, `${commit}^`)).toBe(true);
+    expect(walk(['check-migrations.mjs'], commit, `${commit}^`)).toBe(true);
+    expect(journal(commit, `${commit}^`)).toBe(true);
   });
 
   it('runs the journal check on each commit the way the workflow does: the entry naming its run passes, the one pointing nowhere is refused', () => {
