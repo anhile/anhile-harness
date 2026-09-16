@@ -30,7 +30,7 @@ import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { newestEntry, root, sessionFile } from './session-start.mjs';
-import { template } from './progress.mjs';
+import { newSince, pointerProblems, recordAt, template } from './progress.mjs';
 
 /**
  * What Claude Code hands the Stop hook on stdin; only the fields read here.
@@ -44,7 +44,7 @@ import { template } from './progress.mjs';
 
 /**
  * What the hook decided, and why. `kind` names the reminder when it blocks.
- * @typedef {{ block: boolean, reason: string, kind?: 'progress' | 'push', pushed?: boolean }} Verdict
+ * @typedef {{ block: boolean, reason: string, kind?: 'progress' | 'evidence' | 'push', pushed?: boolean, problems?: string[] }} Verdict
  */
 
 /** @param {...string} args */
@@ -140,6 +140,8 @@ export function verdict(payload, record) {
   if (!record.reminded) {
     const progress = progressVerdict(record, head);
     if (progress.block) return { ...progress, kind: 'progress' };
+    const evidence = evidenceVerdict(record);
+    if (evidence.block) return evidence;
   }
   if (!record.remindedPush) {
     const ahead = unpushed();
@@ -181,6 +183,32 @@ function progressVerdict(record, head) {
     block: true,
     reason: `${count} commit(s) landed since ${start.slice(0, 7)} and none touched PROGRESS.md`,
   };
+}
+
+/**
+ * The entries this session added must point into the record. The journal
+ * reminder above asks that an entry exist; this asks that a reader can
+ * follow its Evidence to a run under verify-log/ and, for a closure, to the
+ * READY audit under audit-log/. Compared against the journal at the session's
+ * starting commit, from the working tree, so an entry written and not yet
+ * committed is asked too — it is about to be.
+ * @param {SessionRecord} record
+ * @returns {Verdict}
+ */
+function evidenceVerdict(record) {
+  const start = record.head ?? '';
+  const file = path.join(root, 'PROGRESS.md');
+  if (!existsSync(file)) return { block: false, reason: 'no journal' };
+  const baseText = git('show', `${start}:PROGRESS.md`);
+  if (baseText === '') return { block: false, reason: 'no journal at the starting commit' };
+  const fresh = newSince(readFileSync(file, 'utf8'), baseText);
+  if (fresh.length === 0) return { block: false, reason: 'no new entry' };
+  const rec = recordAt();
+  /** @type {string[]} */
+  const problems = [];
+  for (const entry of fresh) for (const p of pointerProblems(entry, rec)) problems.push(`${entry.heading.slice(3, 60)}: ${p}`);
+  if (problems.length === 0) return { block: false, reason: 'every new entry points into the record' };
+  return { block: true, kind: 'evidence', reason: `${problems.length} problem(s) with the Evidence of the entry this session wrote`, problems };
 }
 
 function main() {
@@ -225,6 +253,20 @@ function main() {
         remedy +
         'If this is deliberate — a person asked for it, or the pull request is being held\n' +
         'open — say so and stop; this reminder does not fire again in this session.\n',
+    );
+    process.exit(2);
+  }
+
+  if (result.kind === 'evidence') {
+    process.stderr.write(
+      `STOP: ${result.reason}.\n\n` +
+        `${(result.problems ?? []).map((p) => `  - ${p}`).join('\n')}\n\n` +
+        'The Evidence field is a pointer, not a sentence: name the verify-log/<id> of the\n' +
+        'run(s) made for this work, and the audit-log/<id> that said READY when an entry\n' +
+        'closed. `node scripts/verify-log.mjs tail 3` and `node scripts/audit-log.mjs tail 3`\n' +
+        'print the ids. CI asks the same of every pushed commit.\n\n' +
+        'If the entry is not yours — a person wrote it — say so and stop; this reminder\n' +
+        'does not fire again in this session.\n',
     );
     process.exit(2);
   }

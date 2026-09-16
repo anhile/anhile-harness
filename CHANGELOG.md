@@ -11,6 +11,15 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
+### Added
+
+- The journal's Evidence field is a pointer: an entry names the
+  `verify-log/<id>` of the run(s) made for the work and, when it closed a
+  feature, the `audit-log/<id>` that said READY. `progress.mjs check`
+  follows it, for entries new since `--base`; the stop hook asks once of
+  the entries a session wrote; CI's walk asks of every pushed commit with
+  `--at`. Entries from before the rule stay as they were written.
+
 ### Changed
 
 - Node 24. `.nvmrc` pins 24.19.0, `engines` asks for `>=24`, `@types/node`

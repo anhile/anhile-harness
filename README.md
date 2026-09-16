@@ -144,7 +144,7 @@ Around the steps, the mechanisms:
 | `feature_list.json` | the guarantees, append-only, one closed per commit, each closure audited |
 | `verify-log/` | every run, one file each, red runs included, never edited or removed, recomputable from a clean clone |
 | `audit-log/` | every audit verdict, one file each, NOT READY included; a commit that closes an entry carries the READY audit of its own tree, and CI checks that it does |
-| `PROGRESS.md` | the journal, and a hook that will not let a session end without writing it |
+| `PROGRESS.md` | the journal, and a hook that will not let a session end without writing it; an entry's Evidence names a run and an audit by id, and CI follows the pointer |
 | CI `attest` | every pushed commit checked for a recorded passing run that covers its exact tree |
 | protected files | the gate and the guards, hashed; a session may not change them without a person |
 

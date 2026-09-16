@@ -32,7 +32,7 @@ describe('the append-only walk in CI', () => {
     // as seven closures in one.
     expect(workflow).toMatch(/git rev-parse --verify --quiet "\$\{commit\}\^2"/u);
     expect(workflow).toMatch(/parent="\$\{commit\}\^2"/u);
-    for (const guard of ['check-feature-list.mjs', 'verify-log.mjs check', 'check-migrations.mjs']) {
+    for (const guard of ['check-feature-list.mjs', 'verify-log.mjs check', 'check-migrations.mjs', 'progress.mjs check']) {
       expect(workflow).toContain(`${guard} --at "$commit" --base "$parent"`);
     }
   });

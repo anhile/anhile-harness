@@ -47,8 +47,37 @@ beforeEach(() => {
   copyFileSync(path.join(REPO, 'scripts', 'harness-config.mjs'), path.join(dir, 'scripts', 'harness-config.mjs'));
   copyFileSync(path.join(REPO, 'harness.config.json'), path.join(dir, 'harness.config.json'));
   copyFileSync(path.join(REPO, 'scripts', 'progress.mjs'), path.join(dir, 'scripts', 'progress.mjs'));
+  // `check` follows an entry's Evidence into the two records, so it imports
+  // their readers, and they import the receipt's.
+  for (const f of ['verify-log.mjs', 'audit-log.mjs', 'verify-receipt.mjs']) {
+    copyFileSync(path.join(REPO, 'scripts', f), path.join(dir, 'scripts', f));
+  }
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+const git = (...args: string[]) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+
+/** A run on record, by id. */
+function recordRun(id: string): void {
+  mkdirSync(path.join(dir, 'verify-log'), { recursive: true });
+  writeFileSync(path.join(dir, 'verify-log', `${id}.json`), `${JSON.stringify({ at: '2026-09-16T10:00:00.000Z', result: 'pass', tree: 'sha256:a', steps: {} })}\n`);
+}
+
+/** An audit on record, by id, with its verdict. */
+function recordAudit(id: string, verdict: string): void {
+  mkdirSync(path.join(dir, 'audit-log'), { recursive: true });
+  writeFileSync(path.join(dir, 'audit-log', `${id}.json`), `${JSON.stringify({ spec: 'specs/x.md', verdict, at: '2026-09-16T10:00:00.000Z', treeHash: 'sha256:a' })}\n`);
+}
+
+/** A repository whose HEAD carries one entry from before the rule, in prose. */
+function committedJournal(): void {
+  write(entry('2026-09-01', 'before the rule', { Evidence: 'the run recorded for this tree' }));
+  git('init', '-q', '-b', 'main');
+  git('config', 'user.email', 't@t');
+  git('config', 'user.name', 't');
+  git('add', '-A');
+  git('commit', '-qm', 'journal');
+}
 
 describe('check', () => {
   it('accepts entries in the template shape, dated in order', () => {
@@ -87,6 +116,90 @@ describe('check', () => {
     const { status, out } = run('check');
     expect(status).toBe(1);
     expect(out).toContain('dated 2026-09-01, before the entry above it (2026-09-05)');
+  });
+});
+
+describe('the Evidence of a new entry points into the record', () => {
+  // Until 2026-09-16 the field was prose — "the run recorded for this tree" —
+  // which reads like a pointer and points at nothing. A reader, and CI, can
+  // now follow it: a run id under verify-log/, and an audit id under
+  // audit-log/ when the entry closed something. Only entries new since the
+  // baseline are asked, so the journal's past stays as it was written.
+  const RUN = '20260916T100000Z';
+  const AUDIT = '20260916T100500.123Z';
+
+  it('accepts a new entry naming a run on record, and leaves the old prose alone', () => {
+    committedJournal();
+    recordRun(RUN);
+    write(entry('2026-09-01', 'before the rule', { Evidence: 'the run recorded for this tree' }), entry('2026-09-16', 'the work', { Evidence: `verify-log/${RUN}` }));
+    const { status, out } = run('check');
+    expect(status).toBe(0);
+    expect(out).toContain('1 new since HEAD, evidence on record');
+  });
+
+  it('refuses a new entry whose Evidence names no run', () => {
+    committedJournal();
+    write(entry('2026-09-01', 'before the rule', { Evidence: 'the run recorded for this tree' }), entry('2026-09-16', 'the work', { Evidence: 'the run recorded for this tree' }));
+    const { status, out } = run('check');
+    expect(status).toBe(1);
+    expect(out).toContain('entry 2 (2026-09-16 — the work): Evidence names no run');
+  });
+
+  it('refuses a run that is not on record', () => {
+    committedJournal();
+    write(entry('2026-09-01', 'before the rule', { Evidence: 'the run recorded for this tree' }), entry('2026-09-16', 'the work', { Evidence: `verify-log/${RUN}` }));
+    const { status, out } = run('check');
+    expect(status).toBe(1);
+    expect(out).toContain(`Evidence names run ${RUN}, which is not under verify-log/`);
+  });
+
+  it('asks a closing entry for the audit that said READY', () => {
+    committedJournal();
+    recordRun(RUN);
+    const closing = (evidence: string) =>
+      entry('2026-09-16', 'closing', { Feature: 'closed #3 — "the thing"', Evidence: evidence });
+    const before = entry('2026-09-01', 'before the rule', { Evidence: 'the run recorded for this tree' });
+    write(before, closing(`verify-log/${RUN}`));
+    expect(run('check').out).toContain('closes a feature and Evidence names no audit');
+    write(before, closing(`verify-log/${RUN}; audit-log/${AUDIT}`));
+    expect(run('check').out).toContain(`Evidence names audit ${AUDIT}, which is not under audit-log/`);
+    recordAudit(AUDIT, 'NOT_READY');
+    expect(run('check').out).toContain(`Evidence names audit ${AUDIT}, which said NOT_READY, not READY`);
+    rmSync(path.join(dir, 'audit-log', `${AUDIT}.json`));
+    recordAudit(AUDIT, 'READY');
+    expect(run('check').status).toBe(0);
+  });
+
+  it('does not take "none closed" for a closure', () => {
+    committedJournal();
+    recordRun(RUN);
+    write(entry('2026-09-01', 'before the rule', { Evidence: 'the run recorded for this tree' }), entry('2026-09-16', 'the work', { Feature: 'none closed — #3 stays open', Evidence: `verify-log/${RUN}` }));
+    expect(run('check').status).toBe(0);
+  });
+
+  it('asks only the shape when there is no baseline', () => {
+    // A repository with no commit yet, or a first commit in CI's walk: nothing
+    // to compare against, so the pointers are not asked and the report says so.
+    write(entry('2026-09-16', 'the work', { Evidence: 'nothing yet' }));
+    const { status, out } = run('check');
+    expect(status).toBe(0);
+    expect(out).toContain('no baseline at HEAD, evidence not asked');
+  });
+
+  it('reads the journal and the records at a commit with --at, the way CI walks', () => {
+    committedJournal();
+    write(entry('2026-09-01', 'before the rule', { Evidence: 'the run recorded for this tree' }), entry('2026-09-16', 'the work', { Evidence: `verify-log/${RUN}` }));
+    git('add', '-A');
+    git('commit', '-qm', 'an entry pointing at a run the commit does not carry');
+    expect(run('check', '--at', 'HEAD', '--base', 'HEAD^').status).toBe(1);
+    recordRun(RUN);
+    git('add', '-A');
+    git('commit', '-qm', 'the run it names');
+    // Against its own parent the entry is old; against the first commit it is new and the run is there.
+    expect(run('check', '--at', 'HEAD', '--base', 'HEAD^').status).toBe(0);
+    const { status, out } = run('check', '--at', 'HEAD', '--base', 'HEAD~2');
+    expect(status).toBe(0);
+    expect(out).toContain('1 new since HEAD~2');
   });
 });
 
@@ -154,7 +267,7 @@ describe('this repository', () => {
 
   it('the stop hook prints the same template', () => {
     const stop = readFileSync(path.join(REPO, 'scripts', 'session-stop.mjs'), 'utf8');
-    expect(stop).toContain("import { template } from './progress.mjs'");
+    expect(stop).toMatch(/import \{[^}]*\btemplate\b[^}]*\} from '\.\/progress\.mjs'/u);
     expect(stop).not.toContain('export function template');
   });
 });
