@@ -132,7 +132,7 @@
       "node scripts/check-pr-ready.mjs on the spike refuses with the sentence; node scripts/spike.mjs check --branch spike/x exits 3 with the same one",
       "node scripts/harness-init.mjs --yes into a folder; scripts/spike.mjs is copied and AGENTS.md names the rule"
     ],
-    "passes": false,
+    "passes": true,
     "spec": "specs/2026-09-spike-branches.md"
   }
 ]

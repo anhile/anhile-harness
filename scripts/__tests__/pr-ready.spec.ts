@@ -130,6 +130,12 @@ describe('the branch itself', () => {
     expect(text).toContain('git checkout -b <name> main');
   });
 
+  it('does not take a branch merely named spike-… for a spike', () => {
+    const dir = make(readyBranch);
+    git(dir, 'checkout', '-qb', 'spike-shaped');
+    expect(run(dir).refusals.join(' ')).not.toContain('is a spike');
+  });
+
   it('refuses main, because a pull request needs a branch of its own', () => {
     const dir = make(readyBranch);
     git(dir, 'checkout', '-q', 'main');

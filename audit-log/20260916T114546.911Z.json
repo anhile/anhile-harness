@@ -1,0 +1,9 @@
+{
+  "spec": "specs/2026-09-spike-branches.md",
+  "verdict": "READY",
+  "security": "not run: surface unchanged",
+  "at": "2026-09-16T11:45:46.911Z",
+  "treeHash": "sha256:dbffb0b3a7f565d170f64ef363471eceb2f0b05b956298a5c920b5e573b57630",
+  "verifyEvidence": ".generated/runs/20260916T114214Z",
+  "commit": "d2b6c6bb47f0b094d346c7fd67289d6ae7496d03"
+}

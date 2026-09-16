@@ -32,7 +32,7 @@ checks.
 | I13 | A commit's claim to be verified is checkable off the author's machine | CI `attest` from a clean clone; `pre-push`; a committed closure's audit, from `audit-log/` | `attestation.spec.ts`, `audit-log.spec.ts` |
 | I14 | Coverage never falls, and no source file escapes being counted | `check-coverage.mjs`, step 08, against `coverage-floor.json` | `harness-config.spec.ts` |
 | I15 | `feature_list.json` is append-only, and a guarantee is withdrawn in the open | `check-feature-list.mjs`, step 06; the audit receipt before a closing commit; the audit kept under `audit-log/` after it | `feature-list.spec.ts`, `audit-receipt.spec.ts`, `audit-log.spec.ts` |
-| I16 | A spike proves nothing and cannot reach `main` | `spike.mjs`: the commit gate and the stop hook ask a `spike/*` branch for nothing; `check-pr-ready.mjs` and CI `attest` refuse a pull request from one | `spike.spec.ts`, `commit-gate.spec.ts`, `session-hooks.spec.ts`, `pr-ready.spec.ts`, `ci-workflow.spec.ts` |
+| I16 | A spike proves nothing and cannot reach `main` | `spike.mjs`: the commit gate asks a `spike/*` branch for no receipt and the stop hook for no entry, the record guards still run; `check-pr-ready.mjs` and CI `attest` refuse a pull request from one | `spike.spec.ts`, `commit-gate.spec.ts`, `session-hooks.spec.ts`, `pr-ready.spec.ts`, `ci-workflow.spec.ts` |
 
 ## I4 — A project's shared contracts package changes only by explicit human decision
 
@@ -261,19 +261,26 @@ pull request from it, with the sentence CI's `attest` job repeats on the
 server before walking anything. What survives a spike is rebuilt on a branch
 of its own and closed the usual way; the spike is deleted, not merged.
 
-Two things a spike is still held to. The protected files (I11): a spike edits
-the gate no more than any branch, and the checks that say so run before the
-spike decision. And the record (I12): `./verify.sh` runs on a spike like
-anywhere else when somebody wants to know, and the run is recorded like any
-other.
+What goes with the receipt is everything the receipt establishes: the tree
+hash, the closing audit, the index against the tree. Two things a spike is
+still held to. The protected files (I11): a spike edits the gate no more than
+any branch, and the checks that say so run before the spike decision. And the
+record (I12, I15): the append-only guards for `verify-log/` and `audit-log/`
+run in the gate on every branch — a spike claims nothing, and rewrites
+nothing; `./verify.sh` runs on a spike when somebody wants to know, and the
+run is recorded like any other.
 
 **How it is checked:** `scripts/spike.mjs` is the one definition —
 `isSpike(branch)`. The commit gate, `session-stop.mjs`, `session-start.mjs`
 and `check-pr-ready.mjs` read it; the workflow runs `spike.mjs check --branch`
 on a pull request's head before the attestation step, exiting 3 on a spike.
 `spike.spec.ts` pins the definition and the CI form; each hook and guard has
-its own spike case in its own suite, and each has a case that a branch merely
-named `spike-…` is asked everything.
+its own spike case in its own suite (`commit-gate.spec.ts`, which also holds
+the two record guards on a spike; `session-hooks.spec.ts`; `pr-ready.spec.ts`;
+`ci-workflow.spec.ts` for the workflow's text), and the gate, the hooks and
+`check-pr-ready` each have a case that a branch merely named `spike-…` is
+asked everything. Whether GitHub runs the step is what a pull request's
+`attest` job shows.
 
 - **Review only:** that what reached `main` was rebuilt and not a spike
   renamed. A rename makes the branch a feature branch, and every ritual then
