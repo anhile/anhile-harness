@@ -131,6 +131,12 @@ green run writes a receipt: a hash of the tree it passed.
 | 07 `verify-log` | a recorded run edited or removed |
 | 08 `coverage` | a lowered floor, or a source file nothing counted |
 
+`./verify.sh --quick` is the short form while iterating: steps 01, 02, 06 and
+07, and 03 only for the suites affected since `main` (`--base <ref>` for
+another base), with 04, 05 and 08 left to the full gate. The run is recorded
+as quick. The commit gate takes it for a commit that closes nothing; the
+commit that closes an entry, the audit and CI ask the full gate.
+
 Steps 04 (`api-e2e`), 05 (`browser-e2e`) and 09 (`migrations`) are not
 written into a new project even when you answer yes to the thing they test,
 because nothing the generator wrote can pass them yet. It says so, and your

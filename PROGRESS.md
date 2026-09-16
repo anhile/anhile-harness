@@ -910,3 +910,46 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   suite, with no test failing; the rerun on the same tree passed, and the red
   run stays on record. The new suite is the one that spawns a node process
   per assertion, which the auditor named as a coincidence worth watching.
+
+## 2026-09-16 — closed #14: the quick run
+
+- **Feature**: closed #14 (`specs/2026-09-quick-gate.md`)
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6, 672 tests; spec-auditor READY after two rounds
+- **Evidence**: `verify-log/20260916T151336Z` — the full run this commit carries;
+  `verify-log/20260916T151259Z` — `./verify.sh --quick` on the same tree, recorded quick;
+  `audit-log/20260916T151658.877Z` — the READY verdict of that tree
+- **Contract changes**: none
+- **Notes**:
+
+  The first of the three fast-lane debts left after 0.2.0. The quick run is
+  lint, types, the suites jest finds affected since `main` and the guards,
+  with api-e2e, browser-e2e and coverage left to the full gate; recorded as
+  quick, taken by the commit gate for a commit that closes nothing, refused
+  for a closure, by the audit writer, and by CI's walk when a committed
+  closure's only passing run is quick. The four protected files were patched
+  under `.generated/scratch/quick/` and applied by the person.
+
+  The hand row, on the tree the audit is about. `--quick` selected seven
+  suites of twenty-eight (attestation, audit-receipt, quick-gate,
+  harness-init, feature-list, audit-log, commit-gate), 223 tests in 23 s
+  against 35 s for the full step; the commit gate fired on that receipt with
+  #14's closure staged wrote the quick note and refused with "a closure is
+  asked for the full gate". That refusal is in the session's transcript and
+  in `commit-gate.spec.ts`, not in a file.
+
+  Two things the record shows. The first quick run on this branch
+  (`20260916T145241Z`) passed a tree the full gate then failed
+  (`20260916T150103Z`, two suites): a fixture that reads a script from disk
+  and the manifest's tier list do not import what changed, so
+  `--changedSince` did not select them. That is the limit I11 names, and
+  the reason a closure asks the full gate. And on a loaded machine (load
+  average 12) that first quick run took 212 s for five suites, 209 of them
+  `commit-gate.spec`, which alone took 90 s under the same load and 23 s
+  once it eased: the quick run's saving is the suites it does not run, not a
+  promise about the clock.
+
+  Two qualifications the auditor carried, both wording: the contract's
+  Definition of done still says "AC1 to AC6" after AC7 was added in the
+  second round, and step 1 of entry #14 says steps 04, 05 and 08 are SKIP,
+  which a run here can only show for 08. Neither is edited after the audit.

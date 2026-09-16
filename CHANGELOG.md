@@ -13,6 +13,20 @@ minor, a fix to a copied script is a patch.
 
 ### Added
 
+- `./verify.sh --quick [--base <ref>]`: lint, types, the suites jest finds
+  affected since the base (`main` by default) with coverage off, and the
+  append-only guards; api-e2e, browser-e2e and coverage are left to the
+  full gate. The receipt and the run's record carry `mode: quick` and the
+  base. The commit gate takes a quick run for a commit that closes nothing
+  and says so; a closing commit is refused on one, `audit-receipt.mjs write`
+  refuses to write on one, CI's attestation notes one and its walk refuses a
+  committed closure whose only passing run is quick. In a generated gate
+  step 03 now calls `unit_suites`, a function above the step block; a project
+  on 0.2.0 takes `verify.sh`, `scripts/verify-receipt.mjs`,
+  `scripts/check-commit-gate.mjs`, `scripts/audit-receipt.mjs`,
+  `scripts/verify-log.mjs`, `scripts/check-attestation.mjs` and
+  `scripts/check-feature-list.mjs` from this tag, and rewrites its own
+  `run_step 03` line to `unit_suites`.
 - A design reviewer. The review brief says whether the UI changed (the
   optional `ui.paths` in `harness.config.json`; `apps/web/src/` for a
   `--web` project) and whether a walk is under `.generated/ui/` on this

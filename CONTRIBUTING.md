@@ -12,6 +12,11 @@ a person.
    guess.
 3. Make the change, and run `./verify.sh`. The gate is the only thing that
    establishes the code works; a red gate is fixed, never worked around.
+   While iterating, `./verify.sh --quick` runs lint, types and the suites
+   affected since `main` (`--base <ref>` for another base) and skips the
+   e2e and coverage steps; it is recorded as quick, and the commit gate takes
+   it for a commit that closes nothing. The commit that closes an entry, the
+   audit and CI ask the full gate.
 4. Write the `PROGRESS.md` entry — `node scripts/progress.mjs template` prints
    the shape; Evidence names the `verify-log/<id>` of the run(s) you made, and
    the `audit-log/<id>` that said READY if an entry closed — and commit. For

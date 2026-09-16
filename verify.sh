@@ -25,10 +25,39 @@
 # By default every step runs even after a failure, so the evidence folder is
 # complete. Set VERIFY_FAIL_FAST=1 to stop at the first failing step.
 #
+# `--quick [--base <ref>]` is the short form: steps 1, 2, 6, 7 and 9 as they
+# are, step 3 only for the suites jest finds affected by what changed since
+# the base (main unless --base says otherwise), and steps 4, 5 and 8 left to
+# the full gate. The run is recorded as quick. The commit gate takes it for a
+# commit that closes nothing; a closure, the audit and CI ask the full gate
+# (docs/INVARIANTS.md I11).
+#
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
+
+# --quick, and the base it measures against. Anything else is refused: a gate
+# that ignores an argument it does not know is a gate that ran something
+# other than what was asked.
+MODE=full
+QUICK_BASE=main
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --quick) MODE=quick ;;
+    --base) QUICK_BASE="${2:?verify.sh: --base needs a ref}"; shift ;;
+    *) printf 'verify.sh: unknown argument %s (known: --quick, --base <ref>)\n' "$1" >&2; exit 2 ;;
+  esac
+  shift
+done
+if [[ "$MODE" == quick ]] && ! git rev-parse --verify --quiet "${QUICK_BASE}^{commit}" >/dev/null 2>&1; then
+  printf 'verify.sh: --quick measures what changed since %s, which is not a commit here; name one with --base <ref>\n' "$QUICK_BASE" >&2
+  exit 2
+fi
+# The steps a quick run leaves to the full gate, by name. Steps 4 and 5 need
+# the database and the browser, and step 8 reads the coverage a partial
+# unit run cannot produce.
+FULL_ONLY="api-e2e browser-e2e coverage"
 
 RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
 
@@ -49,7 +78,9 @@ write_receipt() {
     --status "$1" \
     --evidence "$EVIDENCE_DIR" \
     --tree-before "$TREE_BEFORE" \
-    --failed "$2" >/dev/null
+    --failed "$2" \
+    --mode "$MODE" \
+    --base "$QUICK_BASE" >/dev/null
   # The durable half. .generated/runs/ is machine-local and grows by the run;
   # one small file per run under verify-log/ is what survives in git. Failing
   # runs are recorded too -- a record that keeps only the green runs is not a
@@ -73,6 +104,11 @@ log_summary "repo:   $ROOT"
 log_summary "commit: $(git rev-parse --short HEAD 2>/dev/null || true)"
 log_summary "branch: $(git branch --show-current 2>/dev/null || true)"
 log_summary "node:   $(node -v)"
+if [[ "$MODE" == quick ]]; then
+  log_summary "mode:   quick (since $QUICK_BASE; $FULL_ONLY left to the full gate)"
+else
+  log_summary "mode:   full"
+fi
 
 # --- what the harness knows about this project ----------------------------
 # harness.config.json is edited rather than this file. The database is named
@@ -189,6 +225,14 @@ run_step() {
   local status=0
   local started ended
 
+  # Not run, not recorded: a step that did not run has no exit code, and a
+  # zero written for it would be a verdict nothing reached. The summary
+  # says it was skipped and why; the receipt says the run was quick.
+  if [[ "$MODE" == quick && " $FULL_ONLY " == *" $name "* ]]; then
+    log_summary "SKIP  ${number} ${name}  (quick: left to the full gate)"
+    return 0
+  fi
+
   if [[ ${#FAILED_STEPS[@]} -gt 0 && "${VERIFY_FAIL_FAST:-0}" == "1" ]]; then
     log_summary "SKIP  ${number} ${name}  (fail-fast: an earlier step failed)"
     return 0
@@ -278,10 +322,23 @@ browser_e2e() {
     pnpm exec playwright test
 }
 
+# --- step 3 ---------------------------------------------------------------
+# The whole suite, or under --quick the suites jest finds affected by what
+# changed since the base, uncommitted changes included, with coverage off:
+# a partial run's coverage would fail the floors for a reason that is not
+# the code, which is why step 8 is left to the full gate with it.
+unit_suites() {
+  if [[ "$MODE" == quick ]]; then
+    pnpm exec jest --config jest.config.cjs --changedSince "$QUICK_BASE" --coverage=false
+  else
+    pnpm exec jest --config jest.config.cjs
+  fi
+}
+
 # --- the steps ------------------------------------------------------------
 run_step 01 eslint       pnpm exec eslint .
 run_step 02 typecheck    pnpm exec tsc -b --force tsconfig.build.json
-run_step 03 unit         pnpm exec jest --config jest.config.cjs
+run_step 03 unit         unit_suites
 run_step 06 feature-list node scripts/check-feature-list.mjs
 run_step 07 verify-log   node scripts/verify-log.mjs check
 run_step 08 coverage     node scripts/check-coverage.mjs

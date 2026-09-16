@@ -64,7 +64,7 @@ const ENTRY = (title: string, feature: string, evidence: string) =>
   `## 2026-09-16 — ${title}\n\n- **Feature**: ${feature}\n- **Result**: passing\n- **Verified by**: x\n- **Evidence**: ${evidence}\n- **Contract changes**: none\n- **Notes**:\n\n  n.\n`;
 const journal = (...entries: string[]) => writeFileSync(path.join(repo, 'PROGRESS.md'), `# Progress\n\n${ENTRY('before the rule', 'none closed', 'the run recorded for this tree')}\n${entries.join('\n')}`);
 
-function writeReceipt(status: 'pass' | 'fail', failed = ''): void {
+function writeReceipt(status: 'pass' | 'fail', failed = '', mode: 'full' | 'quick' = 'full'): void {
   const before = node('verify-receipt.mjs', 'hash').trim();
   node(
     'verify-receipt.mjs',
@@ -73,6 +73,8 @@ function writeReceipt(status: 'pass' | 'fail', failed = ''): void {
     '--evidence', '.evidence/test',
     '--tree-before', before,
     '--failed', failed,
+    '--mode', mode,
+    '--base', 'main',
   );
 }
 
@@ -583,6 +585,49 @@ describe('the gate is actually wired up', () => {
     for (const tool of ['Bash', 'Edit', 'Write']) {
       expect(matchers.some((m) => m.split('|').includes(tool))).toBe(true);
     }
+  });
+});
+
+describe('a quick run is taken for a commit that closes nothing, and refused for a closure (I11)', () => {
+  // Since 2026-09-16: ./verify.sh --quick records mode quick. Enough for a
+  // commit that claims nothing; a closure claims the work is done, and its
+  // audit is about the full gate.
+  const SPEC = 'specs/2026-09-thing.md';
+  const list = (open: boolean) =>
+    `${JSON.stringify([{ id: 0, category: 'x', description: 'the one', steps: ['s'], passes: !open, spec: SPEC }], null, 2)}\n`;
+
+  it('lets an ordinary commit through on a quick receipt, and says on stderr that the run was quick', () => {
+    writeFileSync(path.join(repo, 'source.ts'), 'export const answer = 43;\n');
+    git('add', '-A');
+    writeReceipt('pass', '', 'quick');
+    const verdict = runGate(bash('git commit -m "an edit"'));
+    expect(verdict.blocked).toBe(false);
+    expect(verdict.note).toContain('the receipt is from ./verify.sh --quick (since main)');
+    expect(verdict.note).toContain('the full gate is CI\'s on this commit');
+  });
+
+  it('says nothing of the kind on a full receipt', () => {
+    writeReceipt('pass');
+    expect(runGate(bash('git commit -m "x"')).note).not.toContain('--quick');
+  });
+
+  it('refuses a closure on a quick receipt, naming the entry and the full gate, before the audit is asked', () => {
+    mkdirSync(path.join(repo, 'specs'), { recursive: true });
+    writeFileSync(path.join(repo, SPEC), '# the contract\n');
+    writeFileSync(path.join(repo, 'feature_list.json'), list(true));
+    git('add', '-A');
+    git('commit', '-qm', 'open an entry');
+    writeFileSync(path.join(repo, 'feature_list.json'), list(false));
+    git('add', '-A');
+    writeReceipt('pass', '', 'quick');
+    const verdict = runGate(bash('git commit -m "close"'));
+    expect(verdict.blocked).toBe(true);
+    expect(verdict.reason).toContain('a closure is asked for the full gate');
+    expect(verdict.reason).toContain('#0 — the one');
+    expect(verdict.reason).toContain('--quick (since main)');
+    expect(verdict.reason).toContain('  ./verify.sh\n');
+    expect(verdict.reason).toContain(`/verify-task ${SPEC}`);
+    expect(verdict.reason).not.toContain('a closing commit needs the audit');
   });
 });
 

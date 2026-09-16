@@ -184,6 +184,18 @@ describe('the gate it writes', () => {
     expect(steps).toEqual(['eslint', 'typecheck', 'unit', 'feature-list', 'verify-log', 'coverage']);
   });
 
+  it('writes step 03 as unit_suites, defined above the block, and names --quick in the seed', () => {
+    const dir = scaffold();
+    const gate = read(dir, 'verify.sh');
+    expect(gate).toMatch(/^run_step 03 unit\s+unit_suites$/mu);
+    expect(gate.indexOf('unit_suites() {')).toBeGreaterThan(-1);
+    expect(gate.indexOf('unit_suites() {')).toBeLessThan(gate.indexOf('run_step 01 '));
+    expect(gate).toContain('--changedSince "$QUICK_BASE" --coverage=false');
+    const agents = read(dir, 'AGENTS.md');
+    expect(agents).toContain('`./verify.sh --quick`');
+    expect(agents).toContain('a closure without its READY audit or on a `--quick` run');
+  });
+
   it('keeps everything above the step list byte for byte, because that part is the mechanism', () => {
     const source = readFileSync(path.join(REPO, 'verify.sh'), 'utf8');
     const generated = read(scaffold(), 'verify.sh');

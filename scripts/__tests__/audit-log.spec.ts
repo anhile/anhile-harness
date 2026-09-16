@@ -14,7 +14,9 @@ import path from 'node:path';
  * that closes an entry carry the audit that let it through.
  */
 const REPO = path.resolve(__dirname, '..', '..');
-const SCRIPTS = ['verify-receipt.mjs', 'audit-receipt.mjs', 'audit-log.mjs', 'check-feature-list.mjs', 'harness-config.mjs'];
+// verify-log.mjs since the quick run: check-feature-list.mjs reads the runs
+// of a committed closure's tree to refuse one whose only passing run is quick.
+const SCRIPTS = ['verify-receipt.mjs', 'audit-receipt.mjs', 'audit-log.mjs', 'check-feature-list.mjs', 'harness-config.mjs', 'verify-log.mjs'];
 const SPEC = 'specs/2026-09-thing.md';
 const OTHER = 'specs/2026-09-other.md';
 

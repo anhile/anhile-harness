@@ -7,6 +7,8 @@ agent, not one in particular.
 
 **1. The gate decides, not you.** `./verify.sh` is 6 steps and the only
 thing that establishes the code works. A red gate is fixed, never worked around.
+Between commits that close nothing, `./verify.sh --quick`: lint, types and the
+suites affected since `main`, recorded as quick; a closure asks the full gate.
 
 **2. A commit carries a tree the gate has passed.** The receipt records a hash
 of the working tree — the journal excepted, which the gate reads on its own —
@@ -34,7 +36,7 @@ meant to do.
 | Mechanism | Refuses |
 |---|---|
 | `./verify.sh` step 06 | two entries closed in one commit, or a rewritten one |
-| the commit gate | a commit whose tree no green run covers, a closure without its READY audit, a journal entry a reader cannot follow |
+| the commit gate | a commit whose tree no green run covers, a closure without its READY audit or on a `--quick` run, a journal entry a reader cannot follow |
 | protected-file guard | a session edit to `verify.sh`, the CI workflow, or `.claude/settings.json` |
 | `spike.mjs`, in the gate, the hooks and CI | nothing on a `spike/*` branch; and a pull request from one |
 | append-only guards | a run under `verify-log/` edited or removed, or a rewritten line in `feature_list.json` |

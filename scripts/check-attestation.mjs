@@ -21,7 +21,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
-import { treeHash } from './verify-receipt.mjs';
+import { isQuick, treeHash } from './verify-receipt.mjs';
 import { LOG_DIR, readRuns, root } from './verify-log.mjs';
 
 /**
@@ -77,6 +77,18 @@ function main() {
   }
 
   console.log(`  verdict: pass, recorded ${verdict.at} on ${(verdict.head ?? '').slice(0, 7)}`);
+
+  // A quick run is a claim about less: lint, types and the suites affected
+  // since its base, with api-e2e, browser-e2e and coverage left to the full
+  // gate. It attests the content the way any run does; what it did not run,
+  // the verify job runs on this same commit, and a closure is refused on it
+  // by the gate and by the walk below (I11).
+  if (isQuick(verdict)) {
+    console.log(
+      `  note: a quick run (since ${verdict.since ?? 'main'}) — lint, types and the affected suites; ` +
+      'the verify job runs the full gate on this commit',
+    );
+  }
 
   if (failedRuns.length > 0) {
     // Not a failure: the tree does pass. But identical content that has both

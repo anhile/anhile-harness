@@ -111,7 +111,9 @@ beforeEach(() => {
   // With --at the guard asks a committed closure for its audit, through
   // audit-log.mjs and the receipt's hash; the writer is what a closing
   // commit in these cases runs first.
-  for (const f of ['audit-log.mjs', 'audit-receipt.mjs', 'verify-receipt.mjs']) {
+  // verify-log.mjs since the quick run: a committed closure is asked whether
+  // the run of its tree on record was the full gate.
+  for (const f of ['audit-log.mjs', 'audit-receipt.mjs', 'verify-receipt.mjs', 'verify-log.mjs']) {
     copyFileSync(path.join(REPO, 'scripts', f), path.join(repo, 'scripts', f));
   }
   writeFileSync(path.join(repo, '.gitignore'), '.generated/\n');
@@ -278,6 +280,38 @@ describe('the baselines', () => {
     git('commit', '-qm', 'close the third');
 
     // Auditing the commit itself, the way CI walks a pushed range.
+    expect(check('--at', 'HEAD', '--base', 'HEAD^').rejected).toBe(false);
+  });
+
+  it('refuses a committed closure whose only passing run on record is quick, and takes one with a full run beside it (I11)', () => {
+    const list = committed();
+    at(list, 2).passes = true;
+    write(list);
+    execFileSync('node', [path.join(repo, 'scripts', 'audit-receipt.mjs'), 'write', '--spec', String(at(list, 2).spec), '--verdict', 'READY'], { cwd: repo, stdio: 'ignore' });
+    git('add', '-A');
+    git('commit', '-qm', 'close the third');
+    // No run of the tree on record: that is check-attestation's question,
+    // not this one, and the walk says nothing about a mode.
+    const silent = check('--at', 'HEAD', '--base', 'HEAD^');
+    expect(silent.rejected).toBe(false);
+    expect(silent.out).not.toContain('--quick');
+    // The record is outside the tree hash, so a run of this commit's tree
+    // can be written into the commit after the fact without moving the tree.
+    const tree = execFileSync('node', [path.join(repo, 'scripts', 'audit-log.mjs'), 'tree', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
+    mkdirSync(path.join(repo, 'verify-log'), { recursive: true });
+    const record = (id: string, mode: string) =>
+      writeFileSync(path.join(repo, 'verify-log', `${id}.json`), `${JSON.stringify({ at: '2026-09-16T15:00:00.000Z', result: 'pass', tree, steps: {}, mode, evidence: `.generated/runs/${id}` })}\n`);
+    record('20260916T150000Z', 'quick');
+    git('add', '-A');
+    git('commit', '-q', '--amend', '--no-edit');
+    const refused = check('--at', 'HEAD', '--base', 'HEAD^');
+    expect(refused.rejected).toBe(true);
+    expect(refused.out).toContain('the only passing run of its tree on record is ./verify.sh --quick (20260916T150000Z)');
+    expect(refused.out).toContain('A closure asks the full gate');
+
+    record('20260916T150100Z', 'full');
+    git('add', '-A');
+    git('commit', '-q', '--amend', '--no-edit');
     expect(check('--at', 'HEAD', '--base', 'HEAD^').rejected).toBe(false);
   });
 

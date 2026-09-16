@@ -109,6 +109,19 @@ describe('write', () => {
     expect(existsSync(path.join(repo, '.generated', 'audit.json'))).toBe(false);
   });
 
+  it('refuses to write on a quick receipt: an audit is about the full gate', () => {
+    const before = node('verify-receipt.mjs', 'hash').trim();
+    node('verify-receipt.mjs', 'write', '--status', 'pass', '--evidence', '.generated/runs/t', '--tree-before', before, '--mode', 'quick', '--base', 'main');
+    const result = run('write', '--spec', SPEC, '--verdict', 'READY');
+    expect(result.status).toBe(1);
+    expect(result.out).toContain('the verify receipt is from ./verify.sh --quick (since main)');
+    expect(result.out).toContain('an audit is about the full gate');
+    expect(existsSync(path.join(repo, '.generated', 'audit.json'))).toBe(false);
+    expect(existsSync(path.join(repo, 'audit-log'))).toBe(false);
+    // NOT_READY is refused the same way: the evidence folder is not the one.
+    expect(run('write', '--spec', SPEC, '--verdict', 'NOT_READY').status).toBe(1);
+  });
+
   it('refuses a verdict that is not one of the three', () => {
     const { status, out } = run('write', '--spec', SPEC, '--verdict', 'LOOKS FINE');
     expect(status).toBe(1);
