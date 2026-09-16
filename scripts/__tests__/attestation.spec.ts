@@ -155,6 +155,21 @@ describe('what it says out loud without failing', () => {
     expect(verdict.out).toContain('flaky step');
   });
 
+  it('notes a quick run and accepts it, and says nothing of the kind about a full one', () => {
+    // Since 2026-09-16: ./verify.sh --quick records mode quick. It attests the
+    // content like any run; what it left out, the verify job runs (I11).
+    const tree = currentTree();
+    recordRun({ tree, mode: 'quick', since: 'main' });
+    const quick = attest();
+    expect(quick.rejected).toBe(false);
+    expect(quick.out).toContain('note: a quick run (since main)');
+    expect(quick.out).toContain('the verify job runs the full gate on this commit');
+    recordRun({ tree, mode: 'full' });
+    const full = attest();
+    expect(full.rejected).toBe(false);
+    expect(full.out).not.toContain('quick run');
+  });
+
   it('says nothing about flakiness when every run of the content was green', () => {
     recordRun({ tree: currentTree() });
     expect(attest().out).not.toContain('flaky');

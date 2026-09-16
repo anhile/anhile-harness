@@ -28,7 +28,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { RECEIPT_FILE, changedPaths, hashFiles, readReceipt, root, treeFiles } from './verify-receipt.mjs';
+import { RECEIPT_FILE, changedPaths, hashFiles, isQuick, readReceipt, root, treeFiles } from './verify-receipt.mjs';
 import { currentBranch, isSpike } from './spike.mjs';
 // PROTECTED lives with the content check, so the two can never disagree
 // about what they are protecting.
@@ -367,6 +367,16 @@ Restore it with: git checkout -- verify-log/`);
   // spike has none (I16).
   if (!receipt) return;
 
+  // A quick run establishes less, and says so here: the commit gate takes
+  // it for a commit that closes nothing, and the full gate is CI's on
+  // that commit. A closure is refused on it below.
+  if (isQuick(receipt)) {
+    process.stderr.write(
+      `commit gate: the receipt is from ./verify.sh --quick (since ${receipt.quickBase ?? 'main'}): ` +
+        'lint, types and the affected suites; the full gate is CI\'s on this commit (docs/INVARIANTS.md I11)\n',
+    );
+  }
+
   // PROGRESS.md is outside the tree hash since 2026-09-16, so that the entry
   // naming a closure's audit can share the closure's commit. What the hash no
   // longer covers, the journal's own check covers here: every entry new since
@@ -416,10 +426,31 @@ Run ./verify.sh again.`);
   // tree, of this contract, saying READY.
   const closing = closingEntries();
   if (closing.length > 0) {
+    const which = closing.map((e) => `#${e.id} — ${e.description}`).join('\n  ');
+    const spec = closing.find((e) => e.spec)?.spec ?? '<the contract>';
+
+    // A closure claims the work is done, and the audit that backs the claim
+    // is about the full gate: a quick run left three steps to CI and ran
+    // only the suites it found affected, so its evidence folder is not what
+    // the auditor is handed. Before the audit is asked, because the audit
+    // writer refuses a quick receipt too and would say the same thing.
+    if (isQuick(receipt)) {
+      block(`BLOCKED: commit gate (docs/INVARIANTS.md I11) — a closure is asked for the full gate
+
+This commit flips to passing:
+  ${which}
+
+The receipt is from ./verify.sh --quick (since ${receipt.quickBase ?? 'main'}): lint, types and the
+suites affected since then, with api-e2e, browser-e2e and coverage left out.
+That is enough for a commit that claims nothing. A closure claims the work is
+done, and the audit it needs is about the full gate.
+
+  ./verify.sh
+  /verify-task ${spec}`);
+    }
+
     const problems = auditProblems(receipt.treeHash, closing);
     if (problems.length > 0) {
-      const which = closing.map((e) => `#${e.id} — ${e.description}`).join('\n  ');
-      const spec = closing.find((e) => e.spec)?.spec ?? '<the contract>';
       block(`BLOCKED: commit gate (docs/INVARIANTS.md I15) — a closing commit needs the audit
 
 This commit flips to passing:

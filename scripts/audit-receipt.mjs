@@ -35,7 +35,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readReceipt, root, treeHash } from './verify-receipt.mjs';
+import { isQuick, readReceipt, root, treeHash } from './verify-receipt.mjs';
 import { appendAudit } from './audit-log.mjs';
 
 export const AUDIT_FILE = '.generated/audit.json';
@@ -163,6 +163,17 @@ function write(args) {
     process.exit(1);
   }
   const verify = readReceipt();
+  // An audit is about the full gate. A --quick run left api-e2e, browser-e2e
+  // and coverage to CI and ran only the suites it found affected, so its
+  // evidence folder cannot back a verdict about the contract, READY or not
+  // (docs/INVARIANTS.md I11).
+  if (isQuick(verify)) {
+    process.stderr.write(
+      `audit-receipt: the verify receipt is from ./verify.sh --quick (since ${verify?.quickBase ?? 'main'}); ` +
+        'an audit is about the full gate. Run ./verify.sh, then the audit\n',
+    );
+    process.exit(1);
+  }
   /** @type {Audit} */
   const receipt = {
     spec,

@@ -44,7 +44,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readReceipt } from './verify-receipt.mjs';
+import { isQuick, readReceipt } from './verify-receipt.mjs';
 import { AUDIT_DIR, logProblems as auditProblems, filesAt as auditsAt, currentFiles as currentAudits } from './audit-log.mjs';
 
 /**
@@ -58,6 +58,8 @@ import { AUDIT_DIR, logProblems as auditProblems, filesAt as auditsAt, currentFi
  *   node: string,
  *   evidence: string,
  *   steps: Record<string, { exit: number, seconds: number }>,
+ *   mode?: 'full' | 'quick' | string,
+ *   since?: string | null,
  * }} Run
  */
 
@@ -191,6 +193,12 @@ function append(args) {
     at: new Date().toISOString(),
     result: receipt?.status ?? 'unknown',
     tree: receipt?.treeHash ?? null,
+    // Full, or `./verify.sh --quick` since a base: three steps left to the
+    // full gate and only the affected suites run. Recorded so a reader can
+    // tell a quick pass from a full one; a record from before the flag has
+    // no mode and was full (I11).
+    mode: receipt?.mode ?? 'full',
+    since: isQuick(receipt) ? (receipt?.quickBase ?? 'main') : null,
     // The commit this run was based on. The run's own result is not yet in any
     // commit, so this is a starting point, not an identity.
     head: (() => {
@@ -305,7 +313,7 @@ function tail(args) {
       .map(([name]) => name);
     console.log(
       `${e.at}  ${e.result.toUpperCase().padEnd(4)}  ${(e.head ?? '').slice(0, 7)}  ` +
-      `${failed.length ? failed.join(',') : 'all steps green'}`,
+      `${failed.length ? failed.join(',') : 'all steps green'}${isQuick(e) ? `  (quick, since ${e.since ?? 'main'})` : ''}`,
     );
   }
 }

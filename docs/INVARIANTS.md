@@ -122,6 +122,21 @@ is still there as it was, rotation to `docs/history/` excepted. The journal
 is append-only the way the records are; the hash used to say so, the check
 says so now.
 
+**The quick run.** Since 2026-09-16, `./verify.sh --quick [--base <ref>]`
+runs steps 01, 02, 06, 07 and 09 as they are, step 03 only for the suites
+jest finds affected by what changed since the base (`main` unless named),
+with coverage off, and leaves 04, 05 and 08 to the full gate. The receipt
+and the run's record say `mode: quick` and the base. What takes it: the
+commit gate, for a commit that closes nothing, saying so on stderr; CI's
+attestation, which notes it and whose `verify` job runs the full gate on
+the same commit. What does not: a closing commit, refused by the gate on a
+quick receipt; the audit writer, which refuses to write on one; and CI's
+walk, which refuses a committed closure whose only passing run on record is
+quick. A quick run is a shorter claim, never a claim in disguise: the
+affected-suite selection follows imports, so a suite that reads a file
+without importing it is not rerun, and that is one of the reasons the full
+gate is asked where a claim is made.
+
 ## I12 — What verification concluded is recorded, durably and append-only
 
 Every `./verify.sh` run writes one file under `verify-log/`, which is

@@ -1,0 +1,9 @@
+{
+  "spec": "specs/2026-09-quick-gate.md",
+  "verdict": "READY",
+  "security": "not run: surface unchanged",
+  "at": "2026-09-16T15:16:58.877Z",
+  "treeHash": "sha256:d2e717f2c6a1468d0c47b433ad7dbd762307e05ba858e1029b8104f9300212dd",
+  "verifyEvidence": ".generated/runs/20260916T151336Z",
+  "commit": "a8e2082b44c8911bbf88528f35d290a5db1ccbd4"
+}

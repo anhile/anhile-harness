@@ -175,5 +175,19 @@
     ],
     "passes": true,
     "spec": "specs/2026-09-design-review.md"
+  },
+  {
+    "id": 14,
+    "category": "harness",
+    "description": "./verify.sh --quick [--base <ref>] runs lint, types, the suites affected since the base and the guards, leaves api-e2e, browser-e2e and coverage to the full gate, and is recorded as quick; the commit gate takes it for a commit that closes nothing, and a closure, the audit and CI's walk ask the full gate",
+    "steps": [
+      "./verify.sh --quick on a branch; the summary says mode: quick with the base, steps 04, 05 and 08 are SKIP, step 03 ran the affected suites; the receipt and verify-log/<id>.json say mode quick",
+      "git commit of a change that closes nothing; the gate lets it through and says the run was quick on stderr",
+      "stage a closure on the same receipt; the gate refuses naming the entry and ./verify.sh; node scripts/audit-receipt.mjs write refuses too",
+      "./verify.sh; the receipt says mode full and the closure goes through with its audit",
+      "generate a project; its verify.sh has run_step 03 unit unit_suites and its AGENTS.md names --quick"
+    ],
+    "passes": true,
+    "spec": "specs/2026-09-quick-gate.md"
   }
 ]

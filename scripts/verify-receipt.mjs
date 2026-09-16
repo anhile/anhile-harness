@@ -21,7 +21,8 @@
  *   node scripts/verify-receipt.mjs hash
  *   node scripts/verify-receipt.mjs show
  *   node scripts/verify-receipt.mjs write --status pass|fail \
- *        --evidence <dir> --tree-before <hash> [--failed a,b]
+ *        --evidence <dir> --tree-before <hash> [--failed a,b] \
+ *        [--mode full|quick --base <ref>]
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -91,8 +92,22 @@ function listPaths() {
  *   treeHashBefore: string | null,
  *   treeHash: string,
  *   files: TreeFiles,
+ *   mode: 'full' | 'quick' | string,
+ *   quickBase: string | null,
  * }} Receipt
  */
+
+/**
+ * Was the run `./verify.sh --quick`: lint, types, the suites affected since
+ * a base and the guards, with api-e2e, browser-e2e and coverage left to the
+ * full gate? A receipt from before the flag has no `mode` and was full. The
+ * commit gate takes a quick run for a commit that closes nothing; a closure,
+ * the audit and CI's walk ask the full one (docs/INVARIANTS.md I11).
+ * @param {{ mode?: string } | null | undefined} run
+ */
+export function isQuick(run) {
+  return (run?.mode ?? 'full') === 'quick';
+}
 
 /** @param {string} rel */
 function digestOf(rel) {
@@ -197,6 +212,14 @@ function main() {
     // the same code and the verdict is about no single tree. Not a pass.
     if (before && before !== after) status = 'stale';
 
+    // Full unless the gate says quick, and nothing else: a mode nobody
+    // reads is a receipt every reader would take for the full gate.
+    const mode = flag(args, 'mode', 'full');
+    if (mode !== 'full' && mode !== 'quick') {
+      process.stderr.write(`verify-receipt: --mode must be full or quick, not "${mode}"\n`);
+      process.exit(2);
+    }
+
     /** @type {Receipt} */
     const receipt = {
       status,
@@ -217,6 +240,8 @@ function main() {
       treeHashBefore: before || null,
       treeHash: after,
       files,
+      mode,
+      quickBase: mode === 'quick' ? flag(args, 'base') || null : null,
     };
     const receiptPath = path.join(root, RECEIPT_FILE);
     mkdirSync(path.dirname(receiptPath), { recursive: true });

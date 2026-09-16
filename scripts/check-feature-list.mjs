@@ -53,11 +53,33 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from './harness-config.mjs';
-import { closureProblems } from './audit-log.mjs';
+import { closureProblems, treeHashAt } from './audit-log.mjs';
+import { readRuns } from './verify-log.mjs';
+import { isQuick } from './verify-receipt.mjs';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = 'feature_list.json';
+
+/**
+ * A closure's run is the full gate (I11). The commit gate refuses a closure on
+ * a `--quick` receipt and the audit writer refuses to write on one; this is
+ * the same question asked of the commit itself, for a closure made past both
+ * — a person's terminal, an older gate. Only when the commit's own record
+ * holds runs of its tree and every passing one is quick: a tree with no run
+ * on record is check-attestation's question, not this one.
+ * @param {string} at
+ */
+export function quickClosureProblems(at) {
+  const tree = treeHashAt(at);
+  const passing = readRuns(at).filter((run) => run.tree === tree && run.result === 'pass');
+  if (passing.length === 0 || !passing.every((run) => isQuick(run))) return [];
+  return [
+    `the commit closes an entry, and the only passing run of its tree on record is ./verify.sh --quick ` +
+      `(${passing.map((run) => path.basename(run.evidence ?? '')).join(', ')}): lint, types and the affected suites, ` +
+      'with api-e2e, browser-e2e and coverage left out. A closure asks the full gate (docs/INVARIANTS.md I11).',
+  ];
+}
 
 const args = process.argv.slice(2);
 const baseIndex = args.indexOf('--base');
@@ -415,6 +437,7 @@ if (baseline === null) {
   // ranges, so a commit from before the log never meets this question.
   if (at && closures.length > 0) {
     for (const problem of closureProblems(base ?? 'HEAD', at)) fail(problem);
+    for (const problem of quickClosureProblems(at)) fail(problem);
   }
 
   if (retracted.length > 0) {
