@@ -10,7 +10,7 @@
  * cannot be written by pointing the real gate at a fake directory: there is no
  * such switch, on purpose.
  */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -23,6 +23,7 @@ const SCRIPTS = [
   'check-commit-gate.mjs',
   'check-protected-files.mjs',
   'verify-log.mjs',
+  'spike.mjs',
 ];
 
 let repo: string;
@@ -38,22 +39,20 @@ function node(script: string, ...args: string[]): string {
   });
 }
 
-type Verdict = { blocked: boolean; reason: string };
+type Verdict = { blocked: boolean; reason: string; note?: string };
 
 /** execFileSync throws on a non-zero exit, so a block arrives as an exception. */
 function runGate(payload: unknown): Verdict {
-  try {
-    execFileSync('node', [path.join(repo, 'scripts', 'check-commit-gate.mjs')], {
-      cwd: repo,
-      input: JSON.stringify(payload),
-      encoding: 'utf8',
-    });
-    return { blocked: false, reason: '' };
-  } catch (error) {
-    const err = error as { status?: number; stderr?: string };
-    if (err.status !== 2) throw error;
-    return { blocked: true, reason: String(err.stderr ?? '') };
-  }
+  // spawnSync rather than execFileSync: what the gate says on stderr when it
+  // lets a commit through (a spike, I16) is part of what a case asserts.
+  const result = spawnSync('node', [path.join(repo, 'scripts', 'check-commit-gate.mjs')], {
+    cwd: repo,
+    input: JSON.stringify(payload),
+    encoding: 'utf8',
+  });
+  if (result.status === 0) return { blocked: false, reason: '', note: result.stderr };
+  if (result.status !== 2) throw new Error(`gate exited ${result.status}: ${result.stderr}`);
+  return { blocked: true, reason: result.stderr };
 }
 
 const bash = (command: string) => ({ tool_name: 'Bash', tool_input: { command } });
@@ -95,6 +94,57 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(repo, { recursive: true, force: true });
+});
+
+describe('a spike branch is asked for no receipt (I16)', () => {
+  it('lets a commit through with no receipt at all, and says why on stderr', () => {
+    git('checkout', '-qb', 'spike/try-sqlite');
+    writeFileSync(path.join(repo, 'source.ts'), 'export const answer = 43;\n');
+    git('add', 'source.ts');
+    const verdict = runGate(bash('git commit -m "trying"'));
+    expect(verdict.blocked).toBe(false);
+    expect(verdict.note).toContain('spike/try-sqlite is a spike, no receipt asked (docs/INVARIANTS.md I16)');
+  });
+
+  it('still refuses a run removed from verify-log/: the record is guarded on every branch (I12)', () => {
+    git('checkout', '-qb', 'spike/try-sqlite');
+    git('rm', '-q', 'verify-log/20260830T100000Z.json');
+    const verdict = runGate(bash('git commit -m "tidy"'));
+    expect(verdict.blocked).toBe(true);
+    expect(verdict.reason).toContain('I12');
+  });
+
+  it('still refuses an audit rewritten under audit-log/ (I15)', () => {
+    mkdirSync(path.join(repo, 'audit-log'));
+    const audit = path.join(repo, 'audit-log', '20260830T100000.000Z.json');
+    writeFileSync(audit, `${JSON.stringify({ at: '2026-08-30T10:00:00.000Z', spec: 'specs/x.md', verdict: 'NOT_READY', treeHash: 'sha256:aaa' })}\n`);
+    git('add', '-A');
+    git('commit', '-qm', 'an audit on record');
+    git('checkout', '-qb', 'spike/try-sqlite');
+    writeFileSync(audit, `${JSON.stringify({ at: '2026-08-30T10:00:00.000Z', spec: 'specs/x.md', verdict: 'READY', treeHash: 'sha256:aaa' })}\n`);
+    git('add', '-A');
+    const verdict = runGate(bash('git commit -m "it said READY all along"'));
+    expect(verdict.blocked).toBe(true);
+    expect(verdict.reason).toContain('I15');
+  });
+
+  it('lets a commit through on red, since the spike claims nothing the run would have to back', () => {
+    git('checkout', '-qb', 'spike/try-sqlite');
+    writeReceipt('fail', '03-unit');
+    expect(runGate(bash('git commit -m "red and honest about it"')).blocked).toBe(false);
+  });
+
+  it('still refuses the protected files: a spike edits the gate no more than any branch', () => {
+    git('checkout', '-qb', 'spike/try-sqlite');
+    const verdict = runGate({ tool_name: 'Edit', tool_input: { file_path: path.join(repo, 'verify.sh'), old_string: 'a', new_string: 'b' } });
+    expect(verdict.blocked).toBe(true);
+    expect(verdict.reason).toContain('I11');
+  });
+
+  it('asks the receipt again the moment the branch is not a spike', () => {
+    git('checkout', '-qb', 'spike-without-the-slash');
+    expect(runGate(bash('git commit -m x')).reason).toContain('No verify receipt');
+  });
 });
 
 describe('what counts as creating a commit', () => {

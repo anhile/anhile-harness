@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
 import { treeHash, RECEIPT_FILE } from './verify-receipt.mjs';
 import { describe, latestRun } from './check-main.mjs';
+import { isSpike, spikeRefusal } from './spike.mjs';
 
 export const root = realpathSync(
   path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
@@ -81,6 +82,10 @@ export function refusals({
         `Run \`git checkout -b <name>\` before the work, not after.`,
     );
   }
+
+  // The same sentence CI's attest job gives, so a spike is refused on the
+  // machine before it is refused on the server (I16).
+  if (branch !== null && isSpike(branch)) out.push(spikeRefusal(branch, BASE));
 
   if (dirty) {
     out.push(

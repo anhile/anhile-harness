@@ -119,5 +119,20 @@
     ],
     "passes": true,
     "spec": "specs/2026-09-journal-pointers.md"
+  },
+  {
+    "id": 10,
+    "category": "harness",
+    "description": "A branch under spike/ is asked for no receipt at commit time and no journal entry at session end, is refused as a pull request by check-pr-ready and by CI's attest job, and keeps the protected files protected; the generator ships the rule",
+    "steps": [
+      "git checkout -b spike/anything, edit, stage; a commit goes through with no receipt and stderr says the branch is a spike",
+      "edit verify.sh on the spike; the protected-file rule refuses as on any branch",
+      "end a session that committed on the spike with no PROGRESS.md entry; the stop hook is silent",
+      "start a session on the spike; the ritual prints what a spike is under the branch line",
+      "node scripts/check-pr-ready.mjs on the spike refuses with the sentence; node scripts/spike.mjs check --branch spike/x exits 3 with the same one",
+      "node scripts/harness-init.mjs --yes into a folder; scripts/spike.mjs is copied and AGENTS.md names the rule"
+    ],
+    "passes": true,
+    "spec": "specs/2026-09-spike-branches.md"
   }
 ]

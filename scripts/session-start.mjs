@@ -24,6 +24,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { KEEP, plan } from './progress.mjs';
 import { describe, latestRun } from './check-main.mjs';
+import { isSpike, spikeNote } from './spike.mjs';
 
 export const root = realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 
@@ -94,6 +95,7 @@ export function briefing() {
   lines.push('');
   lines.push(`Branch ${branch} at ${head.slice(0, 7)}` +
     (ahead !== '' ? `, ${ahead} ahead / ${behind} behind origin/main` : ', no origin/main to compare'));
+  if (isSpike(branch)) lines.push(spikeNote(branch));
   if (status) {
     const rows = status.split('\n');
     lines.push(`Working tree: ${rows.length} changed path(s), a person's uncommitted work — leave it alone:`);

@@ -68,6 +68,16 @@ describe('the journal a project starts with', () => {
   });
 });
 
+describe('the rules a project starts with', () => {
+  it('names the spike rule in AGENTS.md, and starts the project\'s own invariants at I17', () => {
+    const agents = read(scaffold(), 'AGENTS.md');
+    expect(agents).toContain('A branch under `spike/` is exploration');
+    expect(agents).toContain('| `spike.mjs`, in the gate, the hooks and CI | nothing on a `spike/*` branch; and a pull request from one |');
+    expect(agents).toContain('from I17');
+    expect(agents).not.toContain('from I16');
+  });
+});
+
 describe('the steps a project gets', () => {
   it('leaves out a step whose requirement does not exist', () => {
     // A gate with a step that cannot pass is a gate people learn to run with
@@ -181,6 +191,8 @@ describe('the files it copies', () => {
     expect(copied).toContain('scripts/check-feature-list.mjs');
     expect(copied).toContain('scripts/check-coverage.mjs');
     expect(copied).toContain('scripts/verify-log.mjs');
+    // I16 since 2026-09-16: the spike rule ships with the hooks that read it.
+    expect(copied).toContain('scripts/spike.mjs');
   });
 
   it('copies no guard suite, because they assert this repository', () => {

@@ -19,6 +19,16 @@ a person.
    refuse an entry whose Evidence a reader cannot follow.
 5. `/open-pr`, then `/review-pr`, then `/address-comments`.
 
+## A spike
+
+Not every branch is a claim. `git checkout -b spike/<anything>` and the
+rituals stand down: no receipt at commit time, no journal entry at session
+end, no contract, no audit. The protected files stay protected, and
+`./verify.sh` still runs when you want to know. A spike cannot become a pull
+request — `check-pr-ready.mjs` refuses it and CI's `attest` job repeats the
+refusal — so what survives is rebuilt on a branch of its own and closed the
+usual way, and the spike is deleted. `docs/INVARIANTS.md` I16.
+
 ## What the gate refuses, and why
 
 | Step | Refuses |

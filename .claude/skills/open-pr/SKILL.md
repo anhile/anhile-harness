@@ -103,6 +103,10 @@ red on it.
 
 ## What this skill does not do
 
+It does not open a pull request from a `spike/*` branch: `check-pr-ready.mjs`
+refuses it, and CI would refuse it again. A spike proves nothing (I16); rebuild
+what survives on a branch of its own.
+
 It does not merge. It does not approve. It does not run the reviewers: that is
 `/verify-task` before the commit, and a human after it. A pull request opened
 by a session is a request for a person's attention, and opening one is the

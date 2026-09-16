@@ -29,6 +29,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RECEIPT_FILE, changedPaths, hashFiles, readReceipt, root, treeFiles } from './verify-receipt.mjs';
+import { currentBranch, isSpike } from './spike.mjs';
 // PROTECTED lives with the content check, so the two can never disagree
 // about what they are protecting.
 import { PROTECTED, driftFromBaseline } from './check-protected-files.mjs';
@@ -248,13 +249,14 @@ or lift the hook in .claude/settings.json. Their next message re-baselines these
 files, so an edit they make themselves does not trip this.`);
 }
 
-/** @param {HookPayload} payload */
-function checkCommit(payload) {
-  if ((payload.tool_name ?? '') !== 'Bash') return;
-  const command = (payload.tool_input ?? {}).command;
-  if (typeof command !== 'string' || !createsACommit(command)) return;
-
+/**
+ * The receipt, or a refusal: none, stale, or red. Split out so a spike (I16)
+ * can skip the asking without skipping anything else in checkCommit.
+ * @returns {NonNullable<ReturnType<typeof readReceipt>>}
+ */
+function checkedReceipt() {
   const receipt = readReceipt();
+
 
   if (!receipt) {
     block(`BLOCKED: commit gate (docs/INVARIANTS.md I11)
@@ -295,6 +297,26 @@ hypothetical here: this repository already carries two commits made this way,
 and that is the failure this gate exists to stop. Splitting the change into a
 smaller commit does not help — the gate is about the tree, not the diff.`);
   }
+
+  return receipt;
+}
+
+/** @param {HookPayload} payload */
+function checkCommit(payload) {
+  if ((payload.tool_name ?? '') !== 'Bash') return;
+  const command = (payload.tool_input ?? {}).command;
+  if (typeof command !== 'string' || !createsACommit(command)) return;
+
+  // A spike branch proves nothing and cannot reach main (I16). It is asked
+  // for no receipt, and nothing the receipt would establish is checked below:
+  // the tree hash, the closing audit, the index against the tree. The
+  // protected-file checks above ran as on any branch, and the two append-only
+  // guards next run as on any branch: a spike claims nothing, and rewrites
+  // nothing.
+  const branch = currentBranch();
+  const spike = isSpike(branch);
+  if (spike) process.stderr.write(`commit gate: ${branch} is a spike, no receipt asked (docs/INVARIANTS.md I16)\n`);
+  const receipt = spike ? null : checkedReceipt();
 
   // audit-log/ is outside the tree hash for the same reason verify-log/ is
   // (below), and gets the same treatment: its own guard, here, before the
@@ -340,6 +362,10 @@ ${detail}
 Restore it with: git checkout -- verify-log/`);
   }
 
+
+  // A spike ends here: what follows is what the receipt establishes, and a
+  // spike has none (I16).
+  if (!receipt) return;
 
   const current = treeFiles();
   const currentHash = hashFiles(current);

@@ -42,7 +42,7 @@ function repo(): string {
   mkdirSync(path.join(dir, 'scripts'));
   // check-main.mjs since 2026-09-11: check-pr-ready reports whether main is
   // green, so the fixture needs it beside the script or the script cannot load.
-  for (const f of ['check-pr-ready.mjs', 'verify-receipt.mjs', 'check-main.mjs']) {
+  for (const f of ['check-pr-ready.mjs', 'verify-receipt.mjs', 'check-main.mjs', 'spike.mjs']) {
     copyFileSync(path.join(REPO, 'scripts', f), path.join(dir, 'scripts', f));
   }
   // Without this the receipt written below makes the tree dirty, and every
@@ -121,6 +121,21 @@ describe('a branch that is ready', () => {
 });
 
 describe('the branch itself', () => {
+  it('refuses a spike branch, which proves nothing and cannot reach main (I16)', () => {
+    const dir = make(readyBranch);
+    git(dir, 'checkout', '-qb', 'spike/try-sqlite');
+    const text = run(dir).refusals.join(' ');
+    expect(text).toContain('spike/try-sqlite is a spike');
+    expect(text).toContain('cannot reach main');
+    expect(text).toContain('git checkout -b <name> main');
+  });
+
+  it('does not take a branch merely named spike-… for a spike', () => {
+    const dir = make(readyBranch);
+    git(dir, 'checkout', '-qb', 'spike-shaped');
+    expect(run(dir).refusals.join(' ')).not.toContain('is a spike');
+  });
+
   it('refuses main, because a pull request needs a branch of its own', () => {
     const dir = make(readyBranch);
     git(dir, 'checkout', '-q', 'main');

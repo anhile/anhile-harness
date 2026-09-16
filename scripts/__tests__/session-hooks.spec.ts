@@ -42,7 +42,7 @@ beforeEach(() => {
   // and every case fails for that rather than its own reason.
   // check-main.mjs since 2026-09-11: session-start reports whether main is
   // green, so the fixture needs it or the hook cannot load at all.
-  for (const script of ['session-start.mjs', 'session-stop.mjs', 'progress.mjs', 'harness-config.mjs', 'check-main.mjs', 'verify-log.mjs', 'audit-log.mjs', 'verify-receipt.mjs']) {
+  for (const script of ['session-start.mjs', 'session-stop.mjs', 'progress.mjs', 'harness-config.mjs', 'check-main.mjs', 'verify-log.mjs', 'audit-log.mjs', 'verify-receipt.mjs', 'spike.mjs']) {
     copyFileSync(path.join(REPO, 'scripts', script), path.join(repo, 'scripts', script));
   }
   copyFileSync(path.join(REPO, 'harness.config.json'), path.join(repo, 'harness.config.json'));
@@ -216,6 +216,48 @@ describe('session-stop insists on the PROGRESS entry, for commits, once', () => 
       }
     })();
     expect(status).toBe(0);
+  });
+});
+
+describe('a spike branch is asked for nothing (I16)', () => {
+  it('session-start says what a spike is, once, under the branch line', () => {
+    git('checkout', '-qb', 'spike/try-sqlite');
+    const out = start().stdout;
+    expect(out).toContain('Branch spike/try-sqlite at');
+    expect(out).toContain('spike/try-sqlite is a spike (docs/INVARIANTS.md I16)');
+    expect(out).toContain('no journal entry at session end');
+    expect(out.split('is a spike (docs/INVARIANTS.md I16)')).toHaveLength(2);
+  });
+
+  it('session-stop lets a spike stop with commits and no journal entry, and no push reminder', () => {
+    // An origin, so the push reminder could fire: the suite's own case "says
+    // nothing without an origin" shows it cannot otherwise, and this case is
+    // about the reminder being declined, not absent.
+    const bare = mkdtempSync(path.join(tmpdir(), 'session-hooks-origin-'));
+    execFileSync('git', ['init', '-q', '--bare', '-b', 'main', bare]);
+    git('remote', 'add', 'origin', bare);
+    git('push', '-q', 'origin', 'main');
+    git('fetch', '-q', 'origin');
+    git('checkout', '-qb', 'spike/try-sqlite');
+    start();
+    commit('trying', { 'a.txt': 'a' });
+    commit('and again', { 'b.txt': 'b' });
+    const result = stop();
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    // The same two commits on a branch that is not a spike: the journal
+    // reminder, then the push reminder, as before.
+    git('checkout', '-qb', 'not-a-spike');
+    start('s2');
+    commit('work', { 'c.txt': 'c' });
+    expect(stop('s2').status).toBe(2);
+  });
+
+  it('asks again on a branch that is not under spike/', () => {
+    git('checkout', '-qb', 'spikes-are-not-this');
+    start();
+    commit('work', { 'a.txt': 'a' });
+    expect(stop().status).toBe(2);
   });
 });
 
