@@ -97,7 +97,9 @@ verifiable yet; say so in the open questions rather than in the table.
 Rules for this table:
 
 - UI criteria are verified in a real browser, through the actions a user
-  would take. `curl` and unit tests do not verify a UI criterion.
+  would take. `curl` and unit tests do not verify a UI criterion. A session's
+  own walk with agent-browser is evidence for the reviewer, filed under
+  `.generated/ui/`, not a mechanism for this table: the mechanism is step 05.
 - "Pass condition" is a concrete, observable assertion. "Works correctly" is not
   a pass condition.
 - "Evidence output" names the file under `.generated/runs/<timestamp>/` where a

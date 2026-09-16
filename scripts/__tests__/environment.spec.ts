@@ -25,8 +25,8 @@ afterAll(() => {
 });
 
 const healthy = {
-  nvmrc: '22.18.0',
-  nodeVersion: 'v22.18.0',
+  nvmrc: '24.19.0',
+  nodeVersion: 'v24.19.0',
   pnpm: true,
   databaseRequired: false,
   docker: false,
@@ -91,14 +91,23 @@ describe('what every project is asked for', () => {
     const { status, findings } = evaluate({ ...healthy, nodeVersion: 'v20.11.0' });
     expect(status).toBe(1);
     expect(named(findings, 'node')?.ok).toBe(false);
-    expect(named(findings, 'node')?.detail).toContain('.nvmrc asks for v22');
-    expect(named(findings, 'node')?.remedy).toContain('22');
+    expect(named(findings, 'node')?.detail).toContain('.nvmrc asks for v24');
+    expect(named(findings, 'node')?.remedy).toContain('24');
   });
 
   it('reports a taken gate port with the variable that moves it', () => {
     const { status, findings } = evaluate({ ...healthy, ports: { 3100: false, 5273: true } });
     expect(status).toBe(1);
     expect(named(findings, 'port 3100')?.remedy).toContain('VERIFY_');
+  });
+
+  it('reports agent-browser and never counts it, since only a session walking the UI wants it', () => {
+    const { status, findings } = evaluate({ ...healthy, agentBrowser: false });
+    expect(status).toBe(0);
+    expect(named(findings, 'agent-browser')?.optional).toBe(true);
+    expect(named(findings, 'agent-browser')?.remedy).toContain('agent-browser install');
+    expect(named(findings, 'agent-browser')?.remedy).toContain('Step 05 does not use it');
+    expect(named(evaluate({ ...healthy, agentBrowser: true }).findings, 'agent-browser')?.remedy).toBeNull();
   });
 
   it('reports gh and never counts it, since only the pull-request skills need it', () => {

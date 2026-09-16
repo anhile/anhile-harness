@@ -37,13 +37,14 @@ that leaves you with a red gate has taught its first lesson backwards.
 
 | | Needed for | Version |
 |---|---|---|
-| **Node** | everything | 22 or later; a generated project pins the patch in `.nvmrc` |
+| **Node** | everything | 24 or later; a generated project pins the patch in `.nvmrc` |
 | **pnpm** | installing, and every gate step runs through `pnpm exec` | 10; `corepack enable` gives you the one `package.json` names |
 | **git** | the commit gate, the attestation, the hooks | any recent |
 | **bash** | `verify.sh` and the pre-push hook are shell scripts | macOS and Linux as they come; Windows only through WSL, which is untested |
 | **Docker** | only if you answer yes to a database: the gate starts Postgres from `docker-compose.yml` | any recent |
 | **gh** | only `/open-pr`, `/review-pr` and `/address-comments` | any recent, authenticated |
 | **Claude Code** | optional: the skills, hooks and agents are for it and ignored by anything else | current |
+| **agent-browser** | optional: a session walking the UI as a user would, with snapshots filed as evidence; step 05 does not use it | `npm install -g agent-browser`, then `agent-browser install` |
 
 A generated project can tell you which of these it is missing:
 
@@ -147,6 +148,14 @@ Around the steps, the mechanisms:
 | CI `attest` | every pushed commit checked for a recorded passing run that covers its exact tree |
 | protected files | the gate and the guards, hashed; a session may not change them without a person |
 
+Two worktrees, two gates, one machine: a linked worktree takes its own ports
+and its own test database, derived from its path, so two gates run at once
+without coordination, and every run records which it used in its summary.
+That covers the gate. For the dev servers a person opens in a browser,
+[portless](https://portless.sh) gives each worktree a named URL
+(`fix-ui.myapp.localhost`) instead of a port to remember; the gate does not
+use it and nothing here depends on it.
+
 ## The idea
 
 Most projects can tell you whether the tests passed. Few can tell you whether
@@ -180,6 +189,12 @@ else reads them. A project without it keeps the gate and loses the ceremony.
 Two agents: `spec-auditor`, which audits a closing change from the diff, the
 contract and the evidence alone, and `security-check`, which reviews a change
 against the attack surface the configuration declares.
+
+A session that touches the UI walks it once as a user would before it claims
+anything about it. With [agent-browser](https://agent-browser.dev) on the
+machine that walk is cheap — a page as a tree of `@e1` references rather than
+a screenshot per step — and what it saw is filed under `.generated/ui/` and
+named in the pull request. A walk is not a suite: step 05 stays Playwright.
 
 The hooks stop a session where a person would: the commit gate refuses a
 commit whose tree no green run covers, the work budget asks after a configured

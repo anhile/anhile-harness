@@ -40,7 +40,10 @@ function directorySize(dir) {
   for (const item of readdirSync(dir, { withFileTypes: true, recursive: true })) {
     if (!item.isFile()) continue;
     try {
-      total += statSync(path.join(item.parentPath ?? item.path, item.name)).size;
+      // `parentPath` alone: the `path` alias went from @types/node 24 and
+      // the first typecheck under it stopped here, in this repository and in
+      // every project the generator wrote that minute.
+      total += statSync(path.join(item.parentPath, item.name)).size;
     } catch {
       /* raced with a concurrent run; it is not this script's job to care */
     }

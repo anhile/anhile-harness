@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-16T10:28:53.795Z",
+  "result": "pass",
+  "tree": "sha256:5ad0699635fd9e512290c6367c351183301c1cdd64d29a4cc29f5aeb91b523bd",
+  "head": "d11646db5c667c521e54dc750b9abbb9ae7b65c6",
+  "branch": "env/node-24",
+  "node": "v24.19.0",
+  "evidence": ".generated/runs/20260916T102826Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 24
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}
