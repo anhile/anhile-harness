@@ -13,6 +13,12 @@ minor, a fix to a copied script is a patch.
 
 ### Added
 
+- A design reviewer. The review brief says whether the UI changed (the
+  optional `ui.paths` in `harness.config.json`; `apps/web/src/` for a
+  `--web` project) and whether a walk is under `.generated/ui/` on this
+  machine; `/review-pr` then dispatches `design-review`, an agent that holds
+  the screen to `apps/web/DESIGN.md` on the walk's screenshots and snapshots,
+  and reports NO WALK rather than reviewing a screen nobody looked at.
 - A design base for `--web`: Tailwind 4 with tokens under `@theme` in
   `apps/web/src/index.css`, a catalog of primitives under
   `components/ui` (`Button`, `Card`, `Input`, `Label`, each with a test),

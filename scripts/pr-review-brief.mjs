@@ -17,7 +17,7 @@
  *   node scripts/pr-review-brief.mjs --json
  */
 import { execFileSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
+import { existsSync, readdirSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './harness-config.mjs';
@@ -45,6 +45,10 @@ const git = (...args) => {
  * two cannot drift into disagreeing about what counts.
  */
 export const SURFACE = loadConfig().attackSurface.paths;
+/** Where the UI lives; optional, empty for a project without a page. */
+export const UI = loadConfig().ui?.paths ?? [];
+export const WALK_DIR = path.join('.generated', 'ui');
+const WALK_ID = /^\d{8}T\d{6}Z$/u;
 
 /**
  * Entries whose `passes` or `retracted` differs between two revisions.
@@ -107,6 +111,32 @@ export function surfaceTouched(files) {
   return SURFACE.filter((prefix) => files.some((f) => f.startsWith(prefix)));
 }
 
+/**
+ * The UI prefixes the change touches, each with how many files under it.
+ * @param {string[]} files
+ * @param {string[]} [prefixes]
+ */
+export function uiTouched(files, prefixes = UI) {
+  return prefixes
+    .map((prefix) => ({ path: prefix, files: files.filter((f) => f.startsWith(prefix)).length }))
+    .filter((u) => u.files > 0);
+}
+
+/**
+ * The newest walk under .generated/ui/ on this machine — the folder a
+ * session files agent-browser's snapshots and screenshots in — or null. It
+ * is not in the repository: the design reviewer runs where the walk is.
+ * @param {string} [dir]
+ * @returns {{ id: string, files: number } | null}
+ */
+export function newestWalk(dir = path.join(root, WALK_DIR)) {
+  if (!existsSync(dir)) return null;
+  const ids = readdirSync(dir).filter((name) => WALK_ID.test(name)).sort();
+  const id = ids.at(-1);
+  if (id === undefined) return null;
+  return { id, files: readdirSync(path.join(dir, id), { recursive: true, withFileTypes: true }).filter((entry) => entry.isFile()).length };
+}
+
 export function brief() {
   const base = git('rev-parse', '--verify', '--quiet', 'origin/main') === '' ? 'main' : 'origin/main';
   const mergeBase = git('merge-base', base, 'HEAD');
@@ -139,6 +169,8 @@ export function brief() {
     specs,
     evidence: newestRun('HEAD'),
     surface: surfaceTouched(files),
+    ui: uiTouched(files),
+    walk: newestWalk(),
     journal: files.includes('PROGRESS.md'),
     tests: files.filter((f) => f.endsWith('.spec.ts') || f.includes('/test/')),
     protectedFiles: files.filter((f) =>
@@ -192,6 +224,18 @@ export function render(b) {
       ? 'Attack surface: unchanged, so no security review is required'
       : `Attack surface touched: ${b.surface.join(', ')}`,
   );
+  lines.push(
+    b.ui.length === 0
+      ? 'UI: unchanged, so no design review is required'
+      : `UI touched: ${b.ui.map((u) => `${u.path} (${u.files} file(s))`).join(', ')}`,
+  );
+  if (b.ui.length > 0) {
+    lines.push(
+      b.walk === null
+        ? `Walk: none under ${WALK_DIR}/ on this machine — the design reviewer has nothing to look at until a session walks the UI with agent-browser`
+        : `Walk: ${WALK_DIR}/${b.walk.id}/ (${b.walk.files} file(s))`,
+    );
+  }
   return lines.join('\n');
 }
 

@@ -109,6 +109,9 @@ describe('what the tarball carries', () => {
     // attack surface; a project with an API has one from the first commit.
     // 0.1.0 shipped the skills that call it and not the agent.
     expect(paths).toContain('.claude/agents/security-check.md');
+    // review-pr dispatches it when the brief says the UI changed, since
+    // 2026-09-16; it reads the walk, so it travels with the skill.
+    expect(paths).toContain('.claude/agents/design-review.md');
   });
 
   it('under .claude, .github and specs, only what the manifest says travels', () => {

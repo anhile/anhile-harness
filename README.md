@@ -186,7 +186,7 @@ else reads them. A project without it keeps the gate and loses the ceremony.
 | `/task-intake` | turns a spec into a task contract in `specs/`, with acceptance criteria in EARS notation |
 | `/verify-task` | runs the gate for a contract and hands the result to an auditor that was told nothing about the intent |
 | `/open-pr` | opens a pull request with the evidence already in the body |
-| `/review-pr` | several reviewers from one brief; only findings that name a file, a line and a consequence |
+| `/review-pr` | several reviewers from one brief; only findings that name a file, a line and a consequence; a design reviewer on the walk when the UI changed |
 | `/address-comments` | gives every review comment an outcome, and drops none silently |
 
 Two agents: `spec-auditor`, which audits a closing change from the diff, the

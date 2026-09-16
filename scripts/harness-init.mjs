@@ -644,6 +644,9 @@ export function configFor(answers) {
       ],
     },
     contracts: { package: null },
+    // Where the UI lives: a change under it is a UI change to the review
+    // brief, which then asks for a walk and dispatches the design reviewer.
+    ui: { paths: answers.web ? ['apps/web/src/'] : [] },
     // Commits allowed to close more than one entry, because they predate the
     // rule. A new project has none.
     featureList: { exemptCommits: [] },

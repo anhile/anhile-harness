@@ -35,6 +35,7 @@ export const CONFIG_FILE = 'harness.config.json';
  *   contracts: { package: string | null },
  *   featureList?: { exemptCommits: string[] },
  *   session?: { workBudget?: number },
+ *   ui?: { paths: string[] },
  *   intake?: { notion: { database: string, dataSource?: string, view?: string } | null },
  * }} Config
  */
@@ -73,6 +74,9 @@ const OPTIONAL = {
   // Commits exempt from one-closure-per-commit in check-feature-list.mjs:
   // full shas, of commits already on main.
   'featureList.exemptCommits': (v) => Array.isArray(v) && v.every((s) => /^[0-9a-f]{40}$/u.test(s)),
+  // Where the UI lives, as path prefixes: what makes a change a UI change in
+  // the review brief, and so what asks for a walk and a design review.
+  'ui.paths': (v) => Array.isArray(v) && v.every((s) => typeof s === 'string' && s.length > 0),
   // Tool calls a session may make between two messages from the person
   // before check-work-budget.mjs asks it to stop.
   'session.workBudget': (v) => typeof v === 'number' && Number.isInteger(v) && v > 0,

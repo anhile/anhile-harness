@@ -109,6 +109,18 @@ describe('it refuses a configuration it cannot trust', () => {
     expect(error).toContain('featureList.exemptCommits');
   });
 
+  it('allows ui.paths to be absent, and refuses an empty prefix in it', () => {
+    // Optional, because a project without a page has no UI to point the
+    // review brief at; validated when present, because an empty prefix
+    // matches every file and every change would be a UI change.
+    const { ui: _dropped, ...without } = config as unknown as Record<string, unknown>;
+    expect(load(without).ok).toBe(true);
+    expect(load({ ...config, ui: { paths: ['apps/web/src/'] } }).ok).toBe(true);
+    const { ok, error } = load({ ...config, ui: { paths: [''] } });
+    expect(ok).toBe(false);
+    expect(error).toContain('ui.paths');
+  });
+
   it('allows a null contracts package, for a project without a shared one', () => {
     expect(load({ ...config, contracts: { package: null } }).ok).toBe(true);
   });

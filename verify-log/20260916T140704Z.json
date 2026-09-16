@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-16T14:07:43.139Z",
+  "result": "fail",
+  "tree": "sha256:cd2d7126c15a7a77e0611cdcf6ad42027ebdcb538308c4df36c443c8e386bd5b",
+  "head": "47380b54ae33e77385d6dea70ee5aee5807c89f6",
+  "branch": "design/reviewer",
+  "node": "v24.19.0",
+  "evidence": ".generated/runs/20260916T140704Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "03-unit": {
+      "exit": 1,
+      "seconds": 35
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 1
+    }
+  }
+}

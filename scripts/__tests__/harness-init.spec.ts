@@ -559,6 +559,13 @@ describe('the applications it scaffolds', () => {
     expect(config.coverage.sources).toContain('apps');
   });
 
+  it('points the review brief at apps/web/src as the UI, for a project that has a page', () => {
+    const withWeb = JSON.parse(read(scaffold(['--web']), 'harness.config.json')) as { ui: { paths: string[] } };
+    expect(withWeb.ui.paths).toEqual(['apps/web/src/']);
+    const without = JSON.parse(read(scaffold(), 'harness.config.json')) as { ui: { paths: string[] } };
+    expect(without.ui.paths).toEqual([]);
+  });
+
   it('installs React only for a project that has a page', () => {
     const withWeb = JSON.parse(read(scaffold(['--web']), 'package.json')) as {
       devDependencies: Record<string, string>;
