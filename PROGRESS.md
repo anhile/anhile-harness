@@ -1028,3 +1028,28 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   since a server is declared once by a person; and step 2 of entry #16 says
   the upgraded project's gate passes, which the suite holds only as the
   gate's text and mode.
+
+## 2026-09-17 — 0.3.0: the fast lane paid, and the design work with it
+
+- **Feature**: none closed; a release
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6 on the release tree
+- **Evidence**: `verify-log/20260916T202906Z` — the run this commit carries
+- **Contract changes**: none
+- **Notes**:
+
+  Five things since 0.2.0, all from one day: a design base for `--web`
+  (#12), a design reviewer on the walk (#13), and the three debts 0.2.0 left
+  — `./verify.sh --quick` (#14), `progress.mjs cost` (#15) and
+  `npx anhile-harness upgrade` (#16). A minor by the CHANGELOG's own rule:
+  the gate refuses a closure on a quick run, and step 03 of a generated gate
+  is `unit_suites` now. The upgrade path for a project on 0.2.0 is a command
+  this time, not a list of files.
+
+  What `cost` says about the day, on the record before this commit: #12,
+  #13 and #14 cost three to five runs and one or two commits each, against
+  about eight and three when the fast lane was asked for. #15 and #16 cost
+  more runs — five and ten — and the red ones among them are on record: each
+  closure's quick run passed a tree the full gate then failed, because a
+  suite that reads a file does not import it. That is the shape of the quick
+  run, said in I11, and the reason a closure asks the full gate.
