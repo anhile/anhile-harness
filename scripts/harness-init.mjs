@@ -608,7 +608,7 @@ const PROGRESS_SEED = (name) =>
     '- **Feature**: none yet',
     '- **Result**: passing',
     '- **Verified by**: `./verify.sh`, on the tree the generator wrote',
-    '- **Evidence**: the `verify-log/` file for the first run',
+    '- **Evidence**: none yet — the first `./verify.sh` writes the first `verify-log/<id>`; every later entry names one',
     '- **Contract changes**: none.',
     '- **Notes**:',
     '',

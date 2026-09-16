@@ -698,3 +698,58 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   fallback beside `parentPath`; the generated project's gate went red on
   the same line, since it takes both the script and the types. One word.
 
+## 2026-09-16 — The journal's evidence is a pointer, and #9 is appended
+
+- **Feature**: none closed; #9 appended — "A journal entry's Evidence names a run under verify-log/ and, when the entry closed a feature, the READY audit under audit-log/; the stop hook, step 03 and CI's walk refuse an entry a reader cannot follow"
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: verify-log/20260916T105321Z — the run with the patched workflow, every case green
+- **Contract changes**: none
+- **Notes**:
+
+  The one item from Vercel's harness course that adds a mechanism rather
+  than text. Their rule for an agent's report — the exact command, the exact
+  result, never a sentence that sounds like one — is what this repository
+  enforces everywhere by hash and record, and the journal was the one place
+  it enforced by habit: eighteen entries whose Evidence said "the run
+  recorded for this tree", which reads like a pointer and opens nothing.
+
+  `progress.mjs check` now follows the field. An entry new since `--base`
+  names at least one run id that exists under `verify-log/`, and, when its
+  Feature says `closed #n`, an audit id under `audit-log/` that said READY.
+  `--at` reads the journal and both records at a commit, and CI's walk asks
+  it of every pushed commit against its parent, by the one-line protected
+  patch a person applied. The stop hook asks it of the entries a session
+  wrote, once, after asking that an entry exist. Old entries stay prose: at
+  every baseline a walk uses, they are already there.
+
+  Two things found on the way. The stop hook's baseline is the session's
+  starting commit, so in a session that began before the rule it named all
+  eighteen prose entries once and then fell silent, as designed; a session
+  that begins after the rule sees only its own. And a closing commit cannot
+  name its own audit: the audit describes the tree, the journal is in the
+  tree. So the closing commit carries the audit and the entry naming it
+  comes in the commit after — which is the shape this contract closes in.
+
+
+## 2026-09-16 — closed #9: the journal's Evidence points into the record
+
+- **Feature**: closed #9 (`specs/2026-09-journal-pointers.md`)
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6, 596 tests; spec-auditor READY on the same tree
+- **Evidence**: `verify-log/20260916T110422Z` — the run the closing commit
+  carries; `audit-log/20260916T110726.491Z` — the READY verdict of that tree
+- **Contract changes**: none
+- **Notes**:
+
+  This is the first entry the rule applies to, and the first that names an
+  audit: the closing commit `9e6249b` carries the run and the audit, and this
+  entry, in the commit after, names both. The first audit said NOT READY on
+  four items and each became a case rather than an argument — both `tail`
+  commands asserted in the stop hook's refusal, CI's walk run on real commits
+  in the fixture with one entry refused for pointing nowhere, the import pin
+  exact again, and an AC6 for the seed journal a generated project starts
+  with. The second audit's one caveat, that the AC3 row said "the pointer
+  branch ran" where the assertion shows only that the baseline branch was
+  taken, is fixed in the contract's text here, in the commit that carries no
+  closure.

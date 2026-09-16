@@ -105,6 +105,10 @@ jobs:
             node scripts/check-feature-list.mjs --at "$commit" --base "$parent"
             node scripts/verify-log.mjs check --at "$commit" --base "$parent"
             node scripts/check-migrations.mjs --at "$commit" --base "$parent"
+            # The journal's Evidence points into the record: every entry a
+            # commit adds names a run under verify-log/, and an audit under
+            # audit-log/ when it closed something. Since 2026-09-16.
+            node scripts/progress.mjs check --at "$commit" --base "$parent"
           done
 
   verify:

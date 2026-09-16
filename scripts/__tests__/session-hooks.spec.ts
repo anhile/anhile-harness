@@ -27,7 +27,10 @@ function commit(message: string, files: Record<string, string>): string {
   return git('rev-parse', 'HEAD');
 }
 
-const progressWith = (...entries: string[]) => `# Progress\n\n${entries.map((e) => `## ${e}\n\n- **Feature**: x\n`).join('\n')}`;
+// Every entry names the run the fixture's first commit carries, since
+// 2026-09-16: the stop hook follows an entry's Evidence into the record.
+const RUN = '20260916T100000Z';
+const progressWith = (...entries: string[]) => `# Progress\n\n${entries.map((e) => `## ${e}\n\n- **Feature**: x\n- **Evidence**: verify-log/${RUN}\n`).join('\n')}`;
 const features = (entries: Array<{ description: string; passes: boolean; retracted?: object }>) =>
   JSON.stringify(entries.map((e) => ({ category: 'platform', steps: ['s'], ...e })), null, 2);
 
@@ -39,12 +42,14 @@ beforeEach(() => {
   // and every case fails for that rather than its own reason.
   // check-main.mjs since 2026-09-11: session-start reports whether main is
   // green, so the fixture needs it or the hook cannot load at all.
-  for (const script of ['session-start.mjs', 'session-stop.mjs', 'progress.mjs', 'harness-config.mjs', 'check-main.mjs']) {
+  for (const script of ['session-start.mjs', 'session-stop.mjs', 'progress.mjs', 'harness-config.mjs', 'check-main.mjs', 'verify-log.mjs', 'audit-log.mjs', 'verify-receipt.mjs']) {
     copyFileSync(path.join(REPO, 'scripts', script), path.join(repo, 'scripts', script));
   }
   copyFileSync(path.join(REPO, 'harness.config.json'), path.join(repo, 'harness.config.json'));
   git('init', '-q', '-b', 'main');
+  mkdirSync(path.join(repo, 'verify-log'));
   commit('first', {
+    [`verify-log/${RUN}.json`]: '{"at":"2026-09-16T10:00:00.000Z","result":"pass","tree":"sha256:a","steps":{}}\n',
     'PROGRESS.md': progressWith('2026-09-01 — the beginning'),
     'feature_list.json': features([
       { description: 'closed one', passes: true },
@@ -151,6 +156,32 @@ describe('session-stop insists on the PROGRESS entry, for commits, once', () => 
     start();
     commit('work', { 'a.txt': 'a' });
     commit('journal', { 'PROGRESS.md': progressWith('2026-09-01 — the beginning', '2026-09-08 — the work') });
+    expect(stop().status).toBe(0);
+  });
+
+  it('blocks once when the entry this session wrote points at nothing on record', () => {
+    // The entry exists, so the first reminder is satisfied; its Evidence says
+    // "the log", which a reader cannot follow. Once, like the others.
+    start();
+    commit('work', { 'a.txt': 'a' });
+    commit('journal', {
+      'PROGRESS.md': `${progressWith('2026-09-01 — the beginning')}\n## 2026-09-08 — the work\n\n- **Feature**: none closed\n- **Evidence**: the log\n`,
+    });
+    const first = stop();
+    expect(first.status).toBe(2);
+    expect(first.stderr).toContain('2026-09-08 — the work: Evidence names no run');
+    expect(first.stderr).toContain('verify-log.mjs tail 3');
+    expect(first.stderr).toContain('audit-log.mjs tail 3');
+    expect(stop().status).toBe(0);
+  });
+
+  it('lets the session stop when the entry names a run on record, committed or not', () => {
+    start();
+    commit('work', { 'a.txt': 'a' });
+    commit('journal', {
+      'verify-log/20260916T100100Z.json': '{"at":"2026-09-16T10:01:00.000Z","result":"pass","tree":"sha256:b","steps":{}}\n',
+      'PROGRESS.md': `${progressWith('2026-09-01 — the beginning')}\n## 2026-09-08 — the work\n\n- **Feature**: none closed\n- **Evidence**: verify-log/20260916T100100Z\n`,
+    });
     expect(stop().status).toBe(0);
   });
 

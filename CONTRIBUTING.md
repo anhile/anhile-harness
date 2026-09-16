@@ -13,7 +13,10 @@ a person.
 3. Make the change, and run `./verify.sh`. The gate is the only thing that
    establishes the code works; a red gate is fixed, never worked around.
 4. Write the `PROGRESS.md` entry — `node scripts/progress.mjs template` prints
-   the shape — and commit. The commit gate refuses a tree no green run covers.
+   the shape; Evidence names the `verify-log/<id>` of the run(s) you made, and
+   the `audit-log/<id>` that said READY if an entry closed — and commit. The
+   commit gate refuses a tree no green run covers; the stop hook and CI
+   refuse an entry whose Evidence a reader cannot follow.
 5. `/open-pr`, then `/review-pr`, then `/address-comments`.
 
 ## What the gate refuses, and why

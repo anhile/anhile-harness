@@ -150,6 +150,11 @@ closes that window by running this guard itself before allowing a commit.
 - `scripts/check-verify.mjs`, in CI's witness job: a passing run and a
   deliberately broken run each record exactly one file, and the broken one is
   recorded as `fail` naming the step that failed.
+- `scripts/progress.mjs check`, in `session-stop.mjs`, step 03 and CI's
+  walk: every journal entry new since the baseline names a run under
+  `verify-log/` by id, and the READY audit under `audit-log/` when it closed
+  a feature. The record is what a reader follows; since 2026-09-16 the
+  journal's Evidence is a pointer into it rather than a sentence about it.
 
 ## I13 — A commit's claim to be verified is checkable off the author's machine
 

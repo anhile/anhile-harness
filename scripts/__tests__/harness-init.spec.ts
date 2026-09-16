@@ -56,6 +56,18 @@ function scaffold(extra: string[] = []): string {
 
 const read = (dir: string, rel: string) => readFileSync(path.join(dir, rel), 'utf8');
 
+describe('the journal a project starts with', () => {
+  it('passes progress.mjs check as written, before any run exists to name', () => {
+    // The seed entry has no run id, since the first ./verify.sh has not run;
+    // the check asks for pointers only against a baseline, and a new project
+    // has no commit yet, so it asks the shape and says so.
+    const dir = scaffold();
+    const out = execFileSync('node', [path.join(dir, 'scripts', 'progress.mjs'), 'check'], { cwd: dir, encoding: 'utf8' });
+    expect(out).toContain("every one in the template's shape");
+    expect(out).toContain('no baseline at HEAD, evidence not asked');
+  });
+});
+
 describe('the steps a project gets', () => {
   it('leaves out a step whose requirement does not exist', () => {
     // A gate with a step that cannot pass is a gate people learn to run with

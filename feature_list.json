@@ -105,5 +105,19 @@
     ],
     "passes": true,
     "spec": "specs/2026-09-audit-log.md"
+  },
+  {
+    "id": 9,
+    "category": "harness",
+    "description": "A journal entry's Evidence names a run under verify-log/ and, when the entry closed a feature, the READY audit under audit-log/; the stop hook, step 03 and CI's walk refuse an entry a reader cannot follow",
+    "steps": [
+      "write an entry whose Evidence says \"the log\" and run node scripts/progress.mjs check; it refuses, naming the entry",
+      "name a verify-log/<id> that exists; it passes; name one that does not; it refuses with the id",
+      "write closed #n in Feature with no audit-log/<id>, or one that said NOT_READY; it refuses; name the READY one; it passes",
+      "commit an entry and run progress.mjs check --at HEAD --base HEAD^; the commit's own journal and records are what is read",
+      "end a session that committed with such an entry; the stop hook refuses once with the two tail commands that print the ids"
+    ],
+    "passes": true,
+    "spec": "specs/2026-09-journal-pointers.md"
   }
 ]

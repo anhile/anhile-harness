@@ -11,7 +11,16 @@
  *
  *   check    every entry has the heading `## YYYY-MM-DD — title` and the six
  *            fields of the template, and dates never go backwards. A test in
- *            step 03 runs this against the real file.
+ *            step 03 runs this against the real file. And, for every entry
+ *            new since --base (HEAD), the Evidence field points into the
+ *            record: at least one run id that exists under verify-log/, and,
+ *            when the entry closes a feature, an audit id under audit-log/
+ *            whose verdict was READY. Until 2026-09-16 Evidence was prose —
+ *            "the run recorded for this tree" — which reads like a pointer
+ *            and points at nothing; a claim a reader cannot follow is the
+ *            kind this repository exists to refuse. --at reads the journal
+ *            and the records at a commit, so CI walks pushed commits one by
+ *            one, as it does for the other append-only files.
  *   rotate   moves every entry but the newest dozen into
  *            docs/history/PROGRESS-<YYYY-MM>.md by the entry's month, text
  *            untouched. Nothing is edited, only moved. session-start.mjs says
@@ -21,10 +30,13 @@
  * The template lives here and session-stop.mjs prints it from here, so the
  * shape a session is asked for and the shape check refuses cannot disagree.
  */
+import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from './harness-config.mjs';
 import { fileURLToPath } from 'node:url';
+import { currentFiles as currentRuns, filesAt as runsAt } from './verify-log.mjs';
+import { currentFiles as currentAudits, filesAt as auditsAt } from './audit-log.mjs';
 
 export const root = realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 export const FILE = 'PROGRESS.md';
@@ -40,7 +52,7 @@ export function template(date = new Date().toISOString().slice(0, 10)) {
     '- **Feature**: <closed #n — "<description>", or: none closed>',
     '- **Result**: <passing | partial | blocked>',
     '- **Verified by**: <`./verify.sh` n/n; the CI run URL>',
-    '- **Evidence**: <the `verify-log/` runs for this session>',
+    '- **Evidence**: <verify-log/<id> — the run(s) made for this work; audit-log/<id> when an entry closed>',
     `- **Contract changes**: <none, or the \`${loadConfig().contracts.package ?? 'shared contracts'}\` sign-off (I4)>`,
     '- **Notes**:',
     '',
@@ -100,15 +112,130 @@ export function problemsOf(entry, previous) {
   return out;
 }
 
-/** @param {string} text */
-export function check(text) {
+/** A run's id as verify-log/ names it, and an audit's as audit-log/ names it. */
+const RUN_ID = /\b\d{8}T\d{6}Z\b/gu;
+const AUDIT_ID = /\b\d{8}T\d{6}\.\d{3}Z\b/gu;
+
+/**
+ * One field's text: from its line to the next field or the end of the entry.
+ * @param {Entry} entry
+ * @param {string} field
+ */
+export function fieldOf(entry, field) {
+  const m = new RegExp(`^- \\*\\*${field}\\*\\*:([\\s\\S]*?)(?=^- \\*\\*|$(?![\\s\\S]))`, 'mu').exec(entry.body);
+  return (m?.[1] ?? '').trim();
+}
+
+/**
+ * What the Evidence field points at.
+ * @param {Entry} entry
+ */
+export function evidenceOf(entry) {
+  const text = fieldOf(entry, 'Evidence');
+  return {
+    runs: [...new Set(text.match(RUN_ID) ?? [])],
+    audits: [...new Set(text.match(AUDIT_ID) ?? [])],
+  };
+}
+
+/**
+ * Does the entry close a feature: its Feature field says `closed #n` and
+ * does not begin with "none".
+ * @param {Entry} entry
+ */
+export function closesFeature(entry) {
+  const feature = fieldOf(entry, 'Feature');
+  return /closed #\d+/iu.test(feature) && !/^none\b/iu.test(feature);
+}
+
+/**
+ * The record as ids: the runs on file, and the audits with their verdicts.
+ * From the working tree, or from a commit.
+ * @param {string} [ref]
+ * @returns {{ runs: Set<string>, audits: Map<string, string | null> }}
+ */
+export function recordAt(ref) {
+  const runFiles = ref === undefined ? currentRuns() : runsAt(ref);
+  const auditFiles = ref === undefined ? currentAudits() : auditsAt(ref);
+  /** @type {Map<string, string | null>} */
+  const audits = new Map();
+  for (const [name, text] of auditFiles) {
+    let verdict = null;
+    try {
+      verdict = JSON.parse(text).verdict ?? null;
+    } catch {
+      /* the log's guard refuses it; here it is an audit with no verdict */
+    }
+    audits.set(name.replace(/\.json$/u, ''), verdict);
+  }
+  return { runs: new Set([...runFiles.keys()].map((n) => n.replace(/\.json$/u, ''))), audits };
+}
+
+/**
+ * Why an entry's Evidence does not point into the record, as sentences;
+ * empty when it does.
+ * @param {Entry} entry
+ * @param {{ runs: Set<string>, audits: Map<string, string | null> }} record
+ */
+export function pointerProblems(entry, record) {
+  /** @type {string[]} */
+  const out = [];
+  const { runs, audits } = evidenceOf(entry);
+  if (runs.length === 0) out.push('Evidence names no run: a `verify-log/<id>` is what a reader follows');
+  for (const id of runs) if (!record.runs.has(id)) out.push(`Evidence names run ${id}, which is not under verify-log/`);
+  if (closesFeature(entry) && audits.length === 0) {
+    out.push('closes a feature and Evidence names no audit: the `audit-log/<id>` that said READY');
+  }
+  for (const id of audits) {
+    if (!record.audits.has(id)) out.push(`Evidence names audit ${id}, which is not under audit-log/`);
+    else if (record.audits.get(id) !== 'READY') out.push(`Evidence names audit ${id}, which said ${record.audits.get(id) ?? '(nothing)'}, not READY`);
+  }
+  return out;
+}
+
+/**
+ * The entries in `text` whose heading is not in `baseText`: what a commit,
+ * or a session, added. Headings, not positions, so a rotation that moved
+ * the older entries out does not make the newest ones look new.
+ * @param {string} text
+ * @param {string} baseText
+ */
+export function newSince(text, baseText) {
+  const known = new Set(parse(baseText).entries.map((e) => e.heading));
+  return parse(text).entries.filter((e) => !known.has(e.heading));
+}
+
+/** @param {string} ref */
+function journalAt(ref) {
+  try {
+    return execFileSync('git', ['show', `${ref}:${FILE}`], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The shape of every entry, and the pointers of the new ones. `baseText`
+ * null means no baseline — a first commit, a repository without one — and
+ * then only the shape is asked.
+ * @param {string} text
+ * @param {{ baseText?: string | null, record?: ReturnType<typeof recordAt> }} [against]
+ */
+export function check(text, { baseText = null, record } = {}) {
   const { entries } = parse(text);
   /** @type {string[]} */
   const problems = [];
   entries.forEach((entry, i) => {
     for (const p of problemsOf(entry, entries[i - 1])) problems.push(`entry ${i + 1} (${entry.heading.slice(3, 60)}): ${p}`);
   });
-  return { entries: entries.length, problems };
+  const fresh = baseText === null ? [] : newSince(text, baseText);
+  if (fresh.length > 0) {
+    const rec = record ?? recordAt();
+    for (const entry of fresh) {
+      for (const p of pointerProblems(entry, rec)) problems.push(`entry ${entry.index + 1} (${entry.heading.slice(3, 60)}): ${p}`);
+    }
+  }
+  return { entries: entries.length, fresh: fresh.length, problems };
 }
 
 /**
@@ -166,16 +293,30 @@ export function rotate(text, keep = KEEP) {
   return { moved: moving.length, files, live };
 }
 
+/**
+ * @param {string[]} args
+ * @param {string} name
+ * @param {string | null} [fallback]
+ */
+function flag(args, name, fallback = null) {
+  const i = args.indexOf(`--${name}`);
+  return i === -1 ? fallback : (args[i + 1] ?? fallback);
+}
+
 function main() {
   const [command, ...args] = process.argv.slice(2);
-  const text = readFileSync(path.join(root, FILE), 'utf8');
   const keepArg = args.indexOf('--keep');
   const keep = keepArg === -1 ? KEEP : Number(args[keepArg + 1]);
 
   if (command === 'check') {
-    const { entries, problems } = check(text);
+    const at = flag(args, 'at');
+    const base = flag(args, 'base', 'HEAD') ?? 'HEAD';
+    const text = at ? (journalAt(at) ?? '') : readFileSync(path.join(root, FILE), 'utf8');
+    const baseText = journalAt(base);
+    const { entries, fresh, problems } = check(text, { baseText, record: recordAt(at ?? undefined) });
     if (problems.length === 0) {
-      console.log(`progress: ${entries} entries, every one in the template's shape`);
+      console.log(`progress: ${entries} entries, every one in the template's shape` +
+        (baseText === null ? `; no baseline at ${base}, evidence not asked` : `; ${fresh} new since ${base}, evidence on record`));
       return;
     }
     console.error(`progress: ${problems.length} problem(s) in ${FILE}`);
@@ -183,6 +324,7 @@ function main() {
     console.error(`\nThe shape, printed by session-stop.mjs when it is missing:\n\n${template()}\n`);
     process.exit(1);
   }
+  const text = readFileSync(path.join(root, FILE), 'utf8');
   if (command === 'status') {
     const { moving } = plan(text, keep);
     const total = parse(text).entries.length;
@@ -198,7 +340,7 @@ function main() {
     return;
   }
   if (command === 'template') { console.log(template()); return; }
-  console.error('usage: progress.mjs check | status | rotate [--keep N] | template');
+  console.error('usage: progress.mjs check [--base <ref>] [--at <ref>] | status | rotate [--keep N] | template');
   process.exit(2);
 }
 
