@@ -55,6 +55,14 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # A spike branch proves nothing and cannot reach main (I16). Its pushes
+      # run nothing here — the workflow triggers on main and on pull requests —
+      # and a pull request from one is refused before anything is walked, with
+      # the same sentence check-pr-ready.mjs gives on the machine.
+      - name: A pull request from a spike branch is refused
+        if: github.event_name == 'pull_request'
+        run: node scripts/spike.mjs check --branch "${{ github.head_ref }}" --base "${{ github.base_ref }}"
+
       # Deliberately before any install: the tree hash is over tracked files,
       # and this proves it is checkable with nothing but a clone and node.
       - name: This commit must carry a passing recorded run of its own content

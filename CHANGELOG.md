@@ -13,6 +13,10 @@ minor, a fix to a copied script is a patch.
 
 ### Added
 
+- Spike branches (I16): a branch under `spike/` is asked for no receipt at
+  commit time and no journal entry at session end, and is refused as a pull
+  request by `check-pr-ready.mjs` and by CI's attest job. `scripts/spike.mjs`
+  ships in core; a project's own invariants now start at I17.
 - The journal's Evidence field is a pointer: an entry names the
   `verify-log/<id>` of the run(s) made for the work and, when it closed a
   feature, the `audit-log/<id>` that said READY. `progress.mjs check`

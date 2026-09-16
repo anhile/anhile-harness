@@ -29,6 +29,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RECEIPT_FILE, changedPaths, hashFiles, readReceipt, root, treeFiles } from './verify-receipt.mjs';
+import { currentBranch, isSpike } from './spike.mjs';
 // PROTECTED lives with the content check, so the two can never disagree
 // about what they are protecting.
 import { PROTECTED, driftFromBaseline } from './check-protected-files.mjs';
@@ -253,6 +254,15 @@ function checkCommit(payload) {
   if ((payload.tool_name ?? '') !== 'Bash') return;
   const command = (payload.tool_input ?? {}).command;
   if (typeof command !== 'string' || !createsACommit(command)) return;
+
+  // A spike branch proves nothing and cannot reach main (I16), so it is
+  // asked for no receipt here. The protected-file checks above still ran:
+  // a spike edits the gate no more than any other branch does.
+  const branch = currentBranch();
+  if (isSpike(branch)) {
+    process.stderr.write(`commit gate: ${branch} is a spike, no receipt asked (docs/INVARIANTS.md I16)\n`);
+    return;
+  }
 
   const receipt = readReceipt();
 

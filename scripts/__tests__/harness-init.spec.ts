@@ -181,6 +181,8 @@ describe('the files it copies', () => {
     expect(copied).toContain('scripts/check-feature-list.mjs');
     expect(copied).toContain('scripts/check-coverage.mjs');
     expect(copied).toContain('scripts/verify-log.mjs');
+    // I16 since 2026-09-16: the spike rule ships with the hooks that read it.
+    expect(copied).toContain('scripts/spike.mjs');
   });
 
   it('copies no guard suite, because they assert this repository', () => {

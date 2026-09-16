@@ -23,6 +23,7 @@ const SCRIPTS = [
   'check-commit-gate.mjs',
   'check-protected-files.mjs',
   'verify-log.mjs',
+  'spike.mjs',
 ];
 
 let repo: string;
@@ -95,6 +96,33 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(repo, { recursive: true, force: true });
+});
+
+describe('a spike branch is asked for no receipt (I16)', () => {
+  it('lets a commit through with no receipt at all, and says why on stderr', () => {
+    git('checkout', '-qb', 'spike/try-sqlite');
+    writeFileSync(path.join(repo, 'source.ts'), 'export const answer = 43;\n');
+    git('add', 'source.ts');
+    expect(runGate(bash('git commit -m "trying"'))).toEqual({ blocked: false, reason: '' });
+  });
+
+  it('lets a commit through on red, since the spike claims nothing the run would have to back', () => {
+    git('checkout', '-qb', 'spike/try-sqlite');
+    writeReceipt('fail', '03-unit');
+    expect(runGate(bash('git commit -m "red and honest about it"')).blocked).toBe(false);
+  });
+
+  it('still refuses the protected files: a spike edits the gate no more than any branch', () => {
+    git('checkout', '-qb', 'spike/try-sqlite');
+    const verdict = runGate({ tool_name: 'Edit', tool_input: { file_path: path.join(repo, 'verify.sh'), old_string: 'a', new_string: 'b' } });
+    expect(verdict.blocked).toBe(true);
+    expect(verdict.reason).toContain('I11');
+  });
+
+  it('asks the receipt again the moment the branch is not a spike', () => {
+    git('checkout', '-qb', 'spike-without-the-slash');
+    expect(runGate(bash('git commit -m x')).reason).toContain('No verify receipt');
+  });
 });
 
 describe('what counts as creating a commit', () => {

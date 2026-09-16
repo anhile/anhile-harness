@@ -33,6 +33,7 @@
       "scripts/review-comments.mjs",
       "scripts/session-start.mjs",
       "scripts/session-stop.mjs",
+      "scripts/spike.mjs",
       "scripts/verify-log.mjs",
       "scripts/verify-receipt.mjs"
     ],
@@ -58,6 +59,7 @@
       "scripts/__tests__/review-brief.spec.ts",
       "scripts/__tests__/review-comments.spec.ts",
       "scripts/__tests__/session-hooks.spec.ts",
+      "scripts/__tests__/spike.spec.ts",
       "scripts/__tests__/verify-log.spec.ts",
       "scripts/__tests__/work-budget.spec.ts"
     ]

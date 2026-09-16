@@ -32,6 +32,7 @@ checks.
 | I13 | A commit's claim to be verified is checkable off the author's machine | CI `attest` from a clean clone; `pre-push`; a committed closure's audit, from `audit-log/` | `attestation.spec.ts`, `audit-log.spec.ts` |
 | I14 | Coverage never falls, and no source file escapes being counted | `check-coverage.mjs`, step 08, against `coverage-floor.json` | `harness-config.spec.ts` |
 | I15 | `feature_list.json` is append-only, and a guarantee is withdrawn in the open | `check-feature-list.mjs`, step 06; the audit receipt before a closing commit; the audit kept under `audit-log/` after it | `feature-list.spec.ts`, `audit-receipt.spec.ts`, `audit-log.spec.ts` |
+| I16 | A spike proves nothing and cannot reach `main` | `spike.mjs`: the commit gate and the stop hook ask a `spike/*` branch for nothing; `check-pr-ready.mjs` and CI `attest` refuse a pull request from one | `spike.spec.ts`, `commit-gate.spec.ts`, `session-hooks.spec.ts`, `pr-ready.spec.ts`, `ci-workflow.spec.ts` |
 
 ## I4 — A project's shared contracts package changes only by explicit human decision
 
@@ -243,9 +244,45 @@ forgets what it used to promise cannot be audited against what it promised.
 - **Review only:** that the auditor's READY was earned. The gate checks that an
   audit of this tree said READY; it cannot read the report.
 
+## I16 — A spike proves nothing and cannot reach `main`
+
+Every other invariant here is about a claim: that a tree passed, that an entry
+closed, that an audit said READY. A branch named `spike/<anything>` makes no
+claim. It is exploration, and exploration asked to prove itself is what makes
+a project's first week feel like ceremony: on 2026-09-16 this repository was
+running the gate about eight times and making three commits per feature, with
+the gate itself taking twenty seconds. The cost was the asking, not the gate.
+
+So a spike is asked for nothing, and allowed nothing. The commit gate lets a
+commit through with no receipt, or a red one, and says on stderr that the
+branch is a spike. The stop hook asks for no journal entry and no push. The
+start ritual says what a spike is. And `check-pr-ready.mjs` refuses to open a
+pull request from it, with the sentence CI's `attest` job repeats on the
+server before walking anything. What survives a spike is rebuilt on a branch
+of its own and closed the usual way; the spike is deleted, not merged.
+
+Two things a spike is still held to. The protected files (I11): a spike edits
+the gate no more than any branch, and the checks that say so run before the
+spike decision. And the record (I12): `./verify.sh` runs on a spike like
+anywhere else when somebody wants to know, and the run is recorded like any
+other.
+
+**How it is checked:** `scripts/spike.mjs` is the one definition —
+`isSpike(branch)`. The commit gate, `session-stop.mjs`, `session-start.mjs`
+and `check-pr-ready.mjs` read it; the workflow runs `spike.mjs check --branch`
+on a pull request's head before the attestation step, exiting 3 on a spike.
+`spike.spec.ts` pins the definition and the CI form; each hook and guard has
+its own spike case in its own suite, and each has a case that a branch merely
+named `spike-…` is asked everything.
+
+- **Review only:** that what reached `main` was rebuilt and not a spike
+  renamed. A rename makes the branch a feature branch, and every ritual then
+  applies to the commits it carries from there on: the attest walk refuses
+  the ones made without a run. That is the check.
+
 ## Yours to add
 
-A project's own invariants go below this line, numbered from I16, each with a
+A project's own invariants go below this line, numbered from I17, each with a
 "How it is checked" that names a mechanism. An entry with no check is a
 preference; the table at the top is the index and every entry is in it. The
 spec-auditor reads this file and cites by number, so a number that moves is a
@@ -258,4 +295,4 @@ short code, its uniqueness, frozen route signatures, the layer boundaries
 between its API and its page, append-only click events, the redirect never
 waiting on click recording, statistics scoped to one link. None is a property
 of the harness. They are named so the numbers stay retired: a shipped skill may
-still list them as examples, and a new invariant here takes I16 or later.
+still list them as examples, and a new invariant here takes I17 or later.

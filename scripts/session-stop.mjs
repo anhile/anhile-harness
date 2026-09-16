@@ -31,6 +31,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { newestEntry, root, sessionFile } from './session-start.mjs';
 import { newSince, pointerProblems, recordAt, template } from './progress.mjs';
+import { isSpike } from './spike.mjs';
 
 /**
  * What Claude Code hands the Stop hook on stdin; only the fields read here.
@@ -133,6 +134,9 @@ export function prForHead() {
 export function verdict(payload, record) {
   if (payload.stop_hook_active) return { block: false, reason: 'already continuing from a stop hook' };
   if (!record || !record.head) return { block: false, reason: 'no session record' };
+  // A spike claims nothing, so nothing is asked of it at the end (I16).
+  const branch = git('branch', '--show-current');
+  if (isSpike(branch)) return { block: false, reason: `${branch} is a spike: no journal entry, no push reminder` };
   const head = git('rev-parse', 'HEAD');
   if (!head || head === record.head) return { block: false, reason: 'no commits since the session began' };
   // Two reminders, each once, the journal first: an entry that is not yet

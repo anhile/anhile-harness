@@ -20,6 +20,18 @@ import path from 'node:path';
 const REPO = path.resolve(__dirname, '..', '..');
 const workflow = readFileSync(path.join(REPO, '.github', 'workflows', 'verify.yml'), 'utf8');
 
+describe('a pull request from a spike branch is refused before the walk (I16)', () => {
+  it('the attest job runs spike.mjs check on the head branch of a pull request, first', () => {
+    const workflow = readFileSync(path.join(REPO, '.github', 'workflows', 'verify.yml'), 'utf8');
+    const refusal = workflow.indexOf('node scripts/spike.mjs check --branch "${{ github.head_ref }}" --base "${{ github.base_ref }}"');
+    const attestation = workflow.indexOf('node scripts/check-attestation.mjs');
+    expect(refusal).toBeGreaterThan(-1);
+    expect(attestation).toBeGreaterThan(-1);
+    expect(refusal).toBeLessThan(attestation);
+    expect(workflow).toContain("if: github.event_name == 'pull_request'");
+  });
+});
+
 describe('the append-only walk in CI', () => {
   it('walks every pushed commit, one against its parent', () => {
     expect(workflow).toContain('git rev-list --reverse "${base}..${CHECKOUT_REF}"');

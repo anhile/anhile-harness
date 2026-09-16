@@ -16,6 +16,9 @@ guarantees; an entry's `passes` flips to `true` only on evidence, one entry per
 commit, and a closing commit needs an independent audit saying READY.
 
 **4. Work reaches `main` through a pull request.** Branch first, not after.
+A branch under `spike/` is exploration: no receipt, no journal, no contract,
+no audit — and no pull request. What survives is rebuilt on a branch of its
+own (I16).
 
 **5. Anything underspecified is a question, not a guess.**
 
@@ -31,6 +34,7 @@ meant to do.
 | `./verify.sh` step 06 | an entry born passing, or two closed in one commit |
 | the commit gate | a commit whose tree no green run covers |
 | protected-file guard | a session edit to `verify.sh`, the CI workflow, or `.claude/settings.json` |
+| `spike.mjs`, in the gate, the hooks and CI | nothing on a `spike/*` branch; and a pull request from one |
 | append-only guards | a run under `verify-log/` edited or removed, or a rewritten line in `feature_list.json` |
 
 Write a patch under `.generated/scratch/` for a protected file and ask a person
