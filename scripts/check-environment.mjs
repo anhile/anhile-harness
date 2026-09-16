@@ -43,6 +43,7 @@ export const root = realpathSync(
  *   ports: Record<string, boolean>,
  *   gh: boolean,
  *   ghAuth: boolean,
+ *   agentBrowser?: boolean,
  * }} Facts
  */
 
@@ -51,18 +52,19 @@ export const root = realpathSync(
  * @typedef {{ name: string, ok: boolean, optional?: boolean, detail: string, remedy: string | null }} Finding
  */
 
-/** @param {string} cmd */
+/**
+ * Is a command on PATH. Through `sh -c` with the name as a positional
+ * parameter, never interpolated: Node 24 warns (DEP0190) about arguments
+ * handed to a shell, and the warning printed at the top of every
+ * environment report until this stopped giving it a reason to.
+ * @param {string} cmd
+ */
 const has = (cmd) => {
   try {
-    execFileSync('command', ['-v', cmd], { shell: '/bin/sh', stdio: 'ignore' });
+    execFileSync('/bin/sh', ['-c', 'command -v -- "$1"', 'sh', cmd], { stdio: 'ignore' });
     return true;
   } catch {
-    try {
-      execFileSync('/bin/sh', ['-c', `command -v ${cmd}`], { stdio: 'ignore' });
-      return true;
-    } catch {
-      return false;
-    }
+    return false;
   }
 };
 
@@ -194,6 +196,20 @@ export function evaluate(facts) {
         : 'needed only by /open-pr, /review-pr and /address-comments: brew install gh, then gh auth login',
   });
 
+  // Also never required. A session that touches the UI walks it once as a
+  // user would; agent-browser is the tool for that walk — its snapshots are
+  // a few hundred tokens and file as evidence — and step 05 does not use it.
+  out.push({
+    name: 'agent-browser',
+    ok: true,
+    optional: true,
+    detail: facts.agentBrowser === true ? 'present' : 'not on PATH',
+    remedy:
+      facts.agentBrowser === true
+        ? null
+        : 'optional, for a session walking the UI as a user: npm install -g agent-browser, then agent-browser install. Step 05 does not use it',
+  });
+
   return out;
 }
 
@@ -220,6 +236,7 @@ async function gather() {
     },
     gh: has('gh'),
     ghAuth: output('gh', ['auth', 'status']) !== null,
+    agentBrowser: has('agent-browser'),
   };
 }
 

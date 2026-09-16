@@ -56,7 +56,9 @@ Each of these is a fact somewhere in the repository, never a recollection:
 - **the journal entry** — the `## <date> — <title>` heading this branch added
   to `PROGRESS.md`
 - **UI** — whether any file under `apps/web` or an `e2e` directory changed,
-  and if so what was tried in a real browser
+  and if so what was tried in a real browser, and the folder under
+  `.generated/ui/` holding the agent-browser snapshots and screenshots of
+  that walk, when there is one
 
 A claim you cannot source from one of those does not go in the body.
 

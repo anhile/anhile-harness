@@ -45,11 +45,12 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
-      # Trusted publishing needs npm 11.5.1 or later, and the npm that ships
-      # with the pinned node is older. Pinned: a release pipeline that installs
-      # "latest" of anything trusts whatever was published a minute ago. An
-      # 11.x, because npm 12 wants a newer node than .nvmrc pins, and the tag
-      # v0.1.2 found that out on the runner rather than here.
+      # Trusted publishing needs npm 11.5.1 or later. Pinned: a release
+      # pipeline that installs "latest" of anything trusts whatever was
+      # published a minute ago. Still an 11.x: the tag v0.1.2 found on the
+      # runner that npm 12 wanted a newer node than .nvmrc pinned then; node 24
+      # would run it now, and moving is a decision to make here, not a side
+      # effect of the node bump.
       - run: npm install -g npm@11.19.1 && npm --version
 
       - name: The tag must name the version package.json says

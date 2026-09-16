@@ -139,7 +139,8 @@ export function briefing() {
   }
 
   lines.push('');
-  lines.push('If the work touches the UI, start the application (pnpm dev:web, pnpm dev:api) and use it once through the browser first.');
+  lines.push('If the work touches the UI, start the application (pnpm dev:web, pnpm dev:api) and use it once through the browser first —');
+  lines.push('with agent-browser when it is on PATH (open, snapshot -i, click @eN, screenshot), filing what it saw under .generated/ui/<yyyymmdd>T<hhmmss>Z/ for the pull request.');
   lines.push('End the session with an entry in PROGRESS.md; scripts/session-stop.mjs checks that committed work has one.');
   return `${lines.join('\n')}\n`;
 }

@@ -70,6 +70,14 @@ Start the application the way the project's `package.json` says — `pnpm
 dev:web`, `pnpm dev:api` — and use it once through the browser. A UI
 criterion is verified as a user would, and `curl` does not count.
 
+When [agent-browser](https://agent-browser.dev) is on PATH, walk it with
+that: `agent-browser open <url>`, `snapshot -i` for the page as a tree with
+`@e1`-style references, `click @eN`, `fill @eN <text>`, `screenshot <file>`.
+File the snapshots and screenshots under `.generated/ui/<yyyymmdd>T<hhmmss>Z/`
+and name that folder in the pull request under **UI work**, so "tried in the
+browser" is a folder a reviewer opens rather than a sentence. It is a walk,
+not a suite: step 05 stays Playwright, and a walk does not close a criterion.
+
 ### 5. Report
 
 The gate's result, and the run folder it wrote. If a step failed, the step,
@@ -81,6 +89,12 @@ applied.
 `git worktree add ../<name> -b <branch>`. The gate gives a linked worktree its
 own ports and its own test database, derived from its path, so two can run at
 once; every run records which it used in its summary.
+
+That is the gate's half. For the dev servers a person opens in a browser,
+[portless](https://portless.sh) names each worktree's server after its branch
+(`fix-ui.myapp.localhost`) so nobody remembers a port; it is a choice for the
+machine, not a prerequisite, and the gate neither uses it nor moves its ports
+for it.
 
 ## What this skill does not do
 

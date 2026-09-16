@@ -11,6 +11,23 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
+### Changed
+
+- Node 24. `.nvmrc` pins 24.19.0, `engines` asks for `>=24`, `@types/node`
+  is 24. A project generated from here pins the node the generator ran on,
+  as before; CI and the release install what `.nvmrc` says. The README's
+  prerequisites say 24.
+- The README and the `setup-repo` skill say what the gate does for a second
+  worktree (its own ports and test database, derived from the path) and
+  name [portless](https://portless.sh) for the other half, the dev servers a
+  person opens in a browser. A mention, not a dependency.
+- `agent-browser` for the session's own walk through a UI: the environment
+  check reports it, optional and never counted; the session-start line, the
+  `setup-repo` and `open-pr` skills, the spec template and the pull-request
+  template say to walk with it when it is on PATH and to file its snapshots
+  under `.generated/ui/<ts>/`, named in the pull request. Step 05 stays
+  Playwright; a walk does not close a criterion.
+
 ## [0.1.3] — 2026-09-15
 
 ### Added

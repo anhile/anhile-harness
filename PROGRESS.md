@@ -655,3 +655,46 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   commit, and the trusted publisher on npmjs.com has `npm publish` among
   its allowed actions since 0.1.2.
 
+## 2026-09-16 — Node 24, and a name for the other half of the worktree problem
+
+- **Feature**: none closed
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6
+- **Evidence**: the run recorded under `verify-log/` for this tree
+- **Contract changes**: none
+- **Notes**:
+
+  The person found portless and asked whether the harness should use it.
+  It should not, in the gate: the gate needs ports for tests, without a TTY,
+  in CI, and portless exits there by design; it wants Node 24, sudo and a CA
+  in the system store; it is pre-1.0. And the gate already gives a linked
+  worktree its own ports and its own test database from its path, which is
+  the half of the problem a proxy cannot solve. What portless is good for is
+  the other half, the dev servers a person opens in a browser, so the README
+  and the `setup-repo` skill name it there, as a choice for the machine.
+
+  agent-browser, the second tool the person brought, is the mirror case. It
+  is a CLI for an agent driving Chrome — a page as a tree of `@e1`
+  references, a few hundred tokens — with no runner, no assertions and no
+  report, so it is nothing to step 05, which stays Playwright. What it is
+  for is the walk a session makes through a UI before claiming anything,
+  which until now existed only as a sentence in the pull-request body. The
+  environment check reports it as optional, the session-start line and the
+  skills say to walk with it when it is there, and the walk's snapshots go
+  under `.generated/ui/<ts>/` and are named in the pull request, so the
+  sentence has a folder behind it. Not a dependency, not a step.
+
+  Node 24 on the way, because the pin was two majors behind the machine this
+  runs on: `node -v` here is 24.19.0 and `.nvmrc` said 22.18.0, so every
+  session's environment check reported a mismatch that nobody acted on.
+  Pinned to the patch installed here, since that is the node the gate ran
+  under; `engines >=24`; `@types/node` 24. The release keeps npm 11.19.1 —
+  npm 12 would run on 24, and moving is its own decision. The first report
+  under 24 opened with DEP0190: `check-environment.mjs` handed a shell an
+  argument array, which node 24 warns about; it asks `sh -c 'command -v --
+  "$1"'` now, with the name as a positional parameter, and the report is
+  quiet again. The first gate under 24 went red on step 02: `@types/node`
+  24 dropped `Dirent.path`, which `prune-evidence.mjs` still named as a
+  fallback beside `parentPath`; the generated project's gate went red on
+  the same line, since it takes both the script and the types. One word.
+
