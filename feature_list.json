@@ -117,7 +117,7 @@
       "commit an entry and run progress.mjs check --at HEAD --base HEAD^; the commit's own journal and records are what is read",
       "end a session that committed with such an entry; the stop hook refuses once with the two tail commands that print the ids"
     ],
-    "passes": false,
+    "passes": true,
     "spec": "specs/2026-09-journal-pointers.md"
   }
 ]

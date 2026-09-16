@@ -43,9 +43,9 @@ describe('the guard, on the shape that went red', () => {
   // a merge commit of that branch into a main that has none of it.
   let repo: string;
   const git = (...args: string[]) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' }).trim();
-  const guard = (at: string, base: string): boolean => {
+  const walk = (argv: string[], at: string, base: string): boolean => {
     try {
-      execFileSync('node', [path.join(repo, 'scripts', 'check-feature-list.mjs'), '--at', at, '--base', base], {
+      execFileSync('node', [path.join(repo, 'scripts', argv[0]!), ...argv.slice(1), '--at', at, '--base', base], {
         cwd: repo,
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -55,6 +55,11 @@ describe('the guard, on the shape that went red', () => {
       return false;
     }
   };
+  const guard = (at: string, base: string) => walk(['check-feature-list.mjs'], at, base);
+  const journal = (at: string, base: string) => walk(['progress.mjs', 'check'], at, base);
+  const RUN = '20260916T100000Z';
+  const entry = (title: string, evidence: string) =>
+    `## 2026-09-16 — ${title}\n\n- **Feature**: none closed\n- **Result**: passing\n- **Verified by**: x\n- **Evidence**: ${evidence}\n- **Contract changes**: none\n- **Notes**:\n\n  n.\n`;
 
   beforeAll(() => {
     repo = mkdtempSync(path.join(tmpdir(), 'attest-merge-'));
@@ -63,7 +68,7 @@ describe('the guard, on the shape that went red', () => {
     // The guard asks a committed closure for its audit, so the fixture needs
     // the receipt's writer and what it imports, and a closing commit here
     // does what /verify-task does: writes the audit, then commits it.
-    for (const f of ['check-feature-list.mjs', 'harness-config.mjs', 'audit-log.mjs', 'audit-receipt.mjs', 'verify-receipt.mjs']) {
+    for (const f of ['check-feature-list.mjs', 'harness-config.mjs', 'audit-log.mjs', 'audit-receipt.mjs', 'verify-receipt.mjs', 'progress.mjs', 'verify-log.mjs']) {
       copyFileSync(path.join(REPO, 'scripts', f), path.join(repo, 'scripts', f));
     }
     copyFileSync(path.join(REPO, 'harness.config.json'), path.join(repo, 'harness.config.json'));
@@ -75,6 +80,11 @@ describe('the guard, on the shape that went red', () => {
     git('config', 'user.email', 'test@example.com');
     git('config', 'user.name', 'Test');
     write([]);
+    // The journal the walk reads too, since 2026-09-16: a prose entry from
+    // before the rule at the seed, an entry naming the run the branch's
+    // first closing commit carries, and a last commit whose entry points at
+    // nothing, for the refusal.
+    writeFileSync(path.join(repo, 'PROGRESS.md'), `# Progress\n\n${entry('before the rule', 'the run recorded for this tree')}`);
     git('add', '-A');
     git('commit', '-qm', 'seed');
     git('checkout', '-qb', 'work');
@@ -92,12 +102,37 @@ describe('the guard, on the shape that went red', () => {
     for (const id of [0, 1, 2]) {
       entries[id]!.passes = true;
       write(entries);
+      if (id === 0) {
+        mkdirSync(path.join(repo, 'verify-log'), { recursive: true });
+        writeFileSync(path.join(repo, 'verify-log', `${RUN}.json`), '{"at":"2026-09-16T10:00:00.000Z","result":"pass","tree":"sha256:a","steps":{}}\n');
+        writeFileSync(path.join(repo, 'PROGRESS.md'), `# Progress\n\n${entry('before the rule', 'the run recorded for this tree')}\n${entry('the work', `verify-log/${RUN}`)}`);
+      }
       execFileSync('node', [path.join(repo, 'scripts', 'audit-receipt.mjs'), 'write', '--spec', 'specs/c.md', '--verdict', 'READY'], { cwd: repo, stdio: 'ignore' });
       git('add', '-A');
       git('commit', '-qm', `close #${id}`);
     }
+    writeFileSync(path.join(repo, 'PROGRESS.md'), `# Progress\n\n${entry('before the rule', 'the run recorded for this tree')}\n${entry('the work', `verify-log/${RUN}`)}\n${entry('pointing nowhere', 'the log')}`);
+    git('add', '-A');
+    git('commit', '-qm', 'a journal entry pointing nowhere');
     git('checkout', '-q', 'main');
     git('merge', '-q', '--no-ff', '-m', 'merge work', 'work');
+  });
+
+  it('runs the journal check on each commit the way the workflow does: the entry naming its run passes, the one pointing nowhere is refused', () => {
+    // The workflow names `progress.mjs check --at --base` in its walk; this
+    // is the same command on the same shape of commits, so the walk is shown
+    // to run and to refuse, not only to be written down.
+    const commits = git('rev-list', '--reverse', 'HEAD^..HEAD^2').trim().split('\n');
+    const last = commits[commits.length - 1]!;
+    expect(git('log', '-1', '--format=%s', last)).toBe('a journal entry pointing nowhere');
+    for (const commit of commits.slice(0, -1)) {
+      // Run it by hand here so a refusal says why, instead of a bare false.
+      const out = execFileSync('node', [path.join(repo, 'scripts', 'progress.mjs'), 'check', '--at', commit, '--base', `${commit}^`], { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      expect(out).toContain('evidence on record');
+    }
+    expect(journal(last, `${last}^`)).toBe(false);
+    // The seed's prose entry is old at every baseline the walk uses.
+    expect(journal('HEAD', 'HEAD^2')).toBe(true);
   });
 
   afterAll(() => rmSync(repo, { recursive: true, force: true }));

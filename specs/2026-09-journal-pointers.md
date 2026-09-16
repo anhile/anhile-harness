@@ -69,6 +69,9 @@ None.
   the ids.
 - **AC5** (ubiquitous) — CI's walk shall run the same check on every pushed
   commit against its parent.
+- **AC6** (ubiquitous) — A project the generator writes shall pass
+  `progress.mjs check` on its seed journal, which names no run because none
+  has happened.
 
 ## Verification plan
 
@@ -76,11 +79,12 @@ None.
 |---|---|---|---|
 | AC1 | Jest — `progress.spec.ts` "the Evidence of a new entry points into the record": "refuses a new entry whose Evidence names no run", "refuses a run that is not on record", "accepts a new entry naming a run on record, and leaves the old prose alone" | the cases pass | `.generated/runs/<ts>/03-unit.log` |
 | AC2 | Jest — `progress.spec.ts` "asks a closing entry for the audit that said READY", "does not take "none closed" for a closure" | the cases pass | `.generated/runs/<ts>/03-unit.log` |
-| AC3 | Jest — `progress.spec.ts` "asks only the shape when there is no baseline", "reads the journal and the records at a commit with --at, the way CI walks"; "this repository › PROGRESS.md is in the template shape, every entry" still passes with the prose entries at HEAD | the cases pass | `.generated/runs/<ts>/03-unit.log` |
-| AC4 | Jest — `session-hooks.spec.ts` "blocks once when the entry this session wrote points at nothing on record", "lets the session stop when the entry names a run on record, committed or not" | the cases pass | `.generated/runs/<ts>/03-unit.log` |
-| AC5 | Jest — `ci-workflow.spec.ts` "compares a merge commit with the branch it merged…" names `progress.mjs check` among the guards the walk runs | the case passes | `.generated/runs/<ts>/03-unit.log` |
+| AC3 | Jest — `progress.spec.ts` "asks only the shape when there is no baseline", "reads the journal and the records at a commit with --at, the way CI walks"; "this repository › PROGRESS.md is in the template shape, every entry" passes with the prose entries at HEAD and asserts the pointer branch ran on what the working tree added — which is step 03 asking the entry a session is about to commit | the cases pass | `.generated/runs/<ts>/03-unit.log` |
+| AC4 | Jest — `session-hooks.spec.ts` "blocks once when the entry this session wrote points at nothing on record" (both `tail` commands asserted), "lets the session stop when the entry names a run on record, committed or not" | the cases pass | `.generated/runs/<ts>/03-unit.log` |
+| AC5 | Jest — `ci-workflow.spec.ts` "compares a merge commit with the branch it merged…" names `progress.mjs check` among the guards the walk runs, and "runs the journal check on each commit the way the workflow does…" runs that command on a branch of real commits: the entry naming its run passes, the one pointing nowhere is refused, the seed's prose entry is old at every baseline. The walk on GitHub is the same line on the same shape; its log is CI's | the cases pass | `.generated/runs/<ts>/03-unit.log` |
+| AC6 | Jest — `harness-init.spec.ts` "the journal a project starts with › passes progress.mjs check as written, before any run exists to name" | the case passes | `.generated/runs/<ts>/03-unit.log` |
 
-Entry #9 closes on AC1 to AC5 together, and its closing entry in the
+Entry #9 closes on AC1 to AC6 together, and its closing entry in the
 journal is the first one the rule applies to: it names the run and the audit
 by id, and the stop hook and CI check that it does.
 
@@ -91,7 +95,7 @@ by id, and the stop hook and CI check that it does.
 - `specs/2026-09-journal-pointers.md` — this file
 - `feature_list.json`, `PROGRESS.md`, `CHANGELOG.md`, `docs/INVARIANTS.md`, `CONTRIBUTING.md`, `README.md`
 - `verify-log/` — the run records the gate writes on the way
-- tests: `scripts/__tests__/progress.spec.ts`, `session-hooks.spec.ts`, `ci-workflow.spec.ts`; the two fixtures gain the record readers the script now imports, and every fixture entry names a run. No case weakened.
+- tests: `scripts/__tests__/progress.spec.ts`, `session-hooks.spec.ts`, `ci-workflow.spec.ts`, `harness-init.spec.ts`; the fixtures gain the record readers the script now imports, and every fixture entry names a run. The pin on the stop hook's import line moves to the new import line, exact as before. No case weakened.
 
 ## Invariants
 

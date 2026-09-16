@@ -1,0 +1,9 @@
+{
+  "spec": "specs/2026-09-journal-pointers.md",
+  "verdict": "READY",
+  "security": "not run: surface unchanged",
+  "at": "2026-09-16T11:07:26.491Z",
+  "treeHash": "sha256:45286b27d0f1ae98dd55373458c2cf9df3192ee30d37112b0f7811cd0d288d92",
+  "verifyEvidence": ".generated/runs/20260916T110422Z",
+  "commit": "8d4f5a61def92f1dc32cb4dd5fa83b3d61b741b3"
+}

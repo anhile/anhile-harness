@@ -171,6 +171,7 @@ describe('session-stop insists on the PROGRESS entry, for commits, once', () => 
     expect(first.status).toBe(2);
     expect(first.stderr).toContain('2026-09-08 — the work: Evidence names no run');
     expect(first.stderr).toContain('verify-log.mjs tail 3');
+    expect(first.stderr).toContain('audit-log.mjs tail 3');
     expect(stop().status).toBe(0);
   });
 

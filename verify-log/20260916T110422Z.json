@@ -1,0 +1,35 @@
+{
+  "at": "2026-09-16T11:04:49.657Z",
+  "result": "pass",
+  "tree": "sha256:45286b27d0f1ae98dd55373458c2cf9df3192ee30d37112b0f7811cd0d288d92",
+  "head": "8d4f5a61def92f1dc32cb4dd5fa83b3d61b741b3",
+  "branch": "journal/pointers",
+  "node": "v24.19.0",
+  "evidence": ".generated/runs/20260916T110422Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 24
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

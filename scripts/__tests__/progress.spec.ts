@@ -263,11 +263,14 @@ describe('this repository', () => {
   it('PROGRESS.md is in the template shape, every entry', () => {
     const out = execFileSync('node', [path.join(REPO, 'scripts', 'progress.mjs'), 'check'], { cwd: REPO, encoding: 'utf8' });
     expect(out).toContain("every one in the template's shape");
+    // And the pointers of whatever this working tree added since HEAD were
+    // followed: this is step 03 asking the entry a session is about to commit.
+    expect(out).toMatch(/\d+ new since HEAD, evidence on record/u);
   });
 
   it('the stop hook prints the same template', () => {
     const stop = readFileSync(path.join(REPO, 'scripts', 'session-stop.mjs'), 'utf8');
-    expect(stop).toMatch(/import \{[^}]*\btemplate\b[^}]*\} from '\.\/progress\.mjs'/u);
+    expect(stop).toContain("import { newSince, pointerProblems, recordAt, template } from './progress.mjs'");
     expect(stop).not.toContain('export function template');
   });
 });
