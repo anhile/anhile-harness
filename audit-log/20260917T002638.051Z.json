@@ -1,0 +1,9 @@
+{
+  "spec": "specs/2026-09-quick-by-name.md",
+  "verdict": "READY",
+  "security": "not run: surface unchanged",
+  "at": "2026-09-17T00:26:38.051Z",
+  "treeHash": "sha256:e16d5081f1d8d6aaa55e37e07e92b4da6df4ea4a8ed93137db666c26ad53413b",
+  "verifyEvidence": ".generated/runs/20260917T001756Z",
+  "commit": "7a99ece176a08c88418d3363d8cf1f851f8c999b"
+}

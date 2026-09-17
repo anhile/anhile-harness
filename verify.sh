@@ -26,8 +26,9 @@
 # complete. Set VERIFY_FAIL_FAST=1 to stop at the first failing step.
 #
 # `--quick [--base <ref>]` is the short form: steps 1, 2, 6, 7 and 9 as they
-# are, step 3 only for the suites jest finds affected by what changed since
-# the base (main unless --base says otherwise), and steps 4, 5 and 8 left to
+# are, step 3 only for the suites related to what changed since the base
+# (main unless --base says otherwise) — by import, by being changed, or by
+# naming a changed path; scripts/quick-suites.mjs — and steps 4, 5 and 8 left to
 # the full gate. The run is recorded as quick. The commit gate takes it for a
 # commit that closes nothing; a closure, the audit and CI ask the full gate
 # (docs/INVARIANTS.md I11).
@@ -323,13 +324,25 @@ browser_e2e() {
 }
 
 # --- step 3 ---------------------------------------------------------------
-# The whole suite, or under --quick the suites jest finds affected by what
-# changed since the base, uncommitted changes included, with coverage off:
-# a partial run's coverage would fail the floors for a reason that is not
-# the code, which is why step 8 is left to the full gate with it.
+# The whole suite, or under --quick the suites scripts/quick-suites.mjs
+# selects for what changed since the base: by import (jest's own answer),
+# the suites that changed themselves, and the suites whose text names a
+# changed path. Coverage off: a partial run's coverage would fail the floors
+# for a reason that is not the code, which is why step 8 is left to the full
+# gate with it. With nothing selected the step runs no jest and says so; a
+# pass that ran nothing is still recorded as quick, and a closure still asks
+# the full gate.
 unit_suites() {
   if [[ "$MODE" == quick ]]; then
-    pnpm exec jest --config jest.config.cjs --changedSince "$QUICK_BASE" --coverage=false
+    local suites=() line
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && suites+=("$line")
+    done < <(node scripts/quick-suites.mjs --base "$QUICK_BASE")
+    if [[ ${#suites[@]} -eq 0 ]]; then
+      echo "quick: no suite is related to what changed since $QUICK_BASE, by import, itself or by name; step 03 ran nothing"
+      return 0
+    fi
+    pnpm exec jest --config jest.config.cjs --coverage=false --runTestsByPath "${suites[@]}"
   else
     pnpm exec jest --config jest.config.cjs
   fi

@@ -11,6 +11,17 @@ minor, a fix to a copied script is a patch.
 
 ## [Unreleased]
 
+### Changed
+
+- `./verify.sh --quick` selects suites on three grounds, through the new
+  `scripts/quick-suites.mjs`: by import (jest's answer, as before), the
+  suites that changed themselves, and the suites whose text names a changed
+  path or its basename. The step's log says which. With nothing selected,
+  step 03 runs no jest and says so. In 0.3.0 the import graph alone selected,
+  in a repository whose guard suites copy or spawn the scripts they fire at
+  rather than import them, only the spec files that had been edited.
+  `upgrade` brings the script and the gate.
+
 ## [0.3.0] — 2026-09-17
 
 A minor, not a patch, by the rule at the top: what the generated gate refuses

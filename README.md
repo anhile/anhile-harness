@@ -133,8 +133,10 @@ green run writes a receipt: a hash of the tree it passed.
 | 08 `coverage` | a lowered floor, or a source file nothing counted |
 
 `./verify.sh --quick` is the short form while iterating: steps 01, 02, 06 and
-07, and 03 only for the suites affected since `main` (`--base <ref>` for
-another base), with 04, 05 and 08 left to the full gate. The run is recorded
+07, and 03 only for the suites related to what changed since `main`
+(`--base <ref>` for another base) — by import, by being changed, or by naming
+a changed file, chosen by `scripts/quick-suites.mjs` and said in the step's
+log — with 04, 05 and 08 left to the full gate. The run is recorded
 as quick. The commit gate takes it for a commit that closes nothing; the
 commit that closes an entry, the audit and CI ask the full gate.
 
