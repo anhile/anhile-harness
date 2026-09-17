@@ -1093,3 +1093,26 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   `commit-gate.spec` took 209 s against 33 s — because 23 suites with
   `--runTestsByPath` still start 23 workers; that is the machine, not the
   selection, and the second observation is its own change.
+
+## 2026-09-17 — 0.4.0: the quick run selects by name
+
+- **Feature**: none closed; a release
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6 on the release tree
+- **Evidence**: `verify-log/20260917T085413Z` — the run this commit carries
+- **Contract changes**: none
+- **Notes**:
+
+  One entry since 0.3.0, #17, released on its own because it changes what a
+  project's quick run does: `scripts/quick-suites.mjs` selects by import,
+  the suite itself, and by name, and travels in the manifest's core. A minor
+  by the CHANGELOG's rule — a new thing the generator writes — with no
+  change to what the gate refuses.
+
+  Left on record for the next release, not this one: the second observation
+  from 2026-09-16, a jest worker dying with SIGSEGV under node 24.x (V8's
+  Sparkplug, nodejs/node#62393, no fix in any 24.x). The workaround is a
+  line in `verify.sh` — `node --no-sparkplug node_modules/jest/bin/jest.js`,
+  which the workers inherit — verified by hand on this tree and not yet
+  written, because it is a patch to a copied script and this release is
+  about what the generator writes.
