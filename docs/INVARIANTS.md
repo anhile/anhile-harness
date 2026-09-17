@@ -132,10 +132,16 @@ attestation, which notes it and whose `verify` job runs the full gate on
 the same commit. What does not: a closing commit, refused by the gate on a
 quick receipt; the audit writer, which refuses to write on one; and CI's
 walk, which refuses a committed closure whose only passing run on record is
-quick. A quick run is a shorter claim, never a claim in disguise: the
-affected-suite selection follows imports, so a suite that reads a file
-without importing it is not rerun, and that is one of the reasons the full
-gate is asked where a claim is made.
+quick. A quick run is a shorter claim, never a claim in disguise. Since
+2026-09-17 `scripts/quick-suites.mjs` picks the suites on three grounds and
+says which in the step's log: by import, jest's own answer; the suite
+itself among the changed paths; and by name, the suite's text naming a
+changed path or its basename — because in this repository no guard suite
+imports the script it fires at, and on the first day the import graph
+selected only the spec files the session had edited. What still is not
+rerun: a suite that reaches a file by a path it computes, naming neither
+the path nor the file. That is one of the reasons the full gate is asked
+where a claim is made.
 
 ## I12 — What verification concluded is recorded, durably and append-only
 

@@ -1053,3 +1053,43 @@ Newest at the bottom. What closed, the evidence, and the reasons — not the dif
   closure's quick run passed a tree the full gate then failed, because a
   suite that reads a file does not import it. That is the shape of the quick
   run, said in I11, and the reason a closure asks the full gate.
+
+## 2026-09-17 — closed #17: the quick run selects suites by name
+
+- **Feature**: #17 — `./verify.sh --quick` runs the suites related to what changed by import, the suites that changed themselves, and the suites whose text names a changed path or its basename
+- **Result**: passing
+- **Verified by**: `./verify.sh` 6/6 on the tree, after `./verify.sh --quick` on the same tree
+- **Evidence**: `verify-log/20260917T001756Z` (full, 30 suites, 700 tests), `verify-log/20260917T001625Z` (quick, 23 of 30 suites, 641 tests), `audit-log/20260917T002638.051Z` — READY
+- **Contract changes**: `specs/2026-09-quick-by-name.md`, new; I11's paragraph on the quick run now says the three grounds and the remaining limit
+- **Notes**:
+
+  The first of the two observations the fast lane left. The quick run asked
+  jest which suites relate to what changed, and jest answers from the
+  import graph; no guard suite here imports the script it fires at, so on
+  2026-09-16 every quick run selected exactly the spec files the session had
+  edited, and each of the three closures after #14 had a quick run pass a
+  tree the full gate then failed. Measured before writing: `jest
+  --findRelatedTests` names no suite for `scripts/spike.mjs` or
+  `scripts/verify-receipt.mjs`; six and fourteen suites name them.
+
+  `scripts/quick-suites.mjs` selects on three grounds — by import, jest's
+  own answer; the suite itself among the changed paths; by name, a suite
+  whose text contains a changed path or its basename — and says which on
+  stderr. The unit step under `--quick` runs jest with `--runTestsByPath` on
+  that list, coverage off, or runs nothing and says so. The step's log on
+  this branch is the measurement: 23 of 30 suites, 3 by import, 3 changed
+  themselves, 20 by name, `attestation.spec.ts ← verify.sh` first among
+  them. The red pair before this tree — quick `20260916T235749Z`, full
+  `20260916T235830Z` — failed on the same suite in both runs, which is what
+  the change was for; the pair before that, on 2026-09-16, was quick green
+  and full red.
+
+  Kept outside on purpose, and said in I11: a suite that reaches a file by
+  a path it computes is not found, and a closure still asks the full gate.
+  From the audit's rounds: `allSuites` takes jest's `--listTests` first, so
+  `jest.config.cjs` decides what a suite is, with `git ls-files` as the
+  fallback; the round-two case fires at both branches and at
+  `relatedByImport` refused. Slower than a full run on a loaded machine —
+  `commit-gate.spec` took 209 s against 33 s — because 23 suites with
+  `--runTestsByPath` still start 23 workers; that is the machine, not the
+  selection, and the second observation is its own change.

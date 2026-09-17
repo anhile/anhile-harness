@@ -1,0 +1,37 @@
+{
+  "at": "2026-09-17T00:18:31.322Z",
+  "result": "pass",
+  "tree": "sha256:e16d5081f1d8d6aaa55e37e07e92b4da6df4ea4a8ed93137db666c26ad53413b",
+  "mode": "full",
+  "since": null,
+  "head": "7a99ece176a08c88418d3363d8cf1f851f8c999b",
+  "branch": "fast-lane/quick-by-name",
+  "node": "v24.19.0",
+  "evidence": ".generated/runs/20260917T001756Z",
+  "steps": {
+    "01-eslint": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "02-typecheck": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "03-unit": {
+      "exit": 0,
+      "seconds": 31
+    },
+    "06-feature-list": {
+      "exit": 0,
+      "seconds": 0
+    },
+    "07-verify-log": {
+      "exit": 0,
+      "seconds": 1
+    },
+    "08-coverage": {
+      "exit": 0,
+      "seconds": 0
+    }
+  }
+}

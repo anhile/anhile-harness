@@ -190,7 +190,10 @@ describe('the gate it writes', () => {
     expect(gate).toMatch(/^run_step 03 unit\s+unit_suites$/mu);
     expect(gate.indexOf('unit_suites() {')).toBeGreaterThan(-1);
     expect(gate.indexOf('unit_suites() {')).toBeLessThan(gate.indexOf('run_step 01 '));
-    expect(gate).toContain('--changedSince "$QUICK_BASE" --coverage=false');
+    // Since 2026-09-17 the suites come from quick-suites.mjs, which travels in core.
+    expect(gate).toContain('node scripts/quick-suites.mjs --base "$QUICK_BASE"');
+    expect(gate).toContain('--coverage=false --runTestsByPath "${suites[@]}"');
+    expect(existsSync(path.join(dir, 'scripts', 'quick-suites.mjs'))).toBe(true);
     const agents = read(dir, 'AGENTS.md');
     expect(agents).toContain('`./verify.sh --quick`');
     expect(agents).toContain('a closure without its READY audit or on a `--quick` run');

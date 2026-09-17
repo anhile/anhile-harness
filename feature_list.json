@@ -213,5 +213,17 @@
     ],
     "passes": true,
     "spec": "specs/2026-09-upgrade.md"
+  },
+  {
+    "id": 17,
+    "category": "harness",
+    "description": "./verify.sh --quick runs the suites jest relates to what changed by import, the suites that changed themselves, and the suites whose text names a changed path or its basename, chosen by scripts/quick-suites.mjs and said in the step's log; with nothing selected, step 03 runs nothing and says so",
+    "steps": [
+      "change a script no suite imports; node scripts/quick-suites.mjs --base main prints the suites that name it and says by name on stderr",
+      "./verify.sh --quick; the step 03 log names the suites selected and why; jest ran those with --runTestsByPath",
+      "on a tree with nothing changed since the base, ./verify.sh --quick passes step 03 having run no jest, and the log says nothing was related"
+    ],
+    "passes": true,
+    "spec": "specs/2026-09-quick-by-name.md"
   }
 ]

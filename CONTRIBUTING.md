@@ -13,7 +13,9 @@ a person.
 3. Make the change, and run `./verify.sh`. The gate is the only thing that
    establishes the code works; a red gate is fixed, never worked around.
    While iterating, `./verify.sh --quick` runs lint, types and the suites
-   affected since `main` (`--base <ref>` for another base) and skips the
+   related to what changed since `main` (`--base <ref>` for another base) —
+   by import, by being changed, or by naming a changed file, and the step's
+   log says which — and skips the
    e2e and coverage steps; it is recorded as quick, and the commit gate takes
    it for a commit that closes nothing. The commit that closes an entry, the
    audit and CI ask the full gate.
